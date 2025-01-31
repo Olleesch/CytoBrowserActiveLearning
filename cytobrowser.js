@@ -35,10 +35,21 @@ const availableImages = require("./server/availableImages")(dataDir);
 const collaboration = require("./server/collaboration")(collabDir, metadataDir);
 const open = require("open");
 const { version : serverVersion } = require("./package.json");
+const detectNuclei = require("./server/nucleiDetection")();
+// const { spawn } = require("child_process");
 
 // Initialize the server
 const app = express();
 const expressWs = require("express-ws")(app);
+
+// // Initialize the python Flask server
+// const pythonProcess = spawn('python3', ["./python/app.py"], (err, stdout, stderr) => {
+//     if (err) {
+//         console.error(`Error starting Flask server: ${err}`);
+//         return;
+//     }
+//     console.log(`Flask server running: ${stdout}`)
+// });
 
 // Serve static files
 const publicPath = `${__dirname}/public/`;
@@ -107,6 +118,19 @@ app.ws("/collaboration/:id", (ws, req) => {
 
     ws.on("close", (code, reason) => {
         collaboration.leaveCollab(ws, id);
+    });
+});
+
+// Get nuclei detection output
+app.get("/api/detect-nuclei", (req, res) => {
+    // const image = collaboration.image;
+    const image = req.query.image;
+    console.log(image)
+    detectNuclei(image).then((result) => {
+        res.json(result);  // Send the parsed JSON result back to the client
+    }).catch((error) => {
+        console.error("Error in nuclei detection:", error);
+        res.status(500).send("Internal Server Error");
     });
 });
 
