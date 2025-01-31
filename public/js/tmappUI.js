@@ -295,6 +295,31 @@ const tmappUI = (function(){
         });
     }
 
+    function _initNucleiDetectionButtonEvents() {
+        $("#detect_nuclei").click(() => {
+            console.log("Nuclei detection button clicked")
+            // const image = document.getElementById("collab-image-path").textContent;
+            const image = tmapp.getImageName();
+            console.log(image);
+            const loadedJSON = fetch(`/api/detect-nuclei?image=${encodeURIComponent(image)}`).then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            }).catch(error => {
+                console.error('Error:', error);
+                throw error;
+            });
+            loadedJSON.then(annotationStorageConversion.addAnnotationStorageData);
+        });
+    }
+    
+    function _initNucleiClassificationButtonEvents() {
+        $("#classify_nuclei").click(() => {
+            // console.log("Nuclei classification button clicked")
+        })
+    }
+
     function _initAnnotationFiltering() {
         let keyUpTimeout = null;
         const keyUpTime = 3000;
@@ -513,6 +538,8 @@ const tmappUI = (function(){
         _initContextMenu();
         _initDocumentFocusFunctionality();
         _initStorageButtonEvents();
+        _initNucleiDetectionButtonEvents();
+        _initNucleiClassificationButtonEvents();
         _initAnnotationFiltering();
         _initFocusButtonEvents();
         _initVisualizationSliders();
