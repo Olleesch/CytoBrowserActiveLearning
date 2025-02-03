@@ -3,6 +3,7 @@ data
 storage
 collab_storage
 temp
+**/.vscode**
 
 # OpenSeadragon public access from node module install
 public/js/openseadragon/images
