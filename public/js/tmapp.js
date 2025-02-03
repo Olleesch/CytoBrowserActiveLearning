@@ -841,6 +841,14 @@ const tmapp = (function() {
     }
 
     /**
+     * Get the id of the current collab.
+     * @returns {string} The current collab id.
+     */
+    function getCollabID() {
+        return _collab;
+    }
+
+    /**
      * Update the current status of tmapp, viewport position and cursor
      * position, to the collaborators.
      */
@@ -964,6 +972,7 @@ const tmapp = (function() {
         changeContrast,
 
         getImageName,
+        getCollabID,
         updateCollabStatus,
         setCursorStatus,
         enableControls,

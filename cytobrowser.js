@@ -36,6 +36,7 @@ const collaboration = require("./server/collaboration")(collabDir, metadataDir);
 const open = require("open");
 const { version : serverVersion } = require("./package.json");
 const detectNuclei = require("./server/nucleiDetection")();
+const classifyNuclei = require("./server/nucleiClassification")();
 // const { spawn } = require("child_process");
 
 // Initialize the server
@@ -123,13 +124,26 @@ app.ws("/collaboration/:id", (ws, req) => {
 
 // Get nuclei detection output
 app.get("/api/detect-nuclei", (req, res) => {
-    // const image = collaboration.image;
     const image = req.query.image;
-    console.log(image)
+    // console.log(image);
     detectNuclei(image).then((result) => {
-        res.json(result);  // Send the parsed JSON result back to the client
+        res.json(result);
     }).catch((error) => {
         console.error("Error in nuclei detection:", error);
+        res.status(500).send("Internal Server Error");
+    });
+});
+
+// Get nuclei classification output
+app.get("/api/classify-nuclei/:id", (req, res) => {
+    const id = req.params.id
+    const image = req.query.image;
+    // console.log(id);
+    // console.log(image);
+    classifyNuclei(image, id).then((result) => {
+        res.json(result);
+    }).catch((error) => {
+        console.error("Error in nuclei classification:", error);
         res.status(500).send("Internal Server Error");
     });
 });

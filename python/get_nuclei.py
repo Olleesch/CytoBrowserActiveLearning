@@ -10,6 +10,7 @@ if __name__=='__main__':
 
         print(json.dumps(data))
         sys.stdout.flush()
+        
     except Exception as e:
         print(f"Error occurred: {str(e)}", file=sys.stderr)
         sys.exit(1)

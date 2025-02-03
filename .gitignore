@@ -3,3 +3,4 @@ data
 storage
 collab_storage
 temp
+**/.vscode**

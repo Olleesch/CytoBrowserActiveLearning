@@ -1,29 +1,33 @@
 /**
- * @module nucleiDetection
- * @desc Used to run the nuclei detection pipeline from python code. 
+ * @module nucleiClassification
+ * @desc Used to run the nuclei classification pipeline from python code. 
  */
 
 /**
- * Run nuclei detection pipeline.
- * @returns {Promise<Object>} A promise that resolves with the detected
+ * Run nuclei classification pipeline.
+ * @returns {Promise<Object>} A promise that resolves with the classified
  * nuclei in JSON format.
  */
-function detectNuclei(image) {
-    // console.log('Now in nuclei detection function. ')
+function classifyNuclei(image, id) {
+    console.log('Now in nuclei classification function. ');
+
+    console.log(image);
+    console.log(id);
 
     return new Promise(function(resolve, reject) {
 
         const { spawn } = require("child_process");
-        const pythonProcess = spawn('python', ["./python/get_nuclei.py", image]);
+        const pythonProcess = spawn('python', ["./python/get_classifications.py", image, id]);
 
         let accumulatedData = "";
     
         pythonProcess.stdout.on("data", function(data) {
+            // console.log(data.toString());
             accumulatedData += data.toString();
         });
     
         pythonProcess.stderr.on("data", (data) => {
-            console.log(data.toString())
+            console.log(data.toString());
             reject(data);
         });
 
@@ -49,5 +53,5 @@ function detectNuclei(image) {
 }
 
 module.exports = function() {
-    return detectNuclei;
+    return classifyNuclei;
 }
