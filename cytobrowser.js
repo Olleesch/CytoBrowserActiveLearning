@@ -51,22 +51,27 @@ const express = require("express");
 const availableImages = require("./server/availableImages")(dataDir);
 const collaboration = require("./server/collaboration")(collabDir, metadataDir);
 const { version : serverVersion } = require("./package.json");
-const detectNuclei = require("./server/nucleiDetection")();
-const classifyNuclei = require("./server/nucleiClassification")();
-// const { spawn } = require("child_process");
+const { spawn } = require("child_process");
+const net = require("net");
 
 // Initialize the server
 const app = express();
 const expressWs = require("express-ws")(app);
 
-// // Initialize the python Flask server
-// const pythonProcess = spawn('python3', ["./python/app.py"], (err, stdout, stderr) => {
-//     if (err) {
-//         console.error(`Error starting Flask server: ${err}`);
-//         return;
-//     }
-//     console.log(`Flask server running: ${stdout}`)
-// });
+// Setup python host and port
+const pythonHost = "127.0.0.1"
+let pythonPort  // Q: Not sure if a global variable is the best way of handling this?
+
+// Help function to find a free port for python backend server initialization
+async function getFreePort() {
+    return new Promise((resolve) => {
+        const srv = net.createServer();
+        srv.listen(0, () => {
+            const port = srv.address().port;
+            srv.close(() => resolve(port));
+        });
+    });
+}
 
 // Serve static files
 const publicPath = `${__dirname}/public/`;
@@ -127,7 +132,7 @@ app.ws("/collaboration/:id", (ws, req) => {
     const image = req.query.image ? req.query.image : null;
     const userId = req.query.userId ? req.query.userId : null;
     const name = req.query.name || "Unnamed";
-    collaboration.joinCollab(ws, name, userId, id, image);
+    collaboration.joinCollab(ws, name, userId, id, image, pythonHost, pythonPort);  // Q: Ok to pass host and port like this? Better way? Security?
 
     ws.on("message", msg => {
         collaboration.handleMessage(ws, id, msg);
@@ -139,46 +144,90 @@ app.ws("/collaboration/:id", (ws, req) => {
     });
 });
 
-// Get nuclei detection output
-app.get("/api/detect-nuclei", (req, res) => {
-    const image = req.query.image;
-    // console.log(image);
-    detectNuclei(image).then((result) => {
-        res.json(result);
+// Get nuclei detection methods
+app.get("/api/analysis/get-nuclei-detection-methods", (req, res) => {
+    fetch(`http://${pythonHost}:${pythonPort}/api/analysis/get-nuclei-detection-methods`, {
+        method: "GET"
+    }).then(response => {
+        return response.json().then(responseJSON => {
+            if (!response.ok) {
+                throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+            }
+            return responseJSON;
+        });
+    }).then(data => {
+        res.json(data);
     }).catch((error) => {
-        console.error("Error in nuclei detection:", error);
+        console.error("Error getting nuclei detection methods:", error);
         res.status(500).send("Internal Server Error");
     });
 });
 
-// Get nuclei classification output
-app.get("/api/classify-nuclei/:id", (req, res) => {
-    const id = req.params.id
-    const image = req.query.image;
-    // console.log(id);
-    // console.log(image);
-    classifyNuclei(image, id).then((result) => {
-        res.json(result);
+// Get nuclei classification methods
+app.get("/api/analysis/get-nuclei-classification-methods", (req, res) => {
+    fetch(`http://${pythonHost}:${pythonPort}/api/analysis/get-nuclei-classification-methods`, {
+        method: "GET"
+    }).then(response => {
+        return response.json().then(responseJSON => {
+            if (!response.ok) {
+                throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+            }
+            return responseJSON;
+        });
+    }).then(data => {
+        res.json(data);
     }).catch((error) => {
-        console.error("Error in nuclei classification:", error);
+        console.error("Error getting nuclei classification methods:", error);
         res.status(500).send("Internal Server Error");
     });
 });
 
-// Begin listening on the specified interface
-const listener = app.listen(port, hostname, () => {
-    let address = listener.address().address;
-    const port = listener.address().port;
+// Launch python and nodejs servers
+async function runApp() {
+    // Get a free port for the python backend
+    pythonPort = await getFreePort();
 
-    const family = listener.address().family; //IPv6
-    if (family === 'IPv6') {
-        address = `[${address}]`;
-    }
+    // Spawn python process for python backend
+    const pythonBackend = spawn("python", ["python_backend.py", pythonPort], {
+        cwd: "./python",
+        stdio: "inherit"
+    });
 
-    console.info(`CytoBrowser server (v${serverVersion}) listening at http://${address}:${port}`);
+    // Track error and exit codes of python backend
+    pythonBackend.on("error", (err) => {
+        console.error("Error starting python backend: ", err);
+    });
+    pythonBackend.on("exit", (code, signal) => {
+        console.log(`Python backend exited with code ${code} and signal ${signal}.`);
+        // Q: Should nodejs server also terminate when the python backend exits? 
+    });
 
-    // Opens the URL in the default browser.
-    if (argv['open-browser']) {
-        open(`http://${address}:${port}/${urlQuery}`);  
-    }
-});
+    // Handle exit signal to make sure both python and nodejs servers are shut down
+    process.on('SIGINT', () => {
+        console.log("Stopping Flask server...");
+        pythonBackend.kill('SIGINT');
+        console.log("Stopping NodeJS server...");
+        process.exit();
+    });
+
+    // Begin listening on the specified interface
+    const listener = app.listen(port, hostname, () => {
+        let address = listener.address().address;
+        const port = listener.address().port;
+    
+        const family = listener.address().family; //IPv6
+        if (family === 'IPv6') {
+            address = `[${address}]`;
+        }
+    
+        console.info(`CytoBrowser server (v${serverVersion}) listening at http://${address}:${port}`);
+    
+        // Opens the URL in the default browser.
+        if (argv['open-browser']) {
+            open(`http://${address}:${port}/${urlQuery}`);  
+        }
+    });
+}
+
+// Start app
+runApp();

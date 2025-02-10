@@ -4,6 +4,7 @@ storage
 collab_storage
 temp
 **/.vscode**
+**/__pycache__**
 
 # OpenSeadragon public access from node module install
 public/js/openseadragon/images

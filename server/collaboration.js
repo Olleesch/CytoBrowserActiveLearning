@@ -32,7 +32,7 @@ function getCurrentTimeAsString() {
 }
 
 class Collaboration {
-    constructor(id, image, author) {
+    constructor(id, image, author, pythonHost, pythonPort) {
         this.members = new Map();
         this.annotations = [];
         this.annotationMap = new Map();
@@ -52,6 +52,15 @@ class Collaboration {
         this.hasUnsavedChanges = false;
         this.loadState(false);
         this.log(`Initializing collaboration.`, console.info);
+
+        // Q: Check that this is reasonable (no skipped fields required, ws)
+        this.analyzer = {
+            id: this.id,
+            name: "Analyzer",
+            ready: true,
+            pythonHost: pythonHost,     // Q: Any issues (e.g. security) with setting host and port
+            pythonPort: pythonPort      // of python backend like this? 
+        }
     }
 
     close() {
@@ -188,6 +197,11 @@ class Collaboration {
                 break;
             case "nameChange":
                 this.handleNameChange(sender, member, msg);
+                break;
+            case "analysisAction":
+                this.ongoingLoad.then(() => {   // Q: What exactly does ongoingLoad do here?
+                    this.handleAnalysisAction(sender, member, msg);
+                });
                 break;
             default:
                 this.forwardMessage(sender, msg);
@@ -455,6 +469,104 @@ class Collaboration {
         }
     }
 
+    handleAnalysisAction(sender, member, msg) {
+        // Q: Not exactly sure what this means, but I assume correct even for analysis tasks?
+        if (!member.ready) {
+            // Members who aren't ready shouldn't do anything with annotations
+            return;
+        }
+        switch (msg.actionType) {
+            case "detection":
+                // Add annotations from detection pipeline (calls python backend), currently slow due to adding one at a time
+                fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/detect-nuclei`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        "image_ID": this.image,
+                        "method": msg.method
+                    })
+                }).then(response => {
+                    return response.json().then(responseJSON => {
+                        if (!response.ok) {
+                            throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+                        }
+                        return responseJSON;
+                    });
+                }).then(data => {
+                    // Update class config (always to default atm)
+                    // Q: Temp to clear annotations before detection, should be fixed with annotation sets
+                    this.handleAnnotationAction(
+                        null, 
+                        this.analyzer,
+                        {
+                            type: "annotationAction",
+                            actionType: "clear"
+                        }
+                    );
+                    this.handleClassConfigAction(
+                        null, 
+                        this.analyzer,
+                        {
+                            type: "classConfigAction",
+                            actionType: "update",
+                            classConfig: msg.classConfig
+                        }
+                    );
+                    const newAnnotations = data.annotations;
+                    newAnnotations.forEach(newAnnotation => {
+                        this.handleAnnotationAction(
+                            null, 
+                            this.analyzer, 
+                            {
+                                type: "annotationAction",
+                                actionType: "add",
+                                annotation: newAnnotation
+                            }
+                        );
+                    })
+                }).catch((error) => {
+                    console.error("Error in nuclei detection:", error.message);
+                });
+                break;
+            case "classification":
+                // Update annotations with classification results from classification pipeline (calls python backend), currently slow due to updating one at a time
+                fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/classify-nuclei`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        "image_ID": this.image,
+                        "collab_ID": this.id,
+                        "method": msg.method
+                    })
+                }).then(response => {
+                    return response.json().then(responseJSON => {
+                        if (!response.ok) {
+                            throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+                        }
+                        return responseJSON;
+                    });
+                }).then(data => {
+                    // Q: Likely update classconfig first? Classification pipeline should return new classConfig too! 
+                    const newAnnotations = data.annotations;
+                    newAnnotations.forEach(newAnnotation => {
+                        this.handleAnnotationAction(
+                            null, 
+                            this.analyzer, 
+                            {
+                                type: "annotationAction",
+                                actionType: "update",
+                                id: newAnnotation.id,
+                                annotation: newAnnotation
+                            }
+                        );
+                    })
+                }).catch((error) => {
+                    console.error("Error in nuclei classification:", error.message);
+                });
+                break;
+        }
+    }
+
     stateSummary(sender) {
         return {
             type: "summary",
@@ -656,9 +768,10 @@ class Collaboration {
  * @param {string} image The image that is being collaborated on. If the
  * collab already exists, this argument is ignored.
  * @param {string} name Name of the user accessing the collab.
+ * Q: Add new params
  */
-function getCollab(id, image, name) {
-    return collab = collabs[id] || (collabs[id] = new Collaboration(id, image, name));
+function getCollab(id, image, name, pythonHost, pythonPort) {
+    return collab = collabs[id] || (collabs[id] = new Collaboration(id, image, name, pythonHost, pythonPort));
 }
 
 /**
@@ -688,10 +801,11 @@ function getId() {
  * @param {string} id ID of the collab being joined.
  * @param {string} image Name of the image observed in the collab. Only
  * has an effect if the collaboration has not been created yet.
+ * Q: Add new params
  */
-function joinCollab(ws, name, userId, id, image) {
+function joinCollab(ws, name, userId, id, image, pythonHost, pythonPort) {
     const cleanImage = sanitize(image);
-    const collab = getCollab(id, cleanImage, name);
+    const collab = getCollab(id, cleanImage, name, pythonHost, pythonPort);
     collab.addMember(ws, name, userId);
 }
 

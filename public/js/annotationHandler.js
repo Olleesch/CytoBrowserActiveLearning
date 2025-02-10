@@ -444,6 +444,7 @@ const annotationHandler = (function (){
      * told to update their annotation.
      */
     function update(id, annotation, coordSystem="web", transmit = true, redraw = true) {
+        console.log(`Updating 1 annotations...`);
         timingLog && console.time('updateAnnotation');
 
         // Get the annotation to update
