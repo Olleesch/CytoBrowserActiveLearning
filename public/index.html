@@ -291,15 +291,25 @@
                     <!-- Detect/Classify Nuclei -->
                     <div class="card-body pb-0 px-1 px-md-2">
                         <div class="row pb-1 pt-2">
-                            <div class="col-6">
-                                <button id="detect_nuclei" class="btn btn-primary btn-block" type="button"> Detect Nuclei </button>
+                            <div class="col-6 d-flex flex-column align-items-stretch">
+                                <h6 class="card-subtitle mb-1 text-muted">Analysis tools</h6>
+                                <button id="detect_nuclei" class="btn btn-primary btn-block mt-auto" type="button">Detect Nuclei</button>
+                                <div class="dropdown-custom" id="dropdown_detect_nuclei">
+                                    <button class="btn btn-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">Detection Method</button>
+                                    <ul class="dropdown-menu" aria-labelledby="dropdown_detect_nuclei">
+                                    </ul>
+                                </div>
                             </div>
-                            <div class="col-6">
-                                <button id="classify_nuclei" class="btn btn-primary btn-block" type="button"> Classify Nuclei </button>
+                  
+                            <!-- Right Column -->
+                            <div class="col-6 d-flex flex-column align-items-stretch">
+                                <button id="classify_nuclei" class="btn btn-primary btn-block mt-auto" type="button">Classify Nuclei</button>
+                                <div class="dropdown-custom" id="dropdown_classify_nuclei">
+                                    <button class="btn btn-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">Classification Model</button>
+                                    <ul class="dropdown-menu" aria-labelledby="dropdown_classify_nuclei">
+                                    </ul>
+                                </div>
                             </div>
-                            <!-- <div class="col-6">
-                                <button type="button" class="btn btn-dark btn-block" data-toggle="modal" data-target="#version-picker">Revert changes</btton>
-                            </div> -->
                         </div>
                     </div>
 
@@ -848,6 +858,126 @@
 
 <script src="js/qr-creator/qr-creator.min.js"></script>
 
+<!-- Custom dropdown button handling -->
+<script>
+    // Q: Is this a good place to handle this?
+
+    // Q: Maybe should not be hardcoded? 
+    defaultMethodDetection = "load-json";
+    defaultMethodClassification = "random";
+
+    // Configure the menu (with the options) of the dropdown buttons
+    function setDropdownMenu(options, buttonID, defaultOption) {
+        const dropdown = document.querySelector(buttonID);
+        const button = dropdown.querySelector('.dropdown-toggle');
+        const content = dropdown.querySelector('.dropdown-menu');
+        content.innerHTML = "";
+
+        if (!options.includes(defaultOption)) {
+            console.error("Error, default method not found: ", defaultOption);
+        }
+
+        options.forEach(option => {
+            const listItem = document.createElement("li");
+            const link = document.createElement("a");
+
+            link.classList.add('dropdown-item');
+            link.textContent = option;
+            link.setAttribute('href', "#");
+            link.setAttribute('value', option);
+
+            link.addEventListener('click', () => {
+                button.textContent = link.textContent;
+                button.setAttribute('value', link.getAttribute('value'));
+                dropdown.classList.remove('show');
+                content.classList.remove('show');
+            });
+
+            if (option === defaultOption) {
+                link.textContent = `${option} (default)`;
+                listItem.appendChild(link);
+                content.insertBefore(listItem, content.firstChild);
+            } else {
+                listItem.appendChild(link);
+                content.appendChild(listItem);
+            }
+        })
+
+        console.log(dropdown.innerHTML);
+
+        const contentItems = dropdown.querySelectorAll('.dropdown-item');
+        if (contentItems.length > 0) {
+            button.textContent = contentItems[0].textContent;
+            button.setAttribute('value', contentItems[0].getAttribute('value'));
+        }
+    }
+    
+    // Get nuclei detection methods (calls python backend) to set the options of the button
+    fetch(
+        "/api/analysis/get-nuclei-detection-methods"
+    ).then(response => {
+        if (!response.ok) {
+            throw new Error ("Network response was not ok");
+        }
+        return response.json();
+    }).then(methods => {
+        setDropdownMenu(methods, "#dropdown_detect_nuclei", defaultMethodDetection);
+    }).catch(error => {
+        console.error("Error fetching models: ", error);
+    });
+    
+    // Get nuclei classification methods (calls python backend) to set the options of the button
+    fetch(
+        "/api/analysis/get-nuclei-classification-methods"
+    ).then(response => {
+        if (!response.ok) {
+            throw new Error ("Network response was not ok");
+        }
+        return response.json();
+    }).then(methods => {
+        setDropdownMenu(methods, "#dropdown_classify_nuclei", defaultMethodClassification);
+    }).catch(error => {
+        console.error("Error fetching models: ", error);
+    });
+
+    // Functionality of the dropdown buttons, when an option is selected the button should assume the 
+    // value of the option and display the corresponding text. A dropdown button should toggle between
+    // showing options at every mouseclick on the button. A dropdown button should not show options after
+    // the user has selected one of them or clicked somewhere else on the screen. 
+    document.addEventListener('DOMContentLoaded', () => {
+        // Get all custom dropdown buttons and add functionality to them
+        const dropdowns = document.querySelectorAll('.dropdown-custom');
+        dropdowns.forEach(dropdown => {
+            const button = dropdown.querySelector('.dropdown-toggle');
+            const content = dropdown.querySelector('.dropdown-menu');
+            
+            // Toggle the dropdown when the button is clicked
+            button.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent click from toggling again immediately
+
+                // Close all other dropdowns
+                dropdowns.forEach(otherDropdown => {
+                    if (otherDropdown !== dropdown) {
+                        otherDropdown.classList.remove('show');
+                        otherDropdown.querySelector('.dropdown-menu').classList.remove('show');
+                    }
+                });
+
+                // Toggle this dropdown
+                dropdown.classList.toggle('show');
+                content.classList.toggle('show');
+            });
+        });
+
+        // Close all dropdowns if the user clicks somewhere else
+        document.addEventListener('click', () => {
+            dropdowns.forEach(dropdown => {
+                dropdown.classList.remove('show');
+                dropdown.querySelector('.dropdown-menu').classList.remove('show');
+            });
+        });
+    });
+</script>
 <script>
     function noArrows() {
         switch( event.keyCode ){
