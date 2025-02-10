@@ -889,6 +889,33 @@ const collabClient = (function(){
         });
     }
 
+    /**
+     * Notify collaborators about a nuclei detection pipeline being run
+     * (which clears annotations/adds a new set). 
+     * @param {string} method The name of the nuclei detection method to use.
+     */
+    function detectNuclei(method) {
+        send({
+            type: "analysisAction",
+            actionType: "detection",
+            method: method,
+            classConfig: defaultClassConfig     // Q: Probably exists a better way of doing this, but for now it works
+        })
+    }
+    
+    /**
+     * Notify collaborators about a nuclei classification pipeline being run
+     * (which updates all annotations/adds a new set). 
+     * @param {string} method The name of the nuclei classification method to use.
+     */
+    function classifyNuclei(method) {
+        send({
+            type: "analysisAction",
+            actionType: "classification",
+            method: method
+        })
+    }
+
     return {
         createCollab,
         connect,
@@ -914,6 +941,8 @@ const collabClient = (function(){
         followView,
         stopFollowing,
         getVersions,
-        revertVersion
+        revertVersion,
+        detectNuclei,
+        classifyNuclei
     };
 })();

@@ -1,0 +1,7 @@
+{
+    "name": "random",
+    "path": "",
+    "crop": 256,
+    "input": "single-instance",
+    "classes": []
+}
