@@ -1,0 +1,10 @@
+{
+    "name": "multiple-instance",
+    "path": "path-to-model",
+    "crop": 256,
+    "input": "multiple-instance",
+    "classes": [
+        "positive",
+        "negative"
+    ]
+}

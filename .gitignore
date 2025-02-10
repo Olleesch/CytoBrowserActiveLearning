@@ -4,3 +4,4 @@ storage
 collab_storage
 temp
 **/.vscode**
+**/__pycache__**
