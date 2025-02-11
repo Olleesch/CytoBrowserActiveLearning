@@ -399,6 +399,41 @@ const htmlHelper = (function() {
 
         return button;
     }
+    
+    function _annotationSetSelectionButton(annotationSet, active) {
+        // const active_color=_scaleRGB(annotationSet.color,0.5);
+
+        //To set 'style="background-color: ${mclass.color};"' works here, but se we cannot use
+        //pseudo-selectors (e.g. hover) in inline style, we do all colors below with CSS
+        // const button = $(`
+        //     <label id="annotation_set_${annotationSet.name}" class="btn btn-dark px-0 px-md-1 px-lg-2" title="${annotationSet.description}">
+        //         <input type="radio" name="annotation_set_options" autocomplete="off">${annotationSet.name}</input>
+        //         <span class="badge badge-light mt-1 d-block" id="annotation_set_counter_${annotationSet.name}">0</span>
+        //     </label>
+        // `);
+        const button = $(`
+            <label id="annotation_set_${annotationSet.name}" class="btn btn-primary px-0 px-md-1 px-lg-2" title="${annotationSet.description}">
+                <input type="radio" name="annotation_set_options" autocomplete="off">${annotationSet.name}</input>
+                <span class="badge badge-light mt-1 d-block" id="annotation_set_counter_${annotationSet.name}">0</span>
+            </label>
+        `);
+        if (active)
+            button.addClass("active");
+        button.click(() => {
+            annotationTool.setAnnotationSet(annotationSet.name);
+        });
+
+        // //Since we cannot set pseudo-selectors inline, we have to create CSS
+        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}`,`background-color: ${annotationSet.color};`);
+        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}:hover`,`background-color: ${active_color};`);
+        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}:active`,`background-color: ${active_color};`); //while pressed
+        // //Keep the select-box-shadow permanently (offset-x,offset-y,blur,width,color)
+        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}.active`,`background-color: ${annotationSet.color};box-shadow: 0 0 0.1rem .25rem rgba(0,0,0,0.5);`); //if enabled
+        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}:visited`,`background-color: ${active_color};`);
+        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}:focus`,`background-color: ${active_color};`);
+
+        return button;
+    }
 
     function _collaboratorListEntry(member, local, active, following) {
         const entry = $(`
@@ -596,6 +631,22 @@ const htmlHelper = (function() {
             container.append(button);
         });
     }
+    
+    /**
+     * Fill a jquery selection with the nodes for selecting an annotation set.
+     * @param {Object} container The selection that should contain the
+     * set selection buttons.
+     * @param {number} activeIndex The index of the initially selected
+     * set.
+     */
+    function buildAnnotationSetSelectionButtons(container, activeIndex) {
+        container.html('');
+        annotationSetUtils.forEachAnnotationSet((annotationSet, index) => {
+            const active = activeIndex === index;
+            const button = _annotationSetSelectionButton(annotationSet, active);
+            container.append(button);
+        });
+    }
 
     /**
      * Fill a jquery selection with a list of collaborators.
@@ -643,6 +694,7 @@ const htmlHelper = (function() {
         buildCommentSectionAlt,
         buildAnnotationSettingsMenu,
         buildClassSelectionButtons,
+        buildAnnotationSetSelectionButtons,
         buildCollaboratorList,
         buildImageBrowser,
 
