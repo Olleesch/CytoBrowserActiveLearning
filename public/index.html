@@ -288,7 +288,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-block">
+                    <div class="card-block pb-4">
                         <div class="row">
                             <!-- Annotation class buttons -->
                             <div class="col">
@@ -298,11 +298,24 @@
                             </div>
                         </div>
                     </div>
+                    <div class="card-block">
+                        <div class="row">
+                            <!-- Annotation set buttons -->
+                            <div class="col">
+                                <h6 class="card-subtitle mb-1 text-muted">Annotation sets</h6>
+                                <div id="annotation_set_buttons" class="btn-group btn-group-toggle d-flex" data-toggle="buttons" role="group" onkeydown="noArrows()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Import/Export -->
-                <div class="card-body pb-1 pt-2 pt-xl-3 px-1 px-md-2">
+                 <div class="card-body pb-1 pt-2 pt-xl-3 px-1 px-md-2">
                     <div class="row">
+                        <div class="col-12">
+                            <h6 class="card-subtitle mb-1 text-muted">Manage annotations</h6>
+                        </div>
                         <div class="col-3 pr-2">
                             <input class="d-none" type="file" id="data_files_import" onclick="this.value=null;" name="files[]" accept=".json">
                             <button id="json_to_data" class="btn btn-primary btn-block" type="button"> Import </button>
@@ -824,8 +837,10 @@
 <script src="js/openseadragon/openseadragon-pixi-overlay.js"></script>
 <script src="js/rbush/rbush.min.js"></script>
 
+<script src="defaultAnnotationSetConfig.js"></script>
 <script src="defaultClassConfig.js"></script>
 <script src="js/misc/clientVersion.js"></script>
+<script src="js/utils/annotationSetUtils.js"></script>
 <script src="js/utils/classUtils.js"></script>
 <script src="js/utils/dateUtils.js"></script>
 <script src="js/utils/mathUtils.js"></script>
