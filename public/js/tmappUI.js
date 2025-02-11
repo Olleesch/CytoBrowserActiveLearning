@@ -229,6 +229,13 @@ const tmappUI = (function(){
         htmlHelper.buildClassSelectionButtons(container, 0);
     }
 
+    function _initAnnotationSetSelectionButtons() {
+        const initialAnnotationSet = annotationSetUtils.getAnnotationSetFromID(0);
+        annotationTool.setAnnotationSet(initialAnnotationSet.name);
+        const container = $("#annotation_set_buttons");
+        htmlHelper.buildAnnotationSetSelectionButtons(container, 0);
+    }
+
     function _initToolSelectionButtons() {
         $("#tool_marker").addClass("active");
         layerHandler.setActiveAnnotationOverlay("marker");
@@ -522,6 +529,7 @@ const tmappUI = (function(){
         _initVersionPicker();
         _initGlobalComments();
         _initClassSelectionButtons();
+        _initAnnotationSetSelectionButtons();
         _initToolSelectionButtons();
         _initViewerEvents();
         _initContextMenu();
@@ -542,6 +550,10 @@ const tmappUI = (function(){
      */
     function updateClassSelectionButtons() {
         _initClassSelectionButtons();
+    }
+
+    function updateAnnotationSetSelectionButtons() {
+        _initAnnotationSetSelectionButtons();
     }
 
     /**
@@ -1001,6 +1013,7 @@ const tmappUI = (function(){
     return {
         initUI,
         updateClassSelectionButtons,
+        updateAnnotationSetSelectionButtons,
         choice,
         openAnnotationEditMenu,
 

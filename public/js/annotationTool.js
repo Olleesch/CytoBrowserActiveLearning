@@ -224,7 +224,8 @@ const annotationTool = (function() {
 
     let _activeTool,
         _activeMclass,
-        _lastPosition;
+        _lastPosition,
+        _activeAnnotationSet;
 
     function _callToolFunction(funName, position) {
         if (!_activeTool)
@@ -268,6 +269,19 @@ const annotationTool = (function() {
         }
         else
             throw new Error("Undefined marker class.");
+    }
+
+    /**
+     * Set the current marker annotation set being assigned with the tool.
+     * @param {string} annotationSet The currently active marker set.
+     */
+    function setAnnotationSet(annotationSet) {
+        if (annotationSetUtils.getIDFromName(annotationSet) >= 0) {
+            _activeAnnotationSet = annotationSet;
+            _callToolFunction("update");
+        }
+        else
+            throw new Error("Undefined marker annotation set.");
     }
 
     /**
@@ -342,6 +356,7 @@ const annotationTool = (function() {
     return {
         setTool,
         setMclass,
+        setAnnotationSet,
         click,
         dblClick,
         complete,
