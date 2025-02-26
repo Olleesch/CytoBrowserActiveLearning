@@ -150,8 +150,19 @@ const layerHandler = (function (){
         _layers[0].focus();
     }
 
+    /**
+     * Update the visible annotations of the layers.
+     * @param {Object} annotations The annotation data.
+     * 
+     * Q: We filter out annotations not in the active annotation set here, but 
+     * maybe this should be done before the annotations reach this function?
+     */
     function updateAnnotations(annotations) {
-        _forEachLayer("updateAnnotations", annotations);
+        const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
+        const activeAnnotations = annotations.filter(annotation =>
+            annotation.mclass[activeAnnotationSetName] !== undefined
+        );
+        _forEachLayer("updateAnnotations", activeAnnotations);
     }
     // Counter to check if we're busy rendering
     updateAnnotations.inProgress = (() => _layers.some((elem) => elem.updateAnnotations?.inProgress()) );

@@ -124,7 +124,13 @@ class SortableList {
             adjustedDatum.rawRef=datum; //reference to the original raw data
             this._fields.forEach(field => {
                 if (field.selectFun) {
-                    adjustedDatum[field.key] = field.selectFun(datum);
+                    const selectValue = field.selectFun(datum)
+                    adjustedDatum[field.key] = selectValue;
+                    // If selectFun return invalid value, set the instance to invalid so we can exclude it from the display.
+                    // Currently used to exclude annotations not in the active annotation set from the list.
+                    if (selectValue < 0) {
+                        adjustedDatum.invalid = true;
+                    }
                 }
                 else {
                     adjustedDatum[field.key] = datum[field.key];
@@ -151,7 +157,7 @@ class SortableList {
         const fields = this._fields;
         const rows = this._table.select("tbody")
             .selectAll(".data-row")
-            .data(this._data.slice(0,this._maxCount), d => d[this._idKey])
+            .data(this._data.filter(d => !d.invalid).slice(0,this._maxCount), d => d[this._idKey])
             .join("tr")
             .attr("class", "data-row")
             .attr("data-annotation-id", d => d[this._idKey]);

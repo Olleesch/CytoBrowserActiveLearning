@@ -47,7 +47,7 @@ function getExistingHistory(historyPath) {
 
 function beginNewHistory() {
     return Promise.resolve({
-        version: "1.1",
+        version: "1.2",
         nextId: 0,
         history: []
     });
