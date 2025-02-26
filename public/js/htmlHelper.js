@@ -95,7 +95,7 @@ const htmlHelper = (function() {
         setBookmarkPath();
         delCol.find("a").click(() => {
             closeFun();
-            annotationHandler.remove(id);
+            annotationHandler.remove(id, annotationSetHandler.getActiveAnnotationSet().name);
         });
         bookmarkCol.find("a").click(() => {
             annotationHandler.setBookmarked(id);
@@ -133,8 +133,13 @@ const htmlHelper = (function() {
             </div>
         `);
         const select = container.find("select");
-        classUtils.forEachClass(mclass => {
-            const selected = annotation.mclass === mclass.name;
+        // Q: Used to build annotation settings menu, this way only allows 
+        // modifying the class in the current annotation set. Ok or should 
+        // we be able to change the class in different annotation sets in
+        // one place?
+        const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
+        annotationSetHandler.forEachClass(mclass => {
+            const selected = annotation.mclass[activeAnnotationSetName] === mclass.name;
             const option = $(`
                 <option ${selected ? "selected='selected'" : ""}>
                 </option>
@@ -144,7 +149,7 @@ const htmlHelper = (function() {
             select.append(option);
         });
         select.change(() => {
-            annotation.mclass = select.val();
+            annotation.mclass[activeAnnotationSetName] = select.val();
             updateFun();
         });
         return container;
@@ -398,16 +403,6 @@ const htmlHelper = (function() {
     }
     
     function _annotationSetSelectionButton(annotationSet, active) {
-        // const active_color=_scaleRGB(annotationSet.color,0.5);
-
-        //To set 'style="background-color: ${mclass.color};"' works here, but se we cannot use
-        //pseudo-selectors (e.g. hover) in inline style, we do all colors below with CSS
-        // const button = $(`
-        //     <label id="annotation_set_${annotationSet.name}" class="btn btn-dark px-0 px-md-1 px-lg-2" title="${annotationSet.description}">
-        //         <input type="radio" name="annotation_set_options" autocomplete="off">${annotationSet.name}</input>
-        //         <span class="badge badge-light mt-1 d-block" id="annotation_set_counter_${annotationSet.name}">0</span>
-        //     </label>
-        // `);
         const button = $(`
             <label id="annotation_set_${annotationSet.name}" class="btn btn-primary px-0 px-md-1 px-lg-2" title="${annotationSet.description}">
                 <input type="radio" name="annotation_set_options" autocomplete="off">${annotationSet.name}</input>
@@ -417,18 +412,8 @@ const htmlHelper = (function() {
         if (active)
             button.addClass("active");
         button.click(() => {
-            annotationTool.setAnnotationSet(annotationSet.name);
+            annotationSetHandler.setActiveAnnotationSet(annotationSet.name);
         });
-
-        // //Since we cannot set pseudo-selectors inline, we have to create CSS
-        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}`,`background-color: ${annotationSet.color};`);
-        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}:hover`,`background-color: ${active_color};`);
-        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}:active`,`background-color: ${active_color};`); //while pressed
-        // //Keep the select-box-shadow permanently (offset-x,offset-y,blur,width,color)
-        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}.active`,`background-color: ${annotationSet.color};box-shadow: 0 0 0.1rem .25rem rgba(0,0,0,0.5);`); //if enabled
-        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}:visited`,`background-color: ${active_color};`);
-        // cssHelper.createCSSSelector(`#annotation_set_${annotationSet.name}:focus`,`background-color: ${active_color};`);
-
         return button;
     }
 
@@ -619,7 +604,7 @@ const htmlHelper = (function() {
      */
     function buildClassSelectionButtons(container, activeIndex) {
         container.html('');
-        classUtils.forEachClass((mclass, index) => {
+        annotationSetHandler.forEachClass((mclass, index) => {
             const active = activeIndex === index;
             const button = _classSelectionButton(mclass, active);
             container.append(button);
@@ -635,7 +620,7 @@ const htmlHelper = (function() {
      */
     function buildAnnotationSetSelectionButtons(container, activeIndex) {
         container.html('');
-        annotationSetUtils.forEachAnnotationSet((annotationSet, index) => {
+        annotationSetHandler.forEachAnnotationSet((annotationSet, index) => {
             const active = activeIndex === index;
             const button = _annotationSetSelectionButton(annotationSet, active);
             container.append(button);

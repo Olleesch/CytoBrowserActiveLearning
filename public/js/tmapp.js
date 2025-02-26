@@ -529,7 +529,7 @@ const tmapp = (function() {
         if (!_viewer) {
             return;
         }
-        annotationHandler.clear(false);
+        annotationHandler.clearAll(false);
         metadataHandler.clear();
         _viewer && _viewer.destroy();
         layerHandler.destroy();
