@@ -471,11 +471,57 @@ class Collaboration {
 
     handleAnalysisAction(sender, member, msg) {
         // Q: Not exactly sure what this means, but I assume correct even for analysis tasks?
-        if (!member.ready) {
+        if (!member.ready && msg.actionType !== "getDetectionMethods" && msg.actionType !== "getClassificationMethods") {
             // Members who aren't ready shouldn't do anything with annotations
             return;
         }
         switch (msg.actionType) {
+            case "getDetectionMethods":
+                fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/get-nuclei-detection-methods`, {
+                    method: "GET"
+                }).then(response => {
+                    return response.json().then(responseJSON => {
+                        if (!response.ok) {
+                            throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+                        }
+                        return responseJSON;
+                    });
+                }).then(data => {
+                    this.broadcastMessage(
+                        {
+                            type: "analysisAction",
+                            actionType: "getDetectionMethods",
+                            response: data
+                        },
+                        [sender]
+                    );
+                }).catch((error) => {
+                    console.error("Error getting nuclei detection methods:", error);
+                });
+                break;
+            case "getClassificationMethods":
+                fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/get-nuclei-classification-methods`, {
+                    method: "GET"
+                }).then(response => {
+                    return response.json().then(responseJSON => {
+                        if (!response.ok) {
+                            throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+                        }
+                        return responseJSON;
+                    });
+                }).then(data => {
+                    this.broadcastMessage(
+                        {
+                            type: "analysisAction",
+                            actionType: "getClassificationMethods",
+                            response: data
+                        },
+                        [sender]
+                    );
+                }).catch((error) => {
+                    console.error("Error getting nuclei classification methods:", error);
+                });
+                break;
             case "detection":
                 // Add annotations from detection pipeline (calls python backend), currently slow due to adding one at a time
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/detect-nuclei`, {
@@ -607,6 +653,8 @@ class Collaboration {
                     console.error("Error in nuclei classification:", error.message);
                 });
                 break;
+            default:
+                this.log(`Tried to handle unknown analysis action: ${msg.actionType}`, console.warn);
         }
     }
 

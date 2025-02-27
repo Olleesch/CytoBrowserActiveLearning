@@ -1399,6 +1399,57 @@ const htmlHelper = (function() {
         }
     }
 
+    function _setDropdownMenu(options, buttonID, defaultOption) {
+        const dropdown = document.querySelector(buttonID);
+        const button = dropdown.querySelector('.dropdown-toggle');
+        const content = dropdown.querySelector('.dropdown-menu');
+        content.innerHTML = "";
+
+        if (!options.includes(defaultOption)) {
+            console.error("Error, default method not found: ", defaultOption);
+        }
+
+        options.forEach(option => {
+            const listItem = document.createElement("li");
+            const link = document.createElement("a");
+
+            link.classList.add('dropdown-item');
+            link.textContent = option;
+            link.setAttribute('href', "#");
+            link.setAttribute('value', option);
+
+            link.addEventListener('click', () => {
+                button.textContent = link.textContent;
+                button.setAttribute('value', link.getAttribute('value'));
+                dropdown.classList.remove('show');
+                content.classList.remove('show');
+            });
+
+            if (option === defaultOption) {
+                link.textContent = `${option} (default)`;
+                listItem.appendChild(link);
+                content.insertBefore(listItem, content.firstChild);
+            } else {
+                listItem.appendChild(link);
+                content.appendChild(listItem);
+            }
+        })
+
+        const contentItems = dropdown.querySelectorAll('.dropdown-item');
+        if (contentItems.length > 0) {
+            button.textContent = contentItems[0].textContent;
+            button.setAttribute('value', contentItems[0].getAttribute('value'));
+        }
+    }
+
+    function buildDetectionMethodSelector(methods) {
+        _setDropdownMenu(methods, "#dropdown_detect_nuclei", "load-json");
+    }
+
+    function buildClassificationMethodSelector(methods) {
+        _setDropdownMenu(methods, "#dropdown_classify_nuclei", "random");
+    }
+
     return {
         //buildCommentSection,  //Seemingly not in use 
         buildCommentSectionAlt,
@@ -1412,6 +1463,8 @@ const htmlHelper = (function() {
         updateLockedAnnotationSetButtonDisplays,
         buildCollaboratorList,
         buildImageBrowser,
+        buildDetectionMethodSelector,
+        buildClassificationMethodSelector,
 
         buildFocusSlider,
         updateFocusSlider
