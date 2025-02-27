@@ -813,8 +813,7 @@ const collabClient = (function(){
         send({
             type: "analysisAction",
             actionType: "detection",
-            method: method,
-            classConfig: defaultClassConfig     // Q: Probably exists a better way of doing this, but for now it works
+            method: method
         })
     }
     
