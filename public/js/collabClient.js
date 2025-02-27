@@ -61,6 +61,9 @@ const collabClient = (function(){
             case "nameChange":
                 _handleNameChange(msg);
                 break;
+            case "analysisAction":
+                _handleAnalysisAction(msg);
+                break;
             default:
                 console.warn(`Unknown message type received in collab: ${msg.type}`);
         }
@@ -266,6 +269,23 @@ const collabClient = (function(){
         tmappUI.setCollabName(msg.name);
     }
 
+    function _handleAnalysisAction(msg) {
+        if (msg.response.error) {
+            console.error(`Error: ${msg.response.error}, ${msg.response.details}`);
+            return;
+        } 
+        switch(msg.actionType) {
+            case "getDetectionMethods":
+                htmlHelper.buildDetectionMethodSelector(msg.response);
+                break;
+            case "getClassificationMethods":
+                htmlHelper.buildClassificationMethodSelector(msg.response);
+                break;
+            default:
+                console.warn(`Unknown analysis action type: ${msg.actionType}`);
+        }
+    }
+
     function _destroy() {
         stopFollowing();
         _joinBatch = null;
@@ -429,6 +449,8 @@ const collabClient = (function(){
                 _collabId = id;
                 tmapp.setCollab(id);
                 _keepalive();
+                getDetectionMethods();
+                getClassificationMethods();
 
                 if (include) {
                     _joinBatch = [];
@@ -889,6 +911,22 @@ const collabClient = (function(){
         });
     }
 
+    function getDetectionMethods() {
+        console.log("Sent get detection methods message");
+        send({
+            type: "analysisAction",
+            actionType: "getDetectionMethods"
+        });
+    }
+
+    function getClassificationMethods() {
+        console.log("Sent get classification methods message");
+        send({
+            type: "analysisAction",
+            actionType: "getClassificationMethods"
+        });
+    }
+
     /**
      * Notify collaborators about a nuclei detection pipeline being run
      * (which clears annotations/adds a new set). 
@@ -941,6 +979,8 @@ const collabClient = (function(){
         stopFollowing,
         getVersions,
         revertVersion,
+        getDetectionMethods,
+        getClassificationMethods,
         detectNuclei,
         classifyNuclei
     };
