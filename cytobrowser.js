@@ -127,44 +127,6 @@ app.ws("/collaboration/:id", (ws, req) => {
     });
 });
 
-// Get nuclei detection methods
-app.get("/api/analysis/get-nuclei-detection-methods", (req, res) => {
-    fetch(`http://${pythonHost}:${pythonPort}/api/analysis/get-nuclei-detection-methods`, {
-        method: "GET"
-    }).then(response => {
-        return response.json().then(responseJSON => {
-            if (!response.ok) {
-                throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
-            }
-            return responseJSON;
-        });
-    }).then(data => {
-        res.json(data);
-    }).catch((error) => {
-        console.error("Error getting nuclei detection methods:", error);
-        res.status(500).send("Internal Server Error");
-    });
-});
-
-// Get nuclei classification methods
-app.get("/api/analysis/get-nuclei-classification-methods", (req, res) => {
-    fetch(`http://${pythonHost}:${pythonPort}/api/analysis/get-nuclei-classification-methods`, {
-        method: "GET"
-    }).then(response => {
-        return response.json().then(responseJSON => {
-            if (!response.ok) {
-                throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
-            }
-            return responseJSON;
-        });
-    }).then(data => {
-        res.json(data);
-    }).catch((error) => {
-        console.error("Error getting nuclei classification methods:", error);
-        res.status(500).send("Internal Server Error");
-    });
-});
-
 // Launch python and nodejs servers
 async function runApp() {
     // Get a free port for the python backend
