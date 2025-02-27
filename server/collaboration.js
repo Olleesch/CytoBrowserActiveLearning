@@ -484,7 +484,6 @@ class Collaboration {
                     body: JSON.stringify({
                         "image_ID": this.image,
                         "method": msg.method
-                        // Read annotations here?
                     })
                 }).then(response => {
                     return response.json().then(responseJSON => {
@@ -494,37 +493,79 @@ class Collaboration {
                         return responseJSON;
                     });
                 }).then(data => {
-                    // Update class config (always to default atm)
-                    // Q: Temp to clear annotations before detection, should be fixed with annotation sets
-                    this.handleAnnotationAction(
-                        null, 
-                        this.analyzer,
-                        {
-                            type: "annotationAction",
-                            actionType: "clear"
+                    // Add a new "detection" annotation set to config and send to collaborators
+                    const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
+                    
+                    // Temporary fix to make sure default set is included if we add a set from server
+                    // TODO: annotationSetConfig = [] use default should probably not exist, 
+                    // we should initialize a collaboration with the default config and
+                    // if the annotationSetConfig becomes empty the default config should 
+                    // be added and sent.
+                    if (updatedAnnotationSetConfig.length === 0) {
+                        updatedAnnotationSetConfig.push({
+                                name: "Default",
+                                description: "Default annotation set for manual annotation",
+                                classConfig: []
+                        });
+                    }
+
+                    let name = "Detection";
+                    let nameCount = 1;
+                    // Make sure the new annotation set name does not already exist (previous detection set)
+                    if (this.annotationSetConfig.some(annotationSet => name === annotationSet.name)) {
+                        while (this.annotationSetConfig.some(annotationSet => (`${name}-${nameCount}`) === annotationSet.name)) {
+                            nameCount++;
                         }
-                    );
-                    this.handleClassConfigAction(
-                        null, 
+                        name = `${name}-${nameCount}`;
+                    }
+                    const description = `Detected nuclei by the ${msg.method} method`;
+                    const classConfig = [
+                        {
+                            name: "Nuclei",
+                            description: `A detected nuclei by the ${msg.method} method`,
+                            color: "#346d2e"
+                        },
+                        {
+                            name: "Other",
+                            description: "Class to mark other things than detected nuclei",
+                            color: "#919191"
+                        },
+                    ]
+                    updatedAnnotationSetConfig.push({
+                        name: name,
+                        description: description,
+                        classConfig: classConfig
+                    });
+                    // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
+                    // simply to make sure everything is done in the same order as usual?
+                    this.handleAnnotationSetConfigAction(
+                        null,
                         this.analyzer,
                         {
-                            type: "classConfigAction",
+                            type: "annotationSetConfigAction",
                             actionType: "update",
-                            classConfig: msg.classConfig        // Q: Update to match annotation sets
+                            annotationSetConfig: updatedAnnotationSetConfig
                         }
                     );
+
+                    // Add new annotations to data and send to collaborators
                     const newAnnotations = data.annotations;
                     newAnnotations.forEach(newAnnotation => {
-                        this.handleAnnotationAction(
-                            null, 
-                            this.analyzer, 
-                            {
-                                type: "annotationAction",
-                                actionType: "add",
-                                annotation: newAnnotation
-                            }
-                        );
-                    })
+                        newAnnotation.id = this.generateAnnotationId(newAnnotations);
+                        newAnnotation.mclass = {[name]: classConfig[0].name};
+                        newAnnotation.author = msg.method;
+                        newAnnotation.bookmarked = false;
+                        newAnnotation.prediction = null;    //Q: What is prediction and should it be set to something from model?
+                    });
+                    this.handleAnnotationAction(
+                        null, 
+                        this.analyzer, 
+                        {
+                            type: "annotationAction",
+                            actionType: "add",
+                            annotation: newAnnotations
+                        }
+                    );
                 }).catch((error) => {
                     console.error("Error in nuclei detection:", error.message);
                 });
@@ -538,6 +579,7 @@ class Collaboration {
                         "image_ID": this.image,
                         "collab_ID": this.id,
                         "method": msg.method
+                        // Read annotations here?
                     })
                 }).then(response => {
                     return response.json().then(responseJSON => {
@@ -739,6 +781,22 @@ class Collaboration {
             this.saveState();
             this.autosaveTimeout = null;
         }, autosaveTimeout); //Autosave timeout in ms
+    }
+
+    // Generate new annotation id that does not exist in the annotations of the collaboration 
+    // and some optional additional new annotations. 
+    generateAnnotationId(newAnnotations = []) {
+        const order = Math.ceil(Math.log10((1 + this.annotations.length + newAnnotations.length) * 100));
+        const multiplier = Math.pow(10, order);
+        let id;
+        do {
+            let seed = Math.random();
+            id = Math.round(multiplier * seed);
+        } while(
+            this.annotations.some(annotation => annotation.id === id) || 
+            newAnnotations.some(annotation => annotation.id === id)
+        );
+        return id;
     }
 
     pointsAreDuplicate(pointsA, pointsB) {
