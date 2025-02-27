@@ -205,12 +205,16 @@ class Collaboration {
         }
         switch (msg.actionType) {
             case "add":
-                if (!this.isDuplicateAnnotation(msg.annotation)) {
-                    this.annotations.push(msg.annotation);
+                {
+                    let newAnnotations;
+                    if (!Array.isArray(msg.annotation)) {
+                        newAnnotations = [msg.annotation];
+                    }
+                    else {
+                        newAnnotations = msg.annotation;
+                    }
+                    this.addAnnotations(member, newAnnotations);
                     this.forwardMessage(sender, msg);
-                }
-                else {
-                    this.log(`${member.name} tried to add a duplicate annotation, ignoring.`, console.info);
                 }
                 break;
             case "update":
@@ -227,13 +231,15 @@ class Collaboration {
                 break;
             case "remove":
                 {
-                    const index = this.annotations.findIndex(annotation => annotation.id === msg.id);
-                    if (index >=0) {
-                        this.annotations.splice(index, 1);
+                    let ids;
+                    if (!Array.isArray(msg.id)) {
+                        ids = [msg.id];
                     }
                     else {
-                        this.log(`${member.name} tried to remove nonexisting annotation with ID ${msg.id}`, console.warn);
+                        ids = msg.id;
                     }
+                    const annotationSetName = msg.annotationSet;
+                    this.removeAnnotations(member, ids, annotationSetName);
                     this.forwardMessage(sender, msg);
                 }
                 break;
@@ -242,23 +248,7 @@ class Collaboration {
                     const annotationSetName = msg.annotationSet;
                     const ids = this.annotations.filter(annotation => annotationSetName in annotation.mclass)
                         .map(annotation => annotation.id);
-                    ids.forEach(id => {
-                        const deletedIndex = this.annotations.findIndex(annotation => annotation.id === id);
-                        if (deletedIndex < 0) {
-                            this.log(`${member.name} tried to remove nonexisting annotation with ID ${id}`, console.warn);
-                        }
-                        // Check if the annotation contains classes in multiple annotation sets
-                        // If the annotation is only included in one annotation set, remove the entire annotation
-                        else if (Object.keys(this.annotations[deletedIndex].mclass).length === 1) {
-                            // Remove the annotation from the data
-                            this.annotations.splice(deletedIndex, 1)[0];
-                        } 
-                        // If the annotation contains classes in multiple sets, only remove the class entry 
-                        // for the annotation set in question, keep the rest of it
-                        else {
-                            delete this.annotations[deletedIndex].mclass[annotationSetName];
-                        }
-                    });
+                    this.removeAnnotations(member, ids, annotationSetName);
                     this.forwardMessage(sender, msg);
                 }
                 break;
@@ -279,6 +269,57 @@ class Collaboration {
         }
         this.flagUnsavedChanges();
         this.trySavingState();
+    }
+
+    addAnnotations(member, newAnnotations) {
+        // We assume an annotation is of correct format, this should have been checked before by the sender. 
+        // Specifically we skip checks for: annotation containing a class, annotation is in correct image, 
+        // annotation is inside image borders, annotation mclass entries have valid annotation sets and classes.
+        // We keep checks for: annotation already exists at the same point in the same annotation set (then ignore).
+        newAnnotations.forEach(newAnnotation => {
+            const overlappingAnnotation = this.findDuplicatePoints(newAnnotation);
+            // Check every assigned class for the new annotation
+            if (overlappingAnnotation) {
+                for (const [annotationSetName, newClass] of Object.entries(newAnnotation.mclass)) {
+                    // Check if the overlapping annotation has a class in the annotation set of the new annotation
+                    if (annotationSetName in overlappingAnnotation.mclass) {
+                        this.log(`${member.name} tried to add an annotation to a point that already has \
+                            an annotation in the annotation set, ignoring.`, console.info);
+                    }
+                    // If the overlapping annotation does not have a class in the annotation set of the new annotation, add it
+                    else {
+                        overlappingAnnotation.mclass[annotationSetName] = newClass;
+                    }
+                }
+            }
+            // If there does not already exist an annotation at the same point, we add the entire annotation
+            else {
+                this.annotations.push(newAnnotation);
+            }
+        });
+    }
+
+    removeAnnotations(member, ids, annotationSetName) {
+        ids.forEach(id => {
+            const deletedIndex = this.annotations.findIndex(annotation => annotation.id === id);
+            // Check if the annotation exists first (annotation with ID exists and 
+            // has an annotation in the annotation set)
+            if (deletedIndex === -1 || !(annotationSetName in this.annotations[deletedIndex].mclass)) {
+                this.log(`${member.name} tried to remove nonexisting annotation with ID ${id} in \
+                    annotation set ${annotationSetName}`, console.warn);
+                return;
+            }
+            // Check if the annotation contains classes in multiple annotation sets
+            // If the annotation is only included in one annotation set, remove the entire annotation
+            if (Object.keys(this.annotations[deletedIndex].mclass).length === 1) {
+                this.annotations.splice(deletedIndex, 1)[0];
+            } 
+            // If the annotation contains classes in multiple sets, only remove the class entry 
+            // for the annotation set in question, keep the rest of it
+            else {
+                delete this.annotations[deletedIndex].mclass[annotationSetName];
+            }
+        });
     }
 
     handleAnnotationSetConfigAction(sender, member, msg) {
@@ -415,7 +456,6 @@ class Collaboration {
                     body: JSON.stringify({
                         "image_ID": this.image,
                         "method": msg.method
-                        // Read annotations here?
                     })
                 }).then(response => {
                     return response.json().then(responseJSON => {
@@ -425,37 +465,79 @@ class Collaboration {
                         return responseJSON;
                     });
                 }).then(data => {
-                    // Update class config (always to default atm)
-                    // Q: Temp to clear annotations before detection, should be fixed with annotation sets
-                    this.handleAnnotationAction(
-                        null, 
-                        this.analyzer,
-                        {
-                            type: "annotationAction",
-                            actionType: "clear"
+                    // Add a new "detection" annotation set to config and send to collaborators
+                    const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
+                    
+                    // Temporary fix to make sure default set is included if we add a set from server
+                    // TODO: annotationSetConfig = [] use default should probably not exist, 
+                    // we should initialize a collaboration with the default config and
+                    // if the annotationSetConfig becomes empty the default config should 
+                    // be added and sent.
+                    if (updatedAnnotationSetConfig.length === 0) {
+                        updatedAnnotationSetConfig.push({
+                                name: "Default",
+                                description: "Default annotation set for manual annotation",
+                                classConfig: []
+                        });
+                    }
+
+                    let name = "Detection";
+                    let nameCount = 1;
+                    // Make sure the new annotation set name does not already exist (previous detection set)
+                    if (this.annotationSetConfig.some(annotationSet => name === annotationSet.name)) {
+                        while (this.annotationSetConfig.some(annotationSet => (`${name}-${nameCount}`) === annotationSet.name)) {
+                            nameCount++;
                         }
-                    );
-                    this.handleClassConfigAction(
-                        null, 
+                        name = `${name}-${nameCount}`;
+                    }
+                    const description = `Detected nuclei by the ${msg.method} method`;
+                    const classConfig = [
+                        {
+                            name: "Nuclei",
+                            description: `A detected nuclei by the ${msg.method} method`,
+                            color: "#346d2e"
+                        },
+                        {
+                            name: "Other",
+                            description: "Class to mark other things than detected nuclei",
+                            color: "#919191"
+                        },
+                    ]
+                    updatedAnnotationSetConfig.push({
+                        name: name,
+                        description: description,
+                        classConfig: classConfig
+                    });
+                    // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
+                    // simply to make sure everything is done in the same order as usual?
+                    this.handleAnnotationSetConfigAction(
+                        null,
                         this.analyzer,
                         {
-                            type: "classConfigAction",
+                            type: "annotationSetConfigAction",
                             actionType: "update",
-                            classConfig: msg.classConfig        // Q: Update to match annotation sets
+                            annotationSetConfig: updatedAnnotationSetConfig
                         }
                     );
+
+                    // Add new annotations to data and send to collaborators
                     const newAnnotations = data.annotations;
                     newAnnotations.forEach(newAnnotation => {
-                        this.handleAnnotationAction(
-                            null, 
-                            this.analyzer, 
-                            {
-                                type: "annotationAction",
-                                actionType: "add",
-                                annotation: newAnnotation
-                            }
-                        );
-                    })
+                        newAnnotation.id = this.generateAnnotationId(newAnnotations);
+                        newAnnotation.mclass = {[name]: classConfig[0].name};
+                        newAnnotation.author = msg.method;
+                        newAnnotation.bookmarked = false;
+                        newAnnotation.prediction = null;    //Q: What is prediction and should it be set to something from model?
+                    });
+                    this.handleAnnotationAction(
+                        null, 
+                        this.analyzer, 
+                        {
+                            type: "annotationAction",
+                            actionType: "add",
+                            annotation: newAnnotations
+                        }
+                    );
                 }).catch((error) => {
                     console.error("Error in nuclei detection:", error.message);
                 });
@@ -469,6 +551,7 @@ class Collaboration {
                         "image_ID": this.image,
                         "collab_ID": this.id,
                         "method": msg.method
+                        // Read annotations here?
                     })
                 }).then(response => {
                     return response.json().then(responseJSON => {
@@ -616,6 +699,22 @@ class Collaboration {
         }, autosaveTimeout); //Autosave timeout in ms
     }
 
+    // Generate new annotation id that does not exist in the annotations of the collaboration 
+    // and some optional additional new annotations. 
+    generateAnnotationId(newAnnotations = []) {
+        const order = Math.ceil(Math.log10((1 + this.annotations.length + newAnnotations.length) * 100));
+        const multiplier = Math.pow(10, order);
+        let id;
+        do {
+            let seed = Math.random();
+            id = Math.round(multiplier * seed);
+        } while(
+            this.annotations.some(annotation => annotation.id === id) || 
+            newAnnotations.some(annotation => annotation.id === id)
+        );
+        return id;
+    }
+
     pointsAreDuplicate(pointsA, pointsB) {
         if (pointsA.length !== pointsB.length)
             return false;
@@ -623,6 +722,13 @@ class Collaboration {
         return pointsA.every((pointA, index) => {
             const pointB = pointsB[index];
             return pointA.x === pointB.x && pointA.y === pointB.y;
+        });
+    }
+    
+    // Find annotations with identical points
+    findDuplicatePoints(annotation) {
+        return this.annotations.find(existingAnnotation => {
+            return this.pointsAreDuplicate(annotation.points, existingAnnotation.points)
         });
     }
 
