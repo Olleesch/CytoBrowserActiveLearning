@@ -912,7 +912,6 @@ const collabClient = (function(){
     }
 
     function getDetectionMethods() {
-        console.log("Sent get detection methods message");
         send({
             type: "analysisAction",
             actionType: "getDetectionMethods"
@@ -920,7 +919,6 @@ const collabClient = (function(){
     }
 
     function getClassificationMethods() {
-        console.log("Sent get classification methods message");
         send({
             type: "analysisAction",
             actionType: "getClassificationMethods"
@@ -945,11 +943,12 @@ const collabClient = (function(){
      * (which updates all annotations/adds a new set). 
      * @param {string} method The name of the nuclei classification method to use.
      */
-    function classifyNuclei(method) {
+    function classifyNuclei(method, source) {
         send({
             type: "analysisAction",
             actionType: "classification",
-            method: method
+            method: method,
+            source: source
         })
     }
 
