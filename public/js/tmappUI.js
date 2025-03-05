@@ -405,7 +405,8 @@ const tmappUI = (function(){
     function _initNucleiClassificationButtonEvents() {
         $("#classify_nuclei").click(() => {
             const method = $("#dropdown_classify_nuclei .dropdown-toggle").attr("value");
-            collabClient.classifyNuclei(method);
+            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet().name;
+            collabClient.classifyNuclei(method, activeAnnotationSet);
         })
     }
 

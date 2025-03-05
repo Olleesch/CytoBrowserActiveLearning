@@ -56,17 +56,17 @@ def analysis_detect_nuclei():
 def analysis_classify_nuclei():
     data = request.json
     image_ID = data.get("image_ID", None)
-    collab_ID = data.get("collab_ID", None)
     method = data.get("method", None)
+    nuclei = data.get("nuclei", None)
 
     try:
         if image_ID is None:
             return jsonify({"error": "Missing image name parameter"}), 400
-        if collab_ID is None:
-            return jsonify({"error": "Missing collab ID parameter"}), 400
         if method is None:
             return jsonify({"error": "Missing method parameter"}), 400
-        res = classify_nuclei(image_ID, collab_ID, method)
+        if nuclei is None:
+            return jsonify({"error": "Missing nuclei parameter"}), 400
+        res = classify_nuclei(image_ID, method, nuclei)
         return jsonify(res)
     
     except ValueError as e:

@@ -523,7 +523,7 @@ class Collaboration {
                 });
                 break;
             case "detection":
-                // Add annotations from detection pipeline (calls python backend), currently slow due to adding one at a time
+                // Add annotations from detection pipeline (calls python backend)
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/detect-nuclei`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -539,7 +539,7 @@ class Collaboration {
                         return responseJSON;
                     });
                 }).then(data => {
-                    // Add a new "detection" annotation set to config and send to collaborators
+                    // Add a new "detection" annotation set to config
                     const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
                     
                     // Temporary fix to make sure default set is included if we add a set from server
@@ -582,6 +582,18 @@ class Collaboration {
                         description: description,
                         classConfig: classConfig
                     });
+
+                    // Add new annotations to data
+                    const newAnnotations = data.annotations;
+                    newAnnotations.forEach(newAnnotation => {
+                        newAnnotation.id = this.generateAnnotationId(newAnnotations);
+                        newAnnotation.mclass = {[name]: classConfig[0].name};
+                        newAnnotation.author = msg.method;
+                        newAnnotation.bookmarked = false;
+                        newAnnotation.prediction = null;    //Q: What is prediction and should it be set to something from model?
+                    });
+
+                    // Send to collaborators
                     // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
                     // simply to make sure everything is done in the same order as usual?
                     this.handleAnnotationSetConfigAction(
@@ -593,16 +605,6 @@ class Collaboration {
                             annotationSetConfig: updatedAnnotationSetConfig
                         }
                     );
-
-                    // Add new annotations to data and send to collaborators
-                    const newAnnotations = data.annotations;
-                    newAnnotations.forEach(newAnnotation => {
-                        newAnnotation.id = this.generateAnnotationId(newAnnotations);
-                        newAnnotation.mclass = {[name]: classConfig[0].name};
-                        newAnnotation.author = msg.method;
-                        newAnnotation.bookmarked = false;
-                        newAnnotation.prediction = null;    //Q: What is prediction and should it be set to something from model?
-                    });
                     this.handleAnnotationAction(
                         null, 
                         this.analyzer, 
@@ -617,15 +619,23 @@ class Collaboration {
                 });
                 break;
             case "classification":
-                // Update annotations with classification results from classification pipeline (calls python backend), currently slow due to updating one at a time
+                const nuclei = this.annotations.filter(annotation => {
+                    return msg.source in annotation.mclass;
+                }).map(annotation => {
+                    return {
+                        points: annotation.points,
+                        z: annotation.z,
+                        id: annotation.id
+                    };
+                });
+                // Update annotations with classification results from classification pipeline (calls python backend)
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/classify-nuclei`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         "image_ID": this.image,
-                        "collab_ID": this.id,
-                        "method": msg.method
-                        // Read annotations here?
+                        "method": msg.method,
+                        "nuclei": nuclei
                     })
                 }).then(response => {
                     return response.json().then(responseJSON => {
@@ -635,20 +645,68 @@ class Collaboration {
                         return responseJSON;
                     });
                 }).then(data => {
-                    // Q: Likely update classconfig first? Classification pipeline should return new classConfig too! 
+                    // Add a new "classification" annotation set to config
+                    const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
+                    
+                    // Temporary fix to make sure default set is included if we add a set from server
+                    // TODO: annotationSetConfig = [] use default should probably not exist, 
+                    // we should initialize a collaboration with the default config and
+                    // if the annotationSetConfig becomes empty the default config should 
+                    // be added and sent.
+                    if (updatedAnnotationSetConfig.length === 0) {
+                        updatedAnnotationSetConfig.push({
+                                name: "Default",
+                                description: "Default annotation set for manual annotation",
+                                classConfig: []
+                        });
+                    }
+
+                    let name = "Classification";
+                    let nameCount = 1;
+                    // Make sure the new annotation set name does not already exist (previous detection set)
+                    if (this.annotationSetConfig.some(annotationSet => name === annotationSet.name)) {
+                        while (this.annotationSetConfig.some(annotationSet => (`${name}-${nameCount}`) === annotationSet.name)) {
+                            nameCount++;
+                        }
+                        name = `${name}-${nameCount}`;
+                    }
+                    const description = `Classified nuclei by the ${msg.method} method`;
+                    updatedAnnotationSetConfig.push({
+                        name: name,
+                        description: description,
+                        classConfig: data.classConfig
+                    });
+
+                    // Add new annotations to data
                     const newAnnotations = data.annotations;
                     newAnnotations.forEach(newAnnotation => {
-                        this.handleAnnotationAction(
-                            null, 
-                            this.analyzer, 
-                            {
-                                type: "annotationAction",
-                                actionType: "update",
-                                id: newAnnotation.id,
-                                annotation: newAnnotation
-                            }
-                        );
-                    })
+                        newAnnotation.mclass = {[name]: newAnnotation.mclass};
+                        newAnnotation.author = msg.method;
+                        newAnnotation.bookmarked = false;
+                        newAnnotation.prediction = null;    //Q: What is prediction and should it be set to something from model?
+                    });
+
+                    // Send to collaborators
+                    // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
+                    // simply to make sure everything is done in the same order as usual?
+                    this.handleAnnotationSetConfigAction(
+                        null,
+                        this.analyzer,
+                        {
+                            type: "annotationSetConfigAction",
+                            actionType: "update",
+                            annotationSetConfig: updatedAnnotationSetConfig
+                        }
+                    );
+                    this.handleAnnotationAction(
+                        null, 
+                        this.analyzer, 
+                        {
+                            type: "annotationAction",
+                            actionType: "add",
+                            annotation: newAnnotations
+                        }
+                    );
                 }).catch((error) => {
                     console.error("Error in nuclei classification:", error.message);
                 });
