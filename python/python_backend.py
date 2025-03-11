@@ -13,7 +13,7 @@ app = Flask(__name__)
 @app.route("/api/analysis/get-nuclei-detection-methods", methods=["GET"])
 def analysis_get_detection_methods():
     try:
-        res = get_methods(dir="./detection_models/")
+        res = get_methods(dir="./detection_methods/")
         return jsonify(res)
     except Exception as e:
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
@@ -22,7 +22,7 @@ def analysis_get_detection_methods():
 @app.route("/api/analysis/get-nuclei-classification-methods", methods=["GET"])
 def analysis_get_classification_methods():
     try:
-        res = get_methods(dir="./classification_models/")
+        res = get_methods(dir="./classification_methods/")
         return jsonify(res)
     except Exception as e:
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
