@@ -539,30 +539,36 @@ class Collaboration {
                     const description = `Detected nuclei by the ${msg.method} method`;
                     const classConfig = [
                         {
-                            name: "Nuclei",
-                            description: `A detected nuclei by the ${msg.method} method`,
+                            name: "Nucleus",
+                            description: `A detected nucleus by the ${msg.method} method`,
                             color: "#346d2e"
                         },
                         {
                             name: "Other",
                             description: "Class to mark other things than detected nuclei",
                             color: "#919191"
-                        },
-                    ]
+                        }
+                    ];
                     updatedAnnotationSetConfig.push({
                         name: name,
                         description: description,
                         classConfig: classConfig
                     });
-
-                    // Add new annotations to data
-                    const newAnnotations = data.annotations;
-                    newAnnotations.forEach(newAnnotation => {
-                        newAnnotation.id = this.generateAnnotationId(newAnnotations);
-                        newAnnotation.mclass = {[name]: classConfig[0].name};
-                        newAnnotation.author = msg.method;
-                        newAnnotation.bookmarked = false;
-                        newAnnotation.prediction = null;    //Q: What is prediction and should it be set to something from model?
+                    
+                    const newAnnotations = [];
+                    data.forEach(newAnnotation => {
+                        newAnnotations.push({
+                            "points": [{
+                                "x": newAnnotation[0],
+                                "y": newAnnotation[1]
+                            }],
+                            "z": 0,                 // TODO: Temp until z-selection is added
+                            "id": this.generateAnnotationId(newAnnotations),
+                            "mclass": {[name]: classConfig[0].name},
+                            "author": msg.method,
+                            "bookmarked": false,
+                            "prediction": null      //Q: What is prediction and should it be set to something from model?
+                        });
                     });
 
                     // Send to collaborators
