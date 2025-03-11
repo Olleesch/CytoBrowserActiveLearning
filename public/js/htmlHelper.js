@@ -712,7 +712,7 @@ const htmlHelper = (function() {
     }
 
     function buildDetectionMethodSelector(methods) {
-        _setDropdownMenu(methods, "#dropdown_detect_nuclei", "load-json");
+        _setDropdownMenu(methods, "#dropdown_detect_nuclei", "load-csv");
     }
 
     function buildClassificationMethodSelector(methods) {
