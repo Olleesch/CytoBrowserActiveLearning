@@ -1,11 +1,14 @@
 import os
-import sys
 import argparse
 import json
 import torch
 import numpy as np
+from tqdm import tqdm
 
-sys.path.insert(1, os.path.join(sys.path[0], '../..'))
+from torch.utils.data import DataLoader
+from FocusEstimate import focus_estimate
+from data import get_z_levels, ZStackSingleInstanceDataset
+
 from NucleusDetection import predict_img, load_network
 
 
@@ -21,7 +24,6 @@ def detect_nuclei(image_ID, method):
         try:
             detections = np.loadtxt(csv_file_path, delimiter=',')
             print(f"Loaded {len(detections)} detected nuclei.")
-            return detections.tolist()
         except Exception as e:
             print(f"Error occurred: {str(e)}")
 
@@ -29,26 +31,40 @@ def detect_nuclei(image_ID, method):
         # Run regression-based UNet inference to detect nuclei
         try:
             print("Running nucleus detection model inference...")
-            data_path = [f"/cytodata/Compilations/LetItShine/dzi_o8/BF/{image_ID}_z{z}.dzi" for z in [0,-2000,2000]]
-            device = torch.device("cuda:1") # How should the device be set in cytobrowser? 
+            data_path = [f"./../data/{image_ID}_z{z}.dzi" for z in [0,-2000,2000]]
+            device = torch.device("cuda:2") # How should the device be set in cytobrowser? 
             args = argparse.Namespace(
                 input=data_path,
                 level=2,
-                stack_size=1,   # Not used?
                 threshold=0.4,
-                min_dist=5,     # Not used? 
+                min_dist=5,
                 workers=4,
                 save_masks=False,
                 save_tile_csv=False,
                 savedir=None,
                 verbose=False   # TODO: Add in NucleusDetection? 
             )
-            net = load_network(method_path, device)
+            net = load_network(device, method_path)
             detections, _ = predict_img(net, device, args)
             print(f"Detected {len(detections)} nuclei.")
-            return detections.tolist()
         except Exception as e:
             print(f"Error occurred: {str(e)}")
 
     else:
         raise ValueError(f"Nuclei detection method '{method}' not implemented!")
+    
+    # Focus selection
+    print("Running focus selection on detected nuclei...")
+    dataset = ZStackSingleInstanceDataset(detections, image_ID, 56)
+    dataloader = DataLoader(dataset, 1, shuffle=False, num_workers=4, collate_fn=lambda x: x)
+
+    focus_estimates = np.zeros((len(detections), 1), dtype=int)
+    patch_focus_estimates = np.zeros(len(get_z_levels(image_ID)), dtype=float)
+    for i, patch in tqdm(enumerate(dataloader)):
+        patch = patch[0]
+        for z in range(len(patch)):
+            patch_focus_estimates[z] = focus_estimate(patch[z])
+        focus_estimates[i] = np.argmax(patch_focus_estimates)
+
+    detections = np.concatenate((detections, focus_estimates), axis=1)
+    return detections.tolist()

@@ -590,12 +590,12 @@ class Collaboration {
                                 "x": newAnnotation[0],
                                 "y": newAnnotation[1]
                             }],
-                            "z": 0,                 // TODO: Temp until z-selection is added
+                            "z": newAnnotation[2],
                             "id": this.generateAnnotationId(newAnnotations),
                             "mclass": {[name]: classConfig[0].name},
                             "author": msg.method,
                             "bookmarked": false,
-                            "prediction": null      //Q: What is prediction and should it be set to something from model?
+                            "prediction": null
                         });
                     });
 
@@ -689,7 +689,7 @@ class Collaboration {
                         newAnnotation.mclass = {[name]: newAnnotation.mclass};
                         newAnnotation.author = msg.method;
                         newAnnotation.bookmarked = false;
-                        newAnnotation.prediction = null;    //Q: What is prediction and should it be set to something from model?
+                        newAnnotation.prediction = null;
                     });
 
                     // Send to collaborators
