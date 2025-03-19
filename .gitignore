@@ -6,6 +6,7 @@ temp
 **/.vscode**
 **/__pycache__**
 **/NucleusDetection
+**/trained_models
 
 # OpenSeadragon public access from node module install
 public/js/openseadragon/images

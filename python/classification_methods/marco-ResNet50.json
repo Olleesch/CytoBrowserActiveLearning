@@ -1,0 +1,19 @@
+{
+    "name": "marco-ResNet50",
+    "path": "./trained_models/marco_ResNet50_FT.pth",
+    "classConfig": [
+            {
+                "name": "Negative",
+                "description": "Predicted negative patient prognosis",
+                "color": "#346d2e"
+            },
+            {
+                "name": "Positive",
+                "description": "Predicted positive patient prognosis",
+                "color": "#f03c3c"
+            }
+        ],
+    "input": "single-instance",
+    "crop": 128,
+    "imagenetNormalize": true
+}
