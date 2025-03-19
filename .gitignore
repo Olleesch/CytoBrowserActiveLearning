@@ -5,6 +5,7 @@ collab_storage
 temp
 **/.vscode**
 **/__pycache__**
+**/NucleusDetection
 
 # OpenSeadragon public access from node module install
 public/js/openseadragon/images
