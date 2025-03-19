@@ -1,7 +1,8 @@
 {
     "name": "random",
     "path": "",
-    "crop": 256,
+    "classConfig": [],
     "input": "single-instance",
-    "classes": []
+    "crop": 0,
+    "imagenetNormalize": false
 }
