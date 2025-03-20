@@ -149,6 +149,7 @@ const annotationSetHandler = (function(){
             // Update the active annotation set and class config.
             _activeAnnotationSet = activeAnnotationSet;
             setActiveClassConfig();
+            tmappUI.updateAnnotationList();
             collabClient.updateMemberActiveAnnotationSet(_activeAnnotationSet.name);
             annotationHandler.resetAnnotationCounts();
             annotationHandler.updateVisuals();
