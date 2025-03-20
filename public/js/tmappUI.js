@@ -624,6 +624,11 @@ const tmappUI = (function(){
         _initCollaborationMenu();
     }
 
+    function updateAnnotationList() {
+        document.querySelector("#annotation-list").innerHTML = "";
+        _initAnnotationList();
+    }
+
     /**
      * Updates the class selection buttons to reflect changes in the classification system.
      * @param {Object} classConfig
@@ -1092,6 +1097,7 @@ const tmappUI = (function(){
 
     return {
         initUI,
+        updateAnnotationList,
         updateClassSelectionButtons,
         updateAnnotationSetSelectionButtons,
         choice,
