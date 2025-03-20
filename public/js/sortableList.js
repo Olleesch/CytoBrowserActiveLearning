@@ -128,7 +128,7 @@ class SortableList {
                     adjustedDatum[field.key] = selectValue;
                     // If selectFun return invalid value, set the instance to invalid so we can exclude it from the display.
                     // Currently used to exclude annotations not in the active annotation set from the list.
-                    if (selectValue < 0) {
+                    if (selectValue < 0 && field.key === "mclassId") {
                         adjustedDatum.invalid = true;
                     }
                 }
@@ -139,7 +139,7 @@ class SortableList {
             });
             adjustedDatum.changed && updates++;
             return adjustedDatum;
-        });
+        }).filter(data => !data.invalid);
         timingLog && console.timeEnd("setListData");
         //console.log(`Made ${updates} updates in list`);
     }
@@ -157,7 +157,7 @@ class SortableList {
         const fields = this._fields;
         const rows = this._table.select("tbody")
             .selectAll(".data-row")
-            .data(this._data.filter(d => !d.invalid).slice(0,this._maxCount), d => d[this._idKey])
+            .data(this._data.slice(0,this._maxCount), d => d[this._idKey])
             .join("tr")
             .attr("class", "data-row")
             .attr("data-annotation-id", d => d[this._idKey]);
