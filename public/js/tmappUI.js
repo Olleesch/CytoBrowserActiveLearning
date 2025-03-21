@@ -398,17 +398,71 @@ const tmappUI = (function(){
 
     function _initNucleiDetectionButtonEvents() {
         $("#detect_nuclei").click(() => {
-            const method = $("#dropdown_detect_nuclei .dropdown-toggle").attr("value");
-            collabClient.detectNuclei(method);
+            $("#detect_nuclei_menu [name='method_description']").html(
+                `Method description: &nbsp;&nbsp;${$("#dropdown_detect_nuclei_menu .dropdown-toggle").attr("desc")}`
+            );
+            const observer = new MutationObserver(() => {
+                $("#detect_nuclei_menu [name='method_description']").html(
+                    `Method description: &nbsp;&nbsp;${$("#dropdown_detect_nuclei_menu .dropdown-toggle").attr("desc")}`
+                );
+            });
+            observer.observe($("#dropdown_detect_nuclei_menu .dropdown-toggle")[0], {
+                attributes: true, 
+                attributeFilter: ["desc"]
+            });
+            $("#detect_nuclei_menu_button").off("click").click(function(event) {
+                const annotationSetName = $("#detect_nuclei_menu [name='new_annotation_set_name']").val();
+                const nameErrorMessage = _isValidAnnotationSetName(annotationSetName, "add");
+                if (!nameErrorMessage) {
+                    const method = $("#dropdown_detect_nuclei_menu .dropdown-toggle").attr("value");
+                    collabClient.detectNuclei(method);
+                    $("#detect_nuclei_menu").modal("hide");
+                }
+                else {
+                    $("#detect_nuclei_menu_name_error_message").text(nameErrorMessage).show();
+                }
+            });
+        });
+        $("#detect_nuclei_menu").on("hide.bs.modal", function () {
+            $("#detect_nuclei_menu_button").blur();
+            $("#dropdown_detect_nuclei_menu").blur();
+            $("#detect_nuclei_menu_name_error_message").hide();
         });
     }
     
     function _initNucleiClassificationButtonEvents() {
         $("#classify_nuclei").click(() => {
-            const method = $("#dropdown_classify_nuclei .dropdown-toggle").attr("value");
-            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet().name;
-            collabClient.classifyNuclei(method, activeAnnotationSet);
+            $("#classify_nuclei_menu [name='method_description']").html(
+                `Method description: &nbsp;&nbsp;${$("#dropdown_classify_nuclei_menu .dropdown-toggle").attr("desc")}`
+            );
+            const observer = new MutationObserver(() => {
+                $("#classify_nuclei_menu [name='method_description']").html(
+                    `Method description: &nbsp;&nbsp;${$("#dropdown_classify_nuclei_menu .dropdown-toggle").attr("desc")}`
+                );
+            });
+            observer.observe($("#dropdown_classify_nuclei_menu .dropdown-toggle")[0], {
+                attributes: true, 
+                attributeFilter: ["desc"]
+            });
+            $("#classify_nuclei_menu_button").off("click").click(function(event) {
+                const annotationSetName = $("#classify_nuclei_menu [name='new_annotation_set_name']").val();
+                const nameErrorMessage = _isValidAnnotationSetName(annotationSetName, "add");
+                if (!nameErrorMessage) {
+                    const method = $("#dropdown_classify_nuclei_menu .dropdown-toggle").attr("value");
+                    const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet().name;
+                    collabClient.classifyNuclei(method, activeAnnotationSet);
+                    $("#classify_nuclei_menu").modal("hide");
+                }
+                else {
+                    $("#classify_nuclei_menu_name_error_message").text(nameErrorMessage).show();
+                }
+            });
         })
+        $("#classify_nuclei_menu").on("hide.bs.modal", function () {
+            $("#classify_nuclei_menu_button").blur();
+            $("#dropdown_classify_nuclei_menu").blur();
+            $("#classify_nuclei_menu_name_error_message").hide();
+        });
     }
 
     function _initAnnotationFiltering() {

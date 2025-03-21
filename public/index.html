@@ -379,22 +379,12 @@
                         <div class="row pb-1 pt-2">
                             <div class="col-6 d-flex flex-column align-items-stretch">
                                 <h6 class="card-subtitle mb-1 text-muted">Analysis tools</h6>
-                                <button id="detect_nuclei" class="btn btn-primary btn-block mt-auto" type="button">Detect Nuclei</button>
-                                <div class="dropdown-custom" id="dropdown_detect_nuclei">
-                                    <button class="btn btn-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">Detection Method</button>
-                                    <ul class="dropdown-menu" aria-labelledby="dropdown_detect_nuclei">
-                                    </ul>
-                                </div>
+                                <button id="detect_nuclei" class="btn btn-primary btn-block mt-auto" type="button" data-toggle="modal" data-target="#detect_nuclei_menu">Detect nuclei</button>
                             </div>
                   
                             <!-- Right Column -->
                             <div class="col-6 d-flex flex-column align-items-stretch">
-                                <button id="classify_nuclei" class="btn btn-primary btn-block mt-auto" type="button">Classify Nuclei</button>
-                                <div class="dropdown-custom" id="dropdown_classify_nuclei">
-                                    <button class="btn btn-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">Classification Model</button>
-                                    <ul class="dropdown-menu" aria-labelledby="dropdown_classify_nuclei">
-                                    </ul>
-                                </div>
+                                <button id="classify_nuclei" class="btn btn-primary btn-block mt-auto" type="button" data-toggle="modal" data-target="#classify_nuclei_menu">Classify nuclei</button>
                             </div>
                         </div>
                     </div>
@@ -984,6 +974,89 @@
         </div>
       </div>
     </div> <!-- End of annotation set menu -->
+
+    <!-- Detect nuclei menu -->
+    <div class="modal fade" id="detect_nuclei_menu" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Detect nuclei</h5>
+            <button id="detect_nuclei_menu_close_button" type="button" class="close" data-dismiss="modal">
+              <span>&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+              <div class="form-row pb-4">
+                  <label class="col-5 col-form-label">Name of new detected nuclei annotation set:</label>
+                  <div class="col-7" style="padding-top: 1rem;">
+                      <input type="text" name="new_annotation_set_name" class="form-control" placeholder="E.g. 'Detection' or 'Nuclei'">
+                      <div id="detect_nuclei_menu_name_error_message" style="color: red; font-size: 14px; display: none;"></div>
+                  </div>
+              </div>
+              <div class="form-row pb-2">
+                  <label class="col-5 col-form-label">Detection method:</label>
+                  <div class="col-7 dropdown-custom" id="dropdown_detect_nuclei_menu">
+                      <button class="btn btn-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">Detection Method</button>
+                      <ul class="dropdown-menu" aria-labelledby="dropdown_detect_nuclei_menu"></ul>
+                  </div>
+              </div>
+              <div class="form-row pb-4">
+                  <label class="col-12 col-form-label" name="method_description">Method description:</label>
+              </div>
+              <div class="form-row pb-2">
+                  <div class="col-12">
+                      <button id="detect_nuclei_menu_button" type="button" class="btn btn-block btn-primary">
+                          Detect nuclei
+                      </button>
+                  </div>
+              </div>
+          </div>
+        </div>
+      </div>
+    </div> 
+    <!-- End of detect nuclei menu -->
+
+    <!-- Classify nuclei menu -->
+    <div class="modal fade" id="classify_nuclei_menu" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Classify nuclei</h5>
+            <button id="classify_nuclei_menu_close_button" type="button" class="close" data-dismiss="modal">
+              <span>&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+              <div class="form-row pb-4">
+                  <label class="col-5 col-form-label">Name of new classified nuclei annotation set:</label>
+                  <div class="col-7" style="padding-top: 1rem;">
+                      <input type="text" name="new_annotation_set_name" class="form-control" placeholder="E.g. 'Classification'">
+                      <div id="classify_nuclei_menu_name_error_message" style="color: red; font-size: 14px; display: none;"></div>
+                  </div>
+              </div>
+              <div class="form-row pb-2">
+                  <label class="col-5 col-form-label">Classification method:</label>
+                  <div class="col-7 dropdown-custom" id="dropdown_classify_nuclei_menu">
+                      <button class="btn btn-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">Classification Method</button>
+                      <ul class="dropdown-menu" aria-labelledby="dropdown_classify_nuclei_menu"></ul>
+                  </div>
+              </div>
+              <div class="form-row pb-4">
+                  <label class="col-12 col-form-label" name="method_description">Method description:</label>
+              </div>
+              <div class="form-row pb-2">
+                  <div class="col-12">
+                      <button id="classify_nuclei_menu_button" type="button" class="btn btn-block btn-primary">
+                          Classify nuclei
+                      </button>
+                  </div>
+              </div>
+          </div>
+        </div>
+      </div>
+    </div> 
+    <!-- End of classify nuclei menu -->
+
 </body>
 
 <script src="js/bootstrap/bootstrap.bundle.min.js" ></script>
