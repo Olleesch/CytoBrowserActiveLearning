@@ -15,5 +15,6 @@
         ],
     "input": "single-instance",
     "crop": 128,
-    "imagenetNormalize": true
+    "imagenetNormalize": true,
+    "bs": 128
 }
