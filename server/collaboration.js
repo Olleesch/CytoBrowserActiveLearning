@@ -523,6 +523,60 @@ class Collaboration {
                 });
                 break;
             case "detection":
+                // Add a new "detection" annotation set to config
+                const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
+                // Temporary fix to make sure default set is included if we add a set from server
+                // TODO: annotationSetConfig = [] use default should probably not exist, 
+                // we should initialize a collaboration with the default config and
+                // if the annotationSetConfig becomes empty the default config should 
+                // be added and sent.
+                if (updatedAnnotationSetConfig.length === 0) {
+                    updatedAnnotationSetConfig.push({
+                            name: "Default",
+                            description: "Default annotation set for manual annotation",
+                            classConfig: []
+                    });
+                }
+                // Make sure the new annotation set name does not already exist (previous detection set)
+                let name = "Detection";
+                let nameCount = 1;
+                if (this.annotationSetConfig.some(annotationSet => name === annotationSet.name)) {
+                    while (this.annotationSetConfig.some(annotationSet => (`${name}-${nameCount}`) === annotationSet.name)) {
+                        nameCount++;
+                    }
+                    name = `${name}-${nameCount}`;
+                }
+                const description = `Detected nuclei by the ${msg.method} method`;
+                const classConfig = [
+                    {
+                        name: "Nucleus",
+                        description: `A detected nucleus by the ${msg.method} method`,
+                        color: "#346d2e"
+                    },
+                    {
+                        name: "Other",
+                        description: "Class to mark other things than detected nuclei",
+                        color: "#919191"
+                    }
+                ];
+                updatedAnnotationSetConfig.push({
+                    name: name,
+                    description: description,
+                    classConfig: classConfig
+                });
+                // Send to collaborators
+                // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
+                // simply to make sure everything is done in the same order as usual?
+                this.handleAnnotationSetConfigAction(
+                    null,
+                    this.analyzer,
+                    {
+                        type: "annotationSetConfigAction",
+                        actionType: "update",
+                        annotationSetConfig: updatedAnnotationSetConfig
+                    }
+                );
+
                 // Add annotations from detection pipeline (calls python backend)
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/detect-nuclei`, {
                     method: "POST",
@@ -532,94 +586,61 @@ class Collaboration {
                         "method": msg.method
                     })
                 }).then(response => {
-                    return response.json().then(responseJSON => {
-                        if (!response.ok) {
-                            throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
-                        }
-                        return responseJSON;
-                    });
-                }).then(data => {
-                    // Add a new "detection" annotation set to config
-                    const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
-                    
-                    // Temporary fix to make sure default set is included if we add a set from server
-                    // TODO: annotationSetConfig = [] use default should probably not exist, 
-                    // we should initialize a collaboration with the default config and
-                    // if the annotationSetConfig becomes empty the default config should 
-                    // be added and sent.
-                    if (updatedAnnotationSetConfig.length === 0) {
-                        updatedAnnotationSetConfig.push({
-                                name: "Default",
-                                description: "Default annotation set for manual annotation",
-                                classConfig: []
+                    // Handle HTTP errors
+                    if (!response.ok) {
+                        const responseJSON = response.json()
+                        throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+                    }
+                    // Function to process each chunk as it arrives
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    const readStream = () => {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                console.log("Nuclei detection stream complete.");
+                                return;
+                            }
+                
+                            const chunk = decoder.decode(value, { stream: true });
+                            try {
+                                const data = JSON.parse(chunk);
+                                // Add new annotations (and generate new unique ids)
+                                const newAnnotations = [];
+                                data.forEach(newAnnotation => {
+                                    newAnnotations.push({
+                                        "points": [{
+                                            "x": newAnnotation[0],
+                                            "y": newAnnotation[1]
+                                        }],
+                                        "z": newAnnotation[2],
+                                        "id": this.generateAnnotationId(newAnnotations),
+                                        "mclass": {[name]: classConfig[0].name},
+                                        "author": msg.method,
+                                        "bookmarked": false,
+                                        "prediction": null
+                                    });
+                                });
+                                // Send the annotations to collaborators
+                                this.handleAnnotationAction(
+                                    null,
+                                    this.analyzer,
+                                    {
+                                        type: "annotationAction",
+                                        actionType: "add",
+                                        annotation: newAnnotations
+                                    }
+                                );
+                            } catch (error) {
+                                console.error("Error parsing streamed nuclei detection data:", error.message);
+                            }
+                            // Continue reading the next chunk
+                            readStream();
+                        }).catch(error => {
+                            console.error("Error reading nuclei detection stream:", error.message);
                         });
                     }
-
-                    let name = "Detection";
-                    let nameCount = 1;
-                    // Make sure the new annotation set name does not already exist (previous detection set)
-                    if (this.annotationSetConfig.some(annotationSet => name === annotationSet.name)) {
-                        while (this.annotationSetConfig.some(annotationSet => (`${name}-${nameCount}`) === annotationSet.name)) {
-                            nameCount++;
-                        }
-                        name = `${name}-${nameCount}`;
-                    }
-                    const description = `Detected nuclei by the ${msg.method} method`;
-                    const classConfig = [
-                        {
-                            name: "Nucleus",
-                            description: `A detected nucleus by the ${msg.method} method`,
-                            color: "#346d2e"
-                        },
-                        {
-                            name: "Other",
-                            description: "Class to mark other things than detected nuclei",
-                            color: "#919191"
-                        }
-                    ];
-                    updatedAnnotationSetConfig.push({
-                        name: name,
-                        description: description,
-                        classConfig: classConfig
-                    });
-                    
-                    const newAnnotations = [];
-                    data.forEach(newAnnotation => {
-                        newAnnotations.push({
-                            "points": [{
-                                "x": newAnnotation[0],
-                                "y": newAnnotation[1]
-                            }],
-                            "z": newAnnotation[2],
-                            "id": this.generateAnnotationId(newAnnotations),
-                            "mclass": {[name]: classConfig[0].name},
-                            "author": msg.method,
-                            "bookmarked": false,
-                            "prediction": null
-                        });
-                    });
-
-                    // Send to collaborators
-                    // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
-                    // simply to make sure everything is done in the same order as usual?
-                    this.handleAnnotationSetConfigAction(
-                        null,
-                        this.analyzer,
-                        {
-                            type: "annotationSetConfigAction",
-                            actionType: "update",
-                            annotationSetConfig: updatedAnnotationSetConfig
-                        }
-                    );
-                    this.handleAnnotationAction(
-                        null, 
-                        this.analyzer, 
-                        {
-                            type: "annotationAction",
-                            actionType: "add",
-                            annotation: newAnnotations
-                        }
-                    );
+                    // Start reading stream
+                    readStream();
                 }).catch((error) => {
                     console.error("Error in nuclei detection:", error.message);
                 });
@@ -644,32 +665,14 @@ class Collaboration {
                         "nuclei": nuclei
                     })
                 }).then(response => {
-                    return response.json().then(responseJSON => {
-                        if (!response.ok) {
-                            throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
-                        }
-                        return responseJSON;
-                    });
-                }).then(data => {
-                    // Add a new "classification" annotation set to config
-                    const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
-                    
-                    // Temporary fix to make sure default set is included if we add a set from server
-                    // TODO: annotationSetConfig = [] use default should probably not exist, 
-                    // we should initialize a collaboration with the default config and
-                    // if the annotationSetConfig becomes empty the default config should 
-                    // be added and sent.
-                    if (updatedAnnotationSetConfig.length === 0) {
-                        updatedAnnotationSetConfig.push({
-                                name: "Default",
-                                description: "Default annotation set for manual annotation",
-                                classConfig: []
-                        });
+                    // Handle HTTP errors
+                    if (!response.ok) {
+                        const responseJSON = response.json()
+                        throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
                     }
-
+                    // Make sure the new annotation set name does not already exist (previous classification set)
                     let name = "Classification";
                     let nameCount = 1;
-                    // Make sure the new annotation set name does not already exist (previous detection set)
                     if (this.annotationSetConfig.some(annotationSet => name === annotationSet.name)) {
                         while (this.annotationSetConfig.some(annotationSet => (`${name}-${nameCount}`) === annotationSet.name)) {
                             nameCount++;
@@ -677,45 +680,172 @@ class Collaboration {
                         name = `${name}-${nameCount}`;
                     }
                     const description = `Classified nuclei by the ${msg.method} method`;
-                    updatedAnnotationSetConfig.push({
-                        name: name,
-                        description: description,
-                        classConfig: data.classConfig
-                    });
-
-                    // Add new annotations to data
-                    const newAnnotations = data.annotations;
-                    newAnnotations.forEach(newAnnotation => {
-                        newAnnotation.mclass = {[name]: newAnnotation.mclass};
-                        newAnnotation.author = msg.method;
-                        newAnnotation.bookmarked = false;
-                        newAnnotation.prediction = null;
-                    });
-
-                    // Send to collaborators
-                    // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
-                    // simply to make sure everything is done in the same order as usual?
-                    this.handleAnnotationSetConfigAction(
-                        null,
-                        this.analyzer,
-                        {
-                            type: "annotationSetConfigAction",
-                            actionType: "update",
-                            annotationSetConfig: updatedAnnotationSetConfig
+                    // Function to process each chunk as it arrives
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    const processData = (chunk) => {
+                        const data = JSON.parse(chunk);
+                        if (data.classConfig) {
+                            // Add a new "classification" annotation set to config
+                            const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
+                            // Temporary fix to make sure default set is included if we add a set from server
+                            // TODO: annotationSetConfig = [] use default should probably not exist, 
+                            // we should initialize a collaboration with the default config and
+                            // if the annotationSetConfig becomes empty the default config should 
+                            // be added and sent.
+                            if (updatedAnnotationSetConfig.length === 0) {
+                                updatedAnnotationSetConfig.push({
+                                        name: "Default",
+                                        description: "Default annotation set for manual annotation",
+                                        classConfig: []
+                                });
+                            }
+                            updatedAnnotationSetConfig.push({
+                                name: name,
+                                description: description,
+                                classConfig: data.classConfig
+                            });
+                            // Send to collaborators
+                            // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
+                            // simply to make sure everything is done in the same order as usual?
+                            this.handleAnnotationSetConfigAction(
+                                null,
+                                this.analyzer,
+                                {
+                                    type: "annotationSetConfigAction",
+                                    actionType: "update",
+                                    annotationSetConfig: updatedAnnotationSetConfig
+                                }
+                            );
+                        } 
+                        else if (data.annotations) {
+                            // Add new annotations to data
+                            const newAnnotations = data.annotations;
+                            newAnnotations.forEach(newAnnotation => {
+                                newAnnotation.mclass = {[name]: newAnnotation.mclass};
+                                newAnnotation.author = msg.method;
+                                newAnnotation.bookmarked = false;
+                                newAnnotation.prediction = null;
+                            });
+                            this.handleAnnotationAction(
+                                null, 
+                                this.analyzer, 
+                                {
+                                    type: "annotationAction",
+                                    actionType: "add",
+                                    annotation: newAnnotations
+                                }
+                            );
                         }
-                    );
-                    this.handleAnnotationAction(
-                        null, 
-                        this.analyzer, 
-                        {
-                            type: "annotationAction",
-                            actionType: "add",
-                            annotation: newAnnotations
+                        else {
+                            console.error("Error parsing streamed nuclei detection data: unknown response");
                         }
-                    );
+                    }
+                    let buffer = "";
+                    const readStream = () => {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                console.log("Nuclei classification stream complete.");
+                                return;
+                            }
+                            // Process stream (chunks of results may have been merged or split, but we
+                            // know that a complete chunk always ends in "\n")
+                            buffer += decoder.decode(value, { stream: true });
+                            const chunks = buffer.split("\n");
+                            buffer = chunks.pop();
+                            try {
+                                chunks.forEach(chunk => {
+                                    processData(chunk);
+                                });
+                            } catch (error) {
+                                console.error("Error parsing streamed nuclei detection data:", error.message);
+                            }
+                            // Continue reading the next chunk
+                            readStream();
+                        }).catch(error => {
+                            console.error("Error reading nuclei detection stream:", error.message);
+                        });
+                    }
+                    // Start reading stream
+                    readStream();
                 }).catch((error) => {
                     console.error("Error in nuclei classification:", error.message);
                 });
+                
+                
+                // .then(response => {
+                //     return response.json().then(responseJSON => {
+                //         if (!response.ok) {
+                //             throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+                //         }
+                //         return responseJSON;
+                //     });
+                // }).then(data => {
+                //     // Add a new "classification" annotation set to config
+                //     const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
+                    
+                //     // Temporary fix to make sure default set is included if we add a set from server
+                //     // TODO: annotationSetConfig = [] use default should probably not exist, 
+                //     // we should initialize a collaboration with the default config and
+                //     // if the annotationSetConfig becomes empty the default config should 
+                //     // be added and sent.
+                //     if (updatedAnnotationSetConfig.length === 0) {
+                //         updatedAnnotationSetConfig.push({
+                //                 name: "Default",
+                //                 description: "Default annotation set for manual annotation",
+                //                 classConfig: []
+                //         });
+                //     }
+
+                //     let name = "Classification";
+                //     let nameCount = 1;
+                //     // Make sure the new annotation set name does not already exist (previous detection set)
+                //     if (this.annotationSetConfig.some(annotationSet => name === annotationSet.name)) {
+                //         while (this.annotationSetConfig.some(annotationSet => (`${name}-${nameCount}`) === annotationSet.name)) {
+                //             nameCount++;
+                //         }
+                //         name = `${name}-${nameCount}`;
+                //     }
+                //     const description = `Classified nuclei by the ${msg.method} method`;
+                //     updatedAnnotationSetConfig.push({
+                //         name: name,
+                //         description: description,
+                //         classConfig: data.classConfig
+                //     });
+
+                //     // Add new annotations to data
+                //     const newAnnotations = data.annotations;
+                //     newAnnotations.forEach(newAnnotation => {
+                //         newAnnotation.mclass = {[name]: newAnnotation.mclass};
+                //         newAnnotation.author = msg.method;
+                //         newAnnotation.bookmarked = false;
+                //         newAnnotation.prediction = null;
+                //     });
+
+                //     // Send to collaborators
+                //     // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
+                //     // simply to make sure everything is done in the same order as usual?
+                //     this.handleAnnotationSetConfigAction(
+                //         null,
+                //         this.analyzer,
+                //         {
+                //             type: "annotationSetConfigAction",
+                //             actionType: "update",
+                //             annotationSetConfig: updatedAnnotationSetConfig
+                //         }
+                //     );
+                //     this.handleAnnotationAction(
+                //         null, 
+                //         this.analyzer, 
+                //         {
+                //             type: "annotationAction",
+                //             actionType: "add",
+                //             annotation: newAnnotations
+                //         }
+                //     );
+                // }).catch((error) => {
+                //     console.error("Error in nuclei classification:", error.message);
+                // });
                 break;
             default:
                 this.log(`Tried to handle unknown analysis action: ${msg.actionType}`, console.warn);

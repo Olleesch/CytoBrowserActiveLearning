@@ -5,7 +5,7 @@ import tqdm
 import json
 from torch.utils.data import DataLoader
 
-from data import SingleInstanceDataset
+from data_utils import SingleInstanceDataset
 
 
 def classify_nuclei(image_ID, method, nuclei):
@@ -16,12 +16,25 @@ def classify_nuclei(image_ID, method, nuclei):
             class_config = method_dict["classConfig"]
             crop = method_dict["crop"]
             imagenet_normalize = method_dict["imagenetNormalize"]
+            bs = method_dict["bs"]
     except Exception as e:
         print(f"Error occurred in nucleus classification: {str(e)}. Check that method {method} is valid.")
     
+    # First return the class config of the model
+    yield json.dumps({"classConfig": class_config}) + "\n"
+
+    chunk_size = 1000
+    
     if method == "random":
         try:
-            return classify_random(nuclei)
+            chunk = []
+            classes = ["NILM", "ASC-US", "ASC-H", "LSIL", "HSIL", "SCC", "AdC"]
+            for i, nucleus in enumerate(nuclei):
+                nucleus["mclass"] = classes[random.randint(0, len(classes)-1)]
+                chunk.append(nucleus)
+                if len(chunk) == chunk_size or i == len(nuclei) - 1:
+                    yield json.dumps({"annotations": chunk}) + "\n"
+                    chunk = []
         except Exception as e:
             print(f"Error occurred in nucleus classification: {str(e)}")
     
@@ -32,61 +45,32 @@ def classify_nuclei(image_ID, method, nuclei):
             model = torch.load(path, map_location=device, weights_only=False)
             model.to(device)
             model.eval()
-            return classify_single_instances(
-                nuclei, 
-                image_ID, 
-                model, 
-                class_config, 
-                crop, 
-                imagenet_normalize, 
-                device
-            )
+            
+            dataset = SingleInstanceDataset(nuclei, image_ID, crop, imagenet_normalize=imagenet_normalize)
+            dataloader = DataLoader(dataset, bs, shuffle=False, num_workers=4)
+
+            chunk = []
+            chunk_size = chunk_size // bs # In terms of number of batches
+            with torch.no_grad():
+                for i, batch in tqdm.tqdm(enumerate(dataloader)):
+                    batch = batch.to(device)
+                    pred = model(batch)
+
+                    # This should be single digit output for binary classification
+                    if pred.shape[1] == 1:
+                        class_idxs = torch.round(pred).squeeze(dim=1).detach().cpu().numpy()
+                    # This should be softmax-style output
+                    else:
+                        class_idxs = torch.argmax(pred, dim=0).detach().cpu().numpy()
+
+                    for j, class_idx in enumerate(class_idxs):
+                        idx = i*bs+j
+                        nuclei[idx]["mclass"] = class_config[int(class_idx)]["name"]
+                        chunk.append(nuclei[idx])
+
+                    if len(chunk) == chunk_size*bs or i == len(dataloader) - 1:
+                        yield json.dumps({"annotations": chunk}) + "\n"
+                        chunk = []
+
         except Exception as e:
             print(f"Error occurred in nucleus classification: {str(e)}")
-
-
-def classify_random(nuclei):
-    classes = ["NILM", "ASC-US", "ASC-H", "LSIL", "HSIL", "SCC", "AdC"]
-    for nucleus in nuclei:
-        nucleus["mclass"] = classes[random.randint(0, len(classes)-1)]
-    return {
-        "classConfig": [],
-        "annotations": nuclei
-    }
-
-
-def classify_single_instances(
-    nuclei, 
-    image_ID, 
-    model, 
-    class_config, 
-    crop_size, 
-    imagenet_normalize, 
-    device
-):
-    bs = 64
-    dataset = SingleInstanceDataset(nuclei, image_ID, crop_size, imagenet_normalize=imagenet_normalize)
-    dataloader = DataLoader(dataset, bs, shuffle=False, num_workers=4)
-    model = model.to(device)
-    model.eval()
-
-    class_idxs = np.zeros((len(dataset)), dtype=int)
-    with torch.no_grad():
-        for i, batch in tqdm.tqdm(enumerate(dataloader)):
-            batch = batch.to(device)
-            pred = model(batch)
-
-            # This should be single digit output for binary classification
-            if pred.shape[1] == 1:
-                class_idxs[i*bs:i*bs+len(batch)] = torch.round(pred).squeeze(dim=1).detach().cpu().numpy()
-            # This should be softmax-style output
-            else:
-                class_idxs[i*bs:i*bs+len(batch)] = torch.argmax(pred, dim=0).detach().cpu().numpy()
-    
-    for i, class_idx in enumerate(class_idxs):
-        nuclei[i]["mclass"] = class_config[class_idx]["name"]
-
-    return {
-        "classConfig": class_config,
-        "annotations": nuclei
-    }
