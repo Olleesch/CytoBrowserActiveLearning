@@ -668,34 +668,37 @@ const htmlHelper = (function() {
         }
     }
 
-    function _setDropdownMenu(options, buttonID, defaultOption) {
+    function _setMethodDropdownMenu(methods, buttonID, defaultOption) {
         const dropdown = document.querySelector(buttonID);
         const button = dropdown.querySelector('.dropdown-toggle');
         const content = dropdown.querySelector('.dropdown-menu');
         content.innerHTML = "";
 
-        if (!options.includes(defaultOption)) {
+        if (defaultOption && !methods.map(method => method.name).includes(defaultOption)) {
             console.error("Error, default method not found: ", defaultOption);
         }
 
-        options.forEach(option => {
+        methods.forEach(method => {
             const listItem = document.createElement("li");
             const link = document.createElement("a");
 
-            link.classList.add('dropdown-item');
-            link.textContent = option;
-            link.setAttribute('href', "#");
-            link.setAttribute('value', option);
+            link.classList.add("dropdown-item");
+            link.textContent = method["name"];
+            link.setAttribute("href", "#");
+            link.setAttribute("value", method["name"]);
+            link.setAttribute("desc", method["description"]);
 
-            link.addEventListener('click', () => {
+            link.addEventListener("click", (event) => {
+                event.preventDefault();
                 button.textContent = link.textContent;
-                button.setAttribute('value', link.getAttribute('value'));
-                dropdown.classList.remove('show');
-                content.classList.remove('show');
+                button.setAttribute("value", link.getAttribute("value"));
+                button.setAttribute("desc", link.getAttribute("desc"));
+                dropdown.classList.remove("show");
+                content.classList.remove("show");
             });
 
-            if (option === defaultOption) {
-                link.textContent = `${option} (default)`;
+            if (method["name"] === defaultOption) {
+                link.textContent = `${method["name"]} (default)`;
                 listItem.appendChild(link);
                 content.insertBefore(listItem, content.firstChild);
             } else {
@@ -704,19 +707,20 @@ const htmlHelper = (function() {
             }
         })
 
-        const contentItems = dropdown.querySelectorAll('.dropdown-item');
+        const contentItems = dropdown.querySelectorAll(".dropdown-item");
         if (contentItems.length > 0) {
             button.textContent = contentItems[0].textContent;
-            button.setAttribute('value', contentItems[0].getAttribute('value'));
+            button.setAttribute("value", contentItems[0].getAttribute("value"));
+            button.setAttribute("desc", contentItems[0].getAttribute("desc"));
         }
     }
 
     function buildDetectionMethodSelector(methods) {
-        _setDropdownMenu(methods, "#dropdown_detect_nuclei", "load-csv");
+        _setMethodDropdownMenu(methods, "#dropdown_detect_nuclei_menu", "load-csv");
     }
 
     function buildClassificationMethodSelector(methods) {
-        _setDropdownMenu(methods, "#dropdown_classify_nuclei", "random");
+        _setMethodDropdownMenu(methods, "#dropdown_classify_nuclei_menu", "random");
     }
 
     return {
