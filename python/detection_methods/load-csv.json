@@ -1,4 +1,5 @@
 {
     "name": "load-csv",
+    "description": "Placeholder method to load pre-computed nuclei detection results followed by an optimal focus estimation algorithm.",
     "path": ""
 }
