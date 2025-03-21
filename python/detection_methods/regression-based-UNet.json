@@ -1,4 +1,4 @@
 {
     "name": "regression-based-UNet",
-    "path": "/home/joakim/MODEL.pth"
+    "path": "./trained_models/regression_based_UNet.pth"
 }

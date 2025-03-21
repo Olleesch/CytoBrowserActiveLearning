@@ -1,6 +1,6 @@
 import sys
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, Response, jsonify
 
 from detection import detect_nuclei
 from classification import classify_nuclei
@@ -34,13 +34,16 @@ def analysis_detect_nuclei():
     image_ID = data.get("image_ID", 0)
     method = data.get("method", 0)
 
+    if image_ID is None:
+        return jsonify({"error": "Missing image name parameter"}), 400
+    if method is None:
+        return jsonify({"error": "Missing method parameter"}), 400
+
     try:
-        if image_ID is None:
-            return jsonify({"error": "Missing image name parameter"}), 400
-        if method is None:
-            return jsonify({"error": "Missing method parameter"}), 400
-        res = detect_nuclei(image_ID, method)
-        return jsonify(res)
+        return Response(
+            detect_nuclei(image_ID, method),
+            content_type="application/json"
+        )
     
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -59,15 +62,20 @@ def analysis_classify_nuclei():
     method = data.get("method", None)
     nuclei = data.get("nuclei", None)
 
+    if image_ID is None:
+        return jsonify({"error": "Missing image name parameter"}), 400
+    if method is None:
+        return jsonify({"error": "Missing method parameter"}), 400
+    if nuclei is None:
+        return jsonify({"error": "Missing nuclei parameter"}), 400
+
     try:
-        if image_ID is None:
-            return jsonify({"error": "Missing image name parameter"}), 400
-        if method is None:
-            return jsonify({"error": "Missing method parameter"}), 400
-        if nuclei is None:
-            return jsonify({"error": "Missing nuclei parameter"}), 400
-        res = classify_nuclei(image_ID, method, nuclei)
-        return jsonify(res)
+        return Response(
+            classify_nuclei(image_ID, method, nuclei),
+            content_type="application/json"
+        )
+        # res = classify_nuclei(image_ID, method, nuclei)
+        # return jsonify(res)
     
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
