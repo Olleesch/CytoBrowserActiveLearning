@@ -7,14 +7,17 @@ from tqdm import tqdm
 
 from torch.utils.data import DataLoader
 from FocusEstimate import focus_estimate
-from data import get_z_levels, ZStackSingleInstanceDataset
+from data_utils import get_z_levels, ZStackSingleInstanceDataset
 
 from NucleusDetection import predict_img, load_network
 
 
 def detect_nuclei(image_ID, method):
-    with open(f"./detection_methods/{method}.json", "r") as method_json:
-        method_path = json.load(method_json)["path"]
+    try:
+        with open(f"./detection_methods/{method}.json", "r") as method_json:
+            method_path = json.load(method_json)["path"]
+    except Exception as e:
+        print(f"Error occurred in nucleus detection: {str(e)}. Check that method {method} is valid.")
 
     if method == "load-csv":
         # Load pre-detected nuclei from csv file
@@ -58,13 +61,21 @@ def detect_nuclei(image_ID, method):
     dataset = ZStackSingleInstanceDataset(detections, image_ID, 56)
     dataloader = DataLoader(dataset, 1, shuffle=False, num_workers=4, collate_fn=lambda x: x)
 
-    focus_estimates = np.zeros((len(detections), 1), dtype=int)
+    # Chunk size 100 is suitable since focus estimation is still quite slow. If the chunk size 
+    # is increased or reduced significantly, there may occur issues in server/collaboration.js 
+    # due to chunks being merged or split up in the stream. To handle this, look at the classification
+    # code in server/collaboration.js (which deals with this issue due to large chunks being returned). 
+    chunk_size = 100
+    chunk = []
+
     patch_focus_estimates = np.zeros(len(get_z_levels(image_ID)), dtype=float)
     for i, patch in tqdm(enumerate(dataloader)):
         patch = patch[0]
         for z in range(len(patch)):
             patch_focus_estimates[z] = focus_estimate(patch[z])
-        focus_estimates[i] = np.argmax(patch_focus_estimates)
-
-    detections = np.concatenate((detections, focus_estimates), axis=1)
-    return detections.tolist()
+        chunk.append([detections[i,0], 
+                      detections[i,1], 
+                      int(np.argmax(patch_focus_estimates)) - patch_focus_estimates.shape[0]//2])
+        if len(chunk) == chunk_size or i == len(dataset) - 1:
+            yield json.dumps(chunk) + "\n"
+            chunk = []

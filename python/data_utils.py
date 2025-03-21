@@ -12,7 +12,7 @@ def get_z_levels(image_ID):
     files = glob.glob(f'./../data/{image_ID}_z*.dzi')
     z_values = sorted(
         [int(re.search(r'_z(-?\d+)\.dzi$', f).group(1)) for f in files],
-        reverse=True
+        reverse=False
     )
     return z_values
 
@@ -122,7 +122,7 @@ class SingleInstanceDataset(Dataset):
         coords = nucleus["points"][0]
         x = coords["x"]
         y = coords["y"]
-        z = self.z_levels[nucleus["z"]]
+        z = self.z_levels[nucleus["z"] + len(self.z_levels)//2]
         patch = assemble_patch(x, y, z, self.image_ID, self.crop_size)
         tensor = torch.tensor(patch).permute(2,0,1) / 255
         if self.transform:

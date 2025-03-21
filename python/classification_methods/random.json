@@ -4,5 +4,6 @@
     "classConfig": [],
     "input": "single-instance",
     "crop": 0,
-    "imagenetNormalize": false
+    "imagenetNormalize": false,
+    "bs": 0
 }
