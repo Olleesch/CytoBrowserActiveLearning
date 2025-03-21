@@ -18,11 +18,14 @@ def get_methods(dir):
                 try:
                     data = json.load(f)
                     if "name" in data:
-                        methods.append(data["name"])
+                        methods.append({
+                            "name": data["name"],
+                            "description": data["description"]
+                        })
                 except json.JSONDecodeError as err:
                     print(f"Error parsing JSON file {file_path}: {err}")
     
     except OSError as err:
         raise Exception(f"Unable to read method directory: {err}")
     
-    return sorted(methods)
+    return methods

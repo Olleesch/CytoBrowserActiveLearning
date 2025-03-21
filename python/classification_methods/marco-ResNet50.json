@@ -1,15 +1,16 @@
 {
     "name": "marco-ResNet50",
+    "description": "ImageNet pre-trained ResNet50 neural network fine-tuned for binary classification of patient diagnosis.",
     "path": "./trained_models/marco_ResNet50_FT.pth",
     "classConfig": [
             {
                 "name": "Negative",
-                "description": "Predicted negative patient prognosis",
+                "description": "Predicted negative patient diagnosis",
                 "color": "#346d2e"
             },
             {
                 "name": "Positive",
-                "description": "Predicted positive patient prognosis",
+                "description": "Predicted positive patient diagnosis",
                 "color": "#f03c3c"
             }
         ],
