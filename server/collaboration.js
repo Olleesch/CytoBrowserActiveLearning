@@ -537,8 +537,8 @@ class Collaboration {
                             classConfig: []
                     });
                 }
-                // Make sure the new annotation set name does not already exist (previous detection set)
-                let name = "Detection";
+                // Make sure the new annotation set name does not already exist, add counter if it does
+                let name = msg.newAnnotationSetName;
                 let nameCount = 1;
                 if (this.annotationSetConfig.some(annotationSet => name === annotationSet.name)) {
                     while (this.annotationSetConfig.some(annotationSet => (`${name}-${nameCount}`) === annotationSet.name)) {
@@ -582,8 +582,8 @@ class Collaboration {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        "image_ID": this.image,
-                        "method": msg.method
+                        image_ID: this.image,
+                        method: msg.method
                     })
                 }).then(response => {
                     // Handle HTTP errors
@@ -647,7 +647,8 @@ class Collaboration {
                 break;
             case "classification":
                 const nuclei = this.annotations.filter(annotation => {
-                    return msg.source in annotation.mclass;
+                    return (msg.srcAnnotationSetName in annotation.mclass) && 
+                        ((msg.srcClassName === "All") || (msg.srcClassName === annotation.mclass[msg.srcAnnotationSetName]));
                 }).map(annotation => {
                     return {
                         points: annotation.points,
@@ -660,9 +661,9 @@ class Collaboration {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        "image_ID": this.image,
-                        "method": msg.method,
-                        "nuclei": nuclei
+                        image_ID: this.image,
+                        method: msg.method,
+                        nuclei: nuclei
                     })
                 }).then(response => {
                     // Handle HTTP errors
@@ -670,8 +671,8 @@ class Collaboration {
                         const responseJSON = response.json()
                         throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
                     }
-                    // Make sure the new annotation set name does not already exist (previous classification set)
-                    let name = "Classification";
+                    // Make sure the new annotation set name does not already exist, add counter if it does
+                    let name = msg.newAnnotationSetName;
                     let nameCount = 1;
                     if (this.annotationSetConfig.some(annotationSet => name === annotationSet.name)) {
                         while (this.annotationSetConfig.some(annotationSet => (`${name}-${nameCount}`) === annotationSet.name)) {
@@ -771,81 +772,6 @@ class Collaboration {
                 }).catch((error) => {
                     console.error("Error in nuclei classification:", error.message);
                 });
-                
-                
-                // .then(response => {
-                //     return response.json().then(responseJSON => {
-                //         if (!response.ok) {
-                //             throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
-                //         }
-                //         return responseJSON;
-                //     });
-                // }).then(data => {
-                //     // Add a new "classification" annotation set to config
-                //     const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
-                    
-                //     // Temporary fix to make sure default set is included if we add a set from server
-                //     // TODO: annotationSetConfig = [] use default should probably not exist, 
-                //     // we should initialize a collaboration with the default config and
-                //     // if the annotationSetConfig becomes empty the default config should 
-                //     // be added and sent.
-                //     if (updatedAnnotationSetConfig.length === 0) {
-                //         updatedAnnotationSetConfig.push({
-                //                 name: "Default",
-                //                 description: "Default annotation set for manual annotation",
-                //                 classConfig: []
-                //         });
-                //     }
-
-                //     let name = "Classification";
-                //     let nameCount = 1;
-                //     // Make sure the new annotation set name does not already exist (previous detection set)
-                //     if (this.annotationSetConfig.some(annotationSet => name === annotationSet.name)) {
-                //         while (this.annotationSetConfig.some(annotationSet => (`${name}-${nameCount}`) === annotationSet.name)) {
-                //             nameCount++;
-                //         }
-                //         name = `${name}-${nameCount}`;
-                //     }
-                //     const description = `Classified nuclei by the ${msg.method} method`;
-                //     updatedAnnotationSetConfig.push({
-                //         name: name,
-                //         description: description,
-                //         classConfig: data.classConfig
-                //     });
-
-                //     // Add new annotations to data
-                //     const newAnnotations = data.annotations;
-                //     newAnnotations.forEach(newAnnotation => {
-                //         newAnnotation.mclass = {[name]: newAnnotation.mclass};
-                //         newAnnotation.author = msg.method;
-                //         newAnnotation.bookmarked = false;
-                //         newAnnotation.prediction = null;
-                //     });
-
-                //     // Send to collaborators
-                //     // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
-                //     // simply to make sure everything is done in the same order as usual?
-                //     this.handleAnnotationSetConfigAction(
-                //         null,
-                //         this.analyzer,
-                //         {
-                //             type: "annotationSetConfigAction",
-                //             actionType: "update",
-                //             annotationSetConfig: updatedAnnotationSetConfig
-                //         }
-                //     );
-                //     this.handleAnnotationAction(
-                //         null, 
-                //         this.analyzer, 
-                //         {
-                //             type: "annotationAction",
-                //             actionType: "add",
-                //             annotation: newAnnotations
-                //         }
-                //     );
-                // }).catch((error) => {
-                //     console.error("Error in nuclei classification:", error.message);
-                // });
                 break;
             default:
                 this.log(`Tried to handle unknown analysis action: ${msg.actionType}`, console.warn);
