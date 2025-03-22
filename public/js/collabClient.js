@@ -930,11 +930,12 @@ const collabClient = (function(){
      * (which clears annotations/adds a new set). 
      * @param {string} method The name of the nuclei detection method to use.
      */
-    function detectNuclei(method) {
+    function detectNuclei(method, newAnnotationSetName) {
         send({
             type: "analysisAction",
             actionType: "detection",
-            method: method
+            method: method,
+            newAnnotationSetName: newAnnotationSetName
         })
     }
     
@@ -943,12 +944,14 @@ const collabClient = (function(){
      * (which updates all annotations/adds a new set). 
      * @param {string} method The name of the nuclei classification method to use.
      */
-    function classifyNuclei(method, source) {
+    function classifyNuclei(method, newAnnotationSetName, srcAnnotationSetName, srcClassName) {
         send({
             type: "analysisAction",
             actionType: "classification",
             method: method,
-            source: source
+            newAnnotationSetName: newAnnotationSetName,
+            srcAnnotationSetName: srcAnnotationSetName,
+            srcClassName: srcClassName
         })
     }
 

@@ -398,24 +398,25 @@ const tmappUI = (function(){
 
     function _initNucleiDetectionButtonEvents() {
         $("#detect_nuclei").click(() => {
-            $("#detect_nuclei_menu [name='method_description']").html(
-                `Method description: &nbsp;&nbsp;${$("#dropdown_detect_nuclei_menu .dropdown-toggle").attr("desc")}`
-            );
+            $("#detect_nuclei_menu [name='new_annotation_set_name']").val("");
+            // Set up method description label dynamics
+            const selectMethodButton = $("#dropdown_detect_nuclei_menu .dropdown-toggle");
+            const methodDescriptionLabel = $("#detect_nuclei_menu [name='method_description']");
+            methodDescriptionLabel.html(selectMethodButton.attr("desc"));
             const observer = new MutationObserver(() => {
-                $("#detect_nuclei_menu [name='method_description']").html(
-                    `Method description: &nbsp;&nbsp;${$("#dropdown_detect_nuclei_menu .dropdown-toggle").attr("desc")}`
-                );
+                methodDescriptionLabel.html(selectMethodButton.attr("desc"));
             });
-            observer.observe($("#dropdown_detect_nuclei_menu .dropdown-toggle")[0], {
+            observer.observe(selectMethodButton[0], {
                 attributes: true, 
                 attributeFilter: ["desc"]
             });
+            // Set up detect nuclei button click
             $("#detect_nuclei_menu_button").off("click").click(function(event) {
-                const annotationSetName = $("#detect_nuclei_menu [name='new_annotation_set_name']").val();
-                const nameErrorMessage = _isValidAnnotationSetName(annotationSetName, "add");
+                const newAnnotationSetName = $("#detect_nuclei_menu [name='new_annotation_set_name']").val();
+                const nameErrorMessage = _isValidAnnotationSetName(newAnnotationSetName, "add");
                 if (!nameErrorMessage) {
-                    const method = $("#dropdown_detect_nuclei_menu .dropdown-toggle").attr("value");
-                    collabClient.detectNuclei(method);
+                    const method = selectMethodButton.attr("value");
+                    collabClient.detectNuclei(method, newAnnotationSetName);
                     $("#detect_nuclei_menu").modal("hide");
                 }
                 else {
@@ -432,25 +433,61 @@ const tmappUI = (function(){
     
     function _initNucleiClassificationButtonEvents() {
         $("#classify_nuclei").click(() => {
-            $("#classify_nuclei_menu [name='method_description']").html(
-                `Method description: &nbsp;&nbsp;${$("#dropdown_classify_nuclei_menu .dropdown-toggle").attr("desc")}`
-            );
+            $("#classify_nuclei_menu [name='new_annotation_set_name']").val("");
+            // Set up method description label dynamics
+            const selectMethodButton = $("#dropdown_classify_nuclei_menu .dropdown-toggle");
+            const methodDescriptionLabel = $("#classify_nuclei_menu [name='method_description']");
+            methodDescriptionLabel.html(selectMethodButton.attr("desc"));
             const observer = new MutationObserver(() => {
-                $("#classify_nuclei_menu [name='method_description']").html(
-                    `Method description: &nbsp;&nbsp;${$("#dropdown_classify_nuclei_menu .dropdown-toggle").attr("desc")}`
-                );
+                methodDescriptionLabel.html(selectMethodButton.attr("desc"));
             });
-            observer.observe($("#dropdown_classify_nuclei_menu .dropdown-toggle")[0], {
+            observer.observe(selectMethodButton[0], {
                 attributes: true, 
                 attributeFilter: ["desc"]
             });
+            // Set up source annotation class button
+            const annotationSetConfig = annotationSetHandler.getAnnotationSetConfig();
+            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+            const selectSrcClassButton = $("#select_source_class_classify_nuclei_menu");
+            function _initSelectSrcClassButton(annotationSet) {
+                selectSrcClassButton.empty();
+                const option = $(`<option ${"selected='selected'"}></option>`);
+                option.attr("value", "All");
+                option.text("All");
+                selectSrcClassButton.append(option);
+                const classConfig = annotationSet.classConfig.length === 0 ? defaultClassConfig : annotationSet.classConfig;
+                classConfig.forEach(mclass => {
+                    const option = $(`<option ${""}></option>`);
+                    option.attr("value", mclass.name);
+                    option.text(mclass.name);
+                    selectSrcClassButton.append(option);
+                })
+            }
+            _initSelectSrcClassButton(activeAnnotationSet);
+            // Set up source annotation set button
+            let selectedAnnotationSet = activeAnnotationSet.name;
+            const selectSrcAnnotationSetButton = $("#select_source_set_classify_nuclei_menu");
+            selectSrcAnnotationSetButton.empty();
+            annotationSetHandler.forEachAnnotationSet(annotationSet => {
+                const selected = selectedAnnotationSet === annotationSet.name;
+                const option = $(`<option ${selected ? "selected='selected'" : ""}></option>`);
+                option.attr("value", annotationSet.name);
+                option.text(annotationSet.name);
+                selectSrcAnnotationSetButton.append(option);
+            });
+            selectSrcAnnotationSetButton.change(() => {
+                selectedAnnotationSet = selectSrcAnnotationSetButton.val();
+                _initSelectSrcClassButton(annotationSetConfig.find(annotationSet => annotationSet.name === selectedAnnotationSet));
+            });
+            // Set up classify nuclei button click
             $("#classify_nuclei_menu_button").off("click").click(function(event) {
-                const annotationSetName = $("#classify_nuclei_menu [name='new_annotation_set_name']").val();
-                const nameErrorMessage = _isValidAnnotationSetName(annotationSetName, "add");
+                const newAnnotationSetName = $("#classify_nuclei_menu [name='new_annotation_set_name']").val();
+                const nameErrorMessage = _isValidAnnotationSetName(newAnnotationSetName, "add");
                 if (!nameErrorMessage) {
-                    const method = $("#dropdown_classify_nuclei_menu .dropdown-toggle").attr("value");
-                    const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet().name;
-                    collabClient.classifyNuclei(method, activeAnnotationSet);
+                    const method = selectMethodButton.attr("value");
+                    const srcAnnotationSetName = selectSrcAnnotationSetButton.val();
+                    const srcClassName = selectSrcClassButton.val();
+                    collabClient.classifyNuclei(method, newAnnotationSetName, srcAnnotationSetName, srcClassName);
                     $("#classify_nuclei_menu").modal("hide");
                 }
                 else {
