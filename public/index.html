@@ -843,7 +843,7 @@
               <div class="form-row pb-4">
                   <label class="col-3 col-form-label">Description</label>
                   <div class="col-9">
-                      <input type="text" name="description" class="form-control" placeholder="Annotation set description">
+                      <textarea name="description" class="form-control" placeholder="Annotation set description" rows="4"></textarea>
                   </div>
               </div>
               <div class="form-row pb-2">
@@ -877,7 +877,7 @@
                       <div id="detect_nuclei_menu_name_error_message" style="color: red; font-size: 14px; display: none;"></div>
                   </div>
               </div>
-              <div class="form-row pb-2">
+              <div class="form-row pb-3">
                   <label class="col-5 col-form-label">Detection method:</label>
                   <div class="col-7 dropdown-custom" id="dropdown_detect_nuclei_menu">
                       <button class="btn btn-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">Detection Method</button>
@@ -885,7 +885,8 @@
                   </div>
               </div>
               <div class="form-row pb-4">
-                  <label class="col-12 col-form-label" name="method_description">Method description:</label>
+                  <label class="col-4 col-form-label">Method description:</label>
+                  <label class="col-8 col-form-label" name="method_description"></label>
               </div>
               <div class="form-row pb-2">
                   <div class="col-12">
@@ -918,7 +919,19 @@
                       <div id="classify_nuclei_menu_name_error_message" style="color: red; font-size: 14px; display: none;"></div>
                   </div>
               </div>
-              <div class="form-row pb-2">
+              <div class="form-row pb-4">
+                  <label class="col-5 col-form-label">Source annotation set:</label>
+                  <div class="col-7">
+                      <select class="form-control" id="select_source_set_classify_nuclei_menu"></select>
+                  </div>
+              </div>
+              <div class="form-row pb-4">
+                  <label class="col-5 col-form-label">Source annotation class:</label>
+                  <div class="col-7">
+                      <select class="form-control" id="select_source_class_classify_nuclei_menu"></select>
+                  </div>
+              </div>
+              <div class="form-row pb-3">
                   <label class="col-5 col-form-label">Classification method:</label>
                   <div class="col-7 dropdown-custom" id="dropdown_classify_nuclei_menu">
                       <button class="btn btn-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">Classification Method</button>
@@ -926,7 +939,8 @@
                   </div>
               </div>
               <div class="form-row pb-4">
-                  <label class="col-12 col-form-label" name="method_description">Method description:</label>
+                  <label class="col-4 col-form-label">Method description:</label>
+                  <label class="col-8 col-form-label" name="method_description"></label>
               </div>
               <div class="form-row pb-2">
                   <div class="col-12">
