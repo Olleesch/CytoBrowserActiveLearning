@@ -1,6 +1,6 @@
 {
     "name": "marco-ResNet50",
-    "description": "ImageNet pre-trained ResNet50 neural network fine-tuned for binary classification of patient diagnosis.",
+    "description": "ImageNet pre-trained ResNet50 neural network fine-tuned on the OC dataset for binary classification of patient diagnosis.",
     "path": "./trained_models/marco_ResNet50_FT.pth",
     "classConfig": [
             {
