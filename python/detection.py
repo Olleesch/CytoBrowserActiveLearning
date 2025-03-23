@@ -8,6 +8,7 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 from FocusEstimate import focus_estimate
 from data_utils import get_z_levels, ZStackSingleInstanceDataset
+from utils import get_free_gpu
 
 from NucleusDetection import predict_img, load_network
 
@@ -35,7 +36,13 @@ def detect_nuclei(image_ID, method):
         try:
             print("Running nucleus detection model inference...")
             data_path = [f"./../data/{image_ID}_z{z}.dzi" for z in [0,-2000,2000]]
-            device = torch.device("cuda:2") # How should the device be set in cytobrowser? 
+            # Select device based on available GPU memory (approx 3x the required memory)
+            min_free_mem = 1500
+            free_gpu = get_free_gpu(min_free_mem)
+            if free_gpu == -1:
+                device = torch.device("cpu")    # No free GPU found
+            else:
+                device = torch.device(f"cuda:{free_gpu}")
             args = argparse.Namespace(
                 input=data_path,
                 level=2,
