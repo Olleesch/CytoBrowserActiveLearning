@@ -1,5 +1,5 @@
 {
     "name": "regression-based-UNet",
-    "description": "Custom regression-based U-Net detection model followed by an optimal focus estimation algorithm.",
+    "description": "Custom regression-based U-Net detection model trained on the OC dataset.",
     "path": "./trained_models/regression_based_UNet.pth"
 }
