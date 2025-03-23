@@ -1453,11 +1453,11 @@ const htmlHelper = (function() {
     }
 
     function buildDetectionMethodSelector(methods) {
-        _setMethodDropdownMenu(methods, "#dropdown_detect_nuclei_menu", "load-csv");
+        _setMethodDropdownMenu(methods, "#dropdown_detect_nuclei_menu", "regression-based-UNet");
     }
 
     function buildClassificationMethodSelector(methods) {
-        _setMethodDropdownMenu(methods, "#dropdown_classify_nuclei_menu", "random");
+        _setMethodDropdownMenu(methods, "#dropdown_classify_nuclei_menu", "marco-ResNet50");
     }
 
     return {
