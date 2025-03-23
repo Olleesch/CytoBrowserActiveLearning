@@ -6,6 +6,7 @@ import json
 from torch.utils.data import DataLoader
 
 from data_utils import SingleInstanceDataset
+from utils import get_free_gpu
 
 
 def classify_nuclei(image_ID, method, nuclei):
@@ -41,7 +42,13 @@ def classify_nuclei(image_ID, method, nuclei):
     else:
         try:
             print("Running nucleus classification model inference...")
-            device = torch.device("cuda:2")
+            # Select device based on available GPU memory (approx 3x the required memory)
+            min_free_mem = 3000
+            free_gpu = get_free_gpu(min_free_mem)
+            if free_gpu == -1:
+                device = torch.device("cpu")    # No free GPU found
+            else:
+                device = torch.device(f"cuda:{free_gpu}")
             model = torch.load(path, map_location=device, weights_only=False)
             model.to(device)
             model.eval()
