@@ -224,7 +224,7 @@ const annotationHandler = (function (){
                 };
             case "viewport":
                 webPoint = coordinateHelper.viewportToWeb(point);
-                imagePoint = coordinateHelper.viewportToImage(point);
+                imagePoint = coordinateHelper.viewportToImage(point, true);
                 return {
                     web: {x: webPoint.x, y: webPoint.y},
                     viewport: {x: point.x, y: point.y},
