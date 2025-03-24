@@ -66,13 +66,16 @@ def classify_nuclei(image_ID, method, nuclei):
                     # This should be single digit output for binary classification
                     if pred.shape[1] == 1:
                         class_idxs = torch.round(pred).squeeze(dim=1).detach().cpu().numpy()
+                        pred_probs = (0.5 + torch.abs(pred - 0.5).squeeze(dim=1)).detach().cpu().numpy()
                     # This should be softmax-style output
                     else:
                         class_idxs = torch.argmax(pred, dim=0).detach().cpu().numpy()
+                        pred_probs = torch.max(pred, dim=1).values.detach().cpu().numpy()
 
-                    for j, class_idx in enumerate(class_idxs):
+                    for j, (class_idx, pred_prob) in enumerate(zip(class_idxs, pred_probs)):
                         idx = i*bs+j
                         nuclei[idx]["mclass"] = class_config[int(class_idx)]["name"]
+                        nuclei[idx]["prediction"] = float(pred_prob)
                         chunk.append(nuclei[idx])
 
                     if len(chunk) == chunk_size*bs or i == len(dataloader) - 1:

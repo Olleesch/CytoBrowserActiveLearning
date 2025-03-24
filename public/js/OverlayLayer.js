@@ -39,14 +39,15 @@ class OverlayLayer {
     }
 
     _getAnnotationColor(d) {
-        return annotationSetHandler.classColor(d.mclass[annotationSetHandler.getActiveAnnotationSet().name]);
+        return annotationSetHandler.classColor(d.assignments[annotationSetHandler.getActiveAnnotationSet().name].mclass);
     }
 
     _getAnnotationText(d) {
-        if (d.prediction == null) { //null or undef
-            return `${d.mclass[annotationSetHandler.getActiveAnnotationSet().name]}`;
+        const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
+        if (d.assignments[activeAnnotationSetName].prediction == null) { //null or undef
+            return `${d.assignments[activeAnnotationSetName].mclass}`;
         }
-        return `${d.prediction.toFixed(4)}: ${d.mclass[annotationSetHandler.getActiveAnnotationSet().name]}`;
+        return `${d.assignments[activeAnnotationSetName].mclass}\n    ${d.assignments[activeAnnotationSetName].prediction.toFixed(4)}`;
     }
 
     /**
