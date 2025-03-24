@@ -34,11 +34,16 @@ const coordinateHelper = (function() {
      * @param {number} point.y The y coordinate of the point.
      * @returns {Object} The same point in image coordinates.
      */
-    function viewportToImage({x, y}){
+    function viewportToImage({x, y}, round=false){
         if (!_activeImage) {
             throw new Error("Can't find coordinates without setting an image first.");
         }
-        return _activeImage.viewportToImageCoordinates(x, y);
+        const image_coord = _activeImage.viewportToImageCoordinates(x, y);
+        if (round) {
+            image_coord.x = Math.round(image_coord.x);
+            image_coord.y = Math.round(image_coord.y);
+        }
+        return image_coord;
     }
 
     /**

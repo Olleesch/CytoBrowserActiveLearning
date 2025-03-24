@@ -71,10 +71,13 @@ const annotationTool = (function() {
 
         function addPoint(position) {
             _clicks++;
-            let coords = coordinateHelper.viewportToImage({
-                x: position.x,
-                y: position.y
-            });
+            let coords = coordinateHelper.viewportToImage(
+                {
+                    x: position.x,
+                    y: position.y
+                },
+                true
+            );
             _zLevel = position.z;
             _mclass = _activeMclass;
             _endPoint = coords;
@@ -118,10 +121,13 @@ const annotationTool = (function() {
             update: function(position) {
                 if (_startPoint) {
                     _mclass = _activeMclass;
-                    _endPoint = coordinateHelper.viewportToImage({
-                        x: position.x,
-                        y: position.y
-                    });
+                    _endPoint = coordinateHelper.viewportToImage(
+                        {
+                            x: position.x,
+                            y: position.y
+                        },
+                        true
+                    );
                     _updatePending();
                 }
             },
@@ -172,10 +178,13 @@ const annotationTool = (function() {
                 recentTap=true;
                 setTimeout(() => recentTap=false, 200); // If two taps within 200ms, don't make 2nd point
             }
-            _nextPoint = coordinateHelper.viewportToImage({
-                x: position.x,
-                y: position.y
-            });
+            _nextPoint = coordinateHelper.viewportToImage(
+                {
+                    x: position.x,
+                    y: position.y
+                },
+                true
+            );
             _zLevel = position.z;
             _mclass = _activeMclass;
             const last = _points.pop();
@@ -207,10 +216,13 @@ const annotationTool = (function() {
             update: function(position) {
                 if (_points.length) {
                     _mclass = _activeMclass;
-                    _nextPoint = coordinateHelper.viewportToImage({
-                        x: position.x,
-                        y: position.y
-                    });
+                    _nextPoint = coordinateHelper.viewportToImage(
+                        {
+                            x: position.x,
+                            y: position.y
+                        },
+                        true
+                    );
                     _updatePending();
                 }
             },
