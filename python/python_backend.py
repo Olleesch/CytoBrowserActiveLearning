@@ -9,6 +9,32 @@ from utils import get_methods
 
 app = Flask(__name__)
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    print("In exception handler")
+    print(e)
+    response = jsonify({
+        "success": False,
+        "error": type(e).__name__,
+        "message": str(e)
+    })
+    response.status_code = 500
+    response.headers["Content-Type"] = "application/json"
+    return response
+
+@app.errorhandler(FileNotFoundError)
+def handle_file_not_found_error(e):
+    print("In exception handler")
+    print(e)
+    response = jsonify({
+        "success": False,
+        "error": "FileNotFoundError",
+        "message": str(e)
+    })
+    response.status_code = 404
+    response.headers["Content-Type"] = "application/json"
+    return response
+
 
 @app.route("/api/analysis/get-nuclei-detection-methods", methods=["GET"])
 def analysis_get_detection_methods():
@@ -16,7 +42,7 @@ def analysis_get_detection_methods():
         res = get_methods(dir="./detection_methods/")
         return jsonify(res)
     except Exception as e:
-        return jsonify({"error": "Internal server error", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/analysis/get-nuclei-classification-methods", methods=["GET"])
@@ -25,7 +51,7 @@ def analysis_get_classification_methods():
         res = get_methods(dir="./classification_methods/")
         return jsonify(res)
     except Exception as e:
-        return jsonify({"error": "Internal server error", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/analysis/detect-nuclei", methods=["POST"])
@@ -39,20 +65,10 @@ def analysis_detect_nuclei():
     if method is None:
         return jsonify({"error": "Missing method parameter"}), 400
 
-    try:
-        return Response(
-            detect_nuclei(image_ID, method),
-            content_type="application/json"
-        )
-    
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    
-    except FileNotFoundError as e:
-        return jsonify({"error": "Data file not found", "details": str(e)}), 404
-    
-    except Exception as e:
-        return jsonify({"error": "Internal Server Error", "details": str(e)}), 500
+    return Response(
+        detect_nuclei(image_ID, method),
+        content_type="application/json"
+    )
 
 
 @app.route("/api/analysis/classify-nuclei", methods=["POST"])
@@ -69,22 +85,10 @@ def analysis_classify_nuclei():
     if nuclei is None:
         return jsonify({"error": "Missing nuclei parameter"}), 400
 
-    try:
-        return Response(
-            classify_nuclei(image_ID, method, nuclei),
-            content_type="application/json"
-        )
-        # res = classify_nuclei(image_ID, method, nuclei)
-        # return jsonify(res)
-    
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    
-    except FileNotFoundError as e:
-        return jsonify({"error": "Data file not found", "details": str(e)}), 404
-    
-    except Exception as e:
-        return jsonify({"error": "Internal Server Error", "details": str(e)}), 500
+    return Response(
+        classify_nuclei(image_ID, method, nuclei),
+        content_type="application/json"
+    )
 
 
 if __name__=="__main__":

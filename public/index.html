@@ -57,6 +57,7 @@
     <main id="main_content" style="min-height:30vh; height:100%; position: relative;" tabindex="-1">
         <div id="ISS_viewer" class="ISS_viewer blurrable h-100 w-100 flex-grow-1"></div>
         <div id="alert_wrapper" style="height: 100%; width: 100%; display: flex; justify-content: center; align-items: center; position: absolute; top: 0; padding: 5%; pointer-events: none"></div>
+        <div id="error_wrapper" style="top: 5%; left: 50%; display: flex; justify-content: center; align-items: center; position: absolute; padding: 0; pointer-events: none; transform: translateX(-50%);"></div>
         <span id="qr-code" style="transition: width 0.2s; border-radius: 0 0 0 5px; position: absolute; top: 0; right: 0; overflow:hidden; width:0; height:fit-content; background-color: white;"></span>
     </main> <!-- End of main_content -->
 
@@ -129,206 +130,206 @@
                         </div>
                     </div>
 
-                        <!-- Collapse for metadata and global comments and metadata -->
-                        <button type="button" class="btn btn-block btn-primary collapsed" data-toggle="collapse" data-target="#comments_collapse">
-                            <div class="d-flex flex-row w-100">
-                                <div class="w-100 position-relative">
-                                    <div class="position-absolute">
-                                        <span class="badge bg-dark hide" id="unseen_comments" style="display: none;">0</span>
-                                    </div>
-                                    Global Data
+                    <!-- Collapse for metadata and global comments and metadata -->
+                    <button type="button" class="btn btn-block btn-primary collapsed" data-toggle="collapse" data-target="#comments_collapse">
+                        <div class="d-flex flex-row w-100">
+                            <div class="w-100 position-relative">
+                                <div class="position-absolute">
+                                    <span class="badge bg-dark hide" id="unseen_comments" style="display: none;">0</span>
                                 </div>
-                                <i class="collapse_rotate_90 fa fa-chevron-down pull-right pt-1"></i>
+                                Global Data
                             </div>
-                        </button>
-                        <div class="m-0 my-1 my-lg-2">
-                            <div class="collapse card" id="comments_collapse">
-                                <table class="table table-striped table-borderless">
-                                    <tbody>
-                                        <tr><td class="py-1">
-                                            <div class="d-flex justify-content-between">
-                                                <span>Data size:</span>
-                                                <span id="metadata_resolution">-</span>
-                                            </div>
-                                        </td></tr>
-                                        <tr><td class="py-1">
-                                            <div class="d-flex justify-content-between">
-                                                <span>Physical size:</span>
-                                                <span id="metadata_size">-</span>
-                                            </div>
-                                        </td></tr>
-                                        <tr><td class="py-1">
-                                            <div class="d-flex justify-content-between">
-                                                <span>Acquisition date:</span>
-                                                <span id="metadata_date">-</span>
-                                            </div>
-                                        </td></tr>
-                                        <tr><td class="py-1">
-                                            <div class="d-flex justify-content-between">
-                                                <span>Microscope model:</span>
-                                                <span id="metadata_microscope">-</span>
-                                            </div>
-                                        </td></tr>
-                                        <tr><td class="py-1">
-                                            <div class="d-flex justify-content-between">
-                                                <span>Nominal magnification:</span>
-                                                <span id="metadata_magnification">-</span>
-                                            </div>
-                                        </td></tr>
-                                        <tr><td class="py-1">
-                                            <div class="d-flex justify-content-between">
-                                                <span>Color depth:</span>
-                                                <span id="metadata_sigbits">-</span>
-                                            </div>
-                                        </td></tr>
-                                        <tr><td class="py-1">
-                                            <div class="d-flex justify-content-between">
-                                                <span>Number of channels:</span>
-                                                <span id="metadata_nchannels">-</span>
-                                            </div>
-                                        </td></tr>
-                                        <tr><td class="py-1">
-                                            <div class="d-flex justify-content-between">
-                                                <span>Number of markers:</span>
-                                                <span id="global_data_nmarkers">-</span>
-                                            </div>
-                                        </td></tr>
-                                        <tr><td class="py-1">
-                                            <div class="d-flex justify-content-between">
-                                                <span>Number of regions:</span>
-                                                <span id="global_data_nregions">-</span>
-                                            </div>
-                                        </td></tr>
-                                    </tbody>
-                                </table>
-                                <div class="card-body p-2" id="global_comments">
-                                    <!-- Comments -->
-                                </div>
-                            </div>
+                            <i class="collapse_rotate_90 fa fa-chevron-down pull-right pt-1"></i>
                         </div>
-                    </div>
-                    <hr class="py-0 my-0" />
-                    <!-- Functionality buttons -->
-                    <div class="card-body pb-0 pt-1 pt-lg-2 px-1 px-md-2">
-                        <div class="card-block pb-4">
-                            <div class="row mb-2" style="margin-top:-5px;">
-                                <div class="col-6">
-                                    <div class="custom-control custom-switch">
-                                        <input type="checkbox" class="custom-control-input" id="attention_track_switch">
-                                        <label class="custom-control-label px-1" for="attention_track_switch">Track attention</label>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="custom-control custom-switch">
-                                        <input type="checkbox" class="custom-control-input" id="attention_view_switch">
-                                        <label class="custom-control-label px-1" for="attention_view_switch">Overlay attention map</label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <!-- Annotation tools -->
-                                <div class="col-8">
-                                    <h6 class="card-subtitle mb-1 text-muted">Annotation tool</h6>
-                                    <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with annotation button groups">
-                                        <div class="btn-group btn-group-toggle d-flex" data-toggle="buttons" role="group" onkeydown="noArrows()">
-                                            <label id="tool_marker" type="button" class="btn btn-primary">
-                                                <input name="tool_selection" type="radio" autocomplete="off">
-                                                Marker
-                                            </label>
-                                            <label id="tool_rect" type="button" class="btn btn-primary">
-                                                <input name="tool_selection" type="radio" autocomplete="off">
-                                                Rectangle
-                                            </label>
-                                            <label id="tool_poly" type="button" class="btn btn-primary">
-                                                <input name="tool_selection" type="radio" autocomplete="off">
-                                                Polygon
-                                            </label>
+                    </button>
+                    <div class="m-0 my-1 my-lg-2">
+                        <div class="collapse card" id="comments_collapse">
+                            <table class="table table-striped table-borderless">
+                                <tbody>
+                                    <tr><td class="py-1">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Data size:</span>
+                                            <span id="metadata_resolution">-</span>
                                         </div>
-                                    </div>
-                                </div>
-                                <!-- Focus up/down --> <!-- TODO, move elsewhere -->
-                                <div class="col-4 ml-auto">
-                                    <h6 class="card-subtitle mb-1 text-muted">Change focus</h6>
-                                    <div class="btn-group d-flex" role="group" onkeydown="noArrows()">
-                                        <button id="focus_next" type="button" class="btn btn-primary">Up</button>
-                                        <button id="focus_prev" type="button" class="btn btn-primary">Down</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-block pb-4">
-                            <div class="row">
-                                <!-- Annotation class buttons -->
-                                <div class="col">
-                                    <h6 class="card-subtitle mb-1 text-muted">Annotation class</h6>
-                                    <div id="class_buttons" class="btn-group btn-group-toggle d-flex" data-toggle="buttons" role="group" onkeydown="noArrows()">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Annotation set buttons -->
-                        <div class="card-block">
-                            <div class="row pb-2">
-                                <div class="col">
-                                    <h6 class="card-subtitle mb-1 text-muted">Annotation sets</h6>
-                                    <div id="annotation_set_buttons" class="btn-group btn-group-toggle d-flex" data-toggle="buttons" role="group" onkeydown="noArrows()">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-3">
-                                    <button id="add_annotation_set" type="button" class="btn btn-block btn-primary" data-toggle="modal" data-target="#annotation_set_menu">
-                                        Add set
-                                    </button>
-                                </div>
-                                <div class="col-3">
-                                    <button id="load_annotation_set" class="btn btn-primary btn-block" type="button">Load set</button>
-                                </div>
-                                <div class="col-3">
-                                    <button id="rename_annotation_set" type="button" class="btn btn-block btn-primary" data-toggle="modal" data-target="#annotation_set_menu">
-                                        Rename set
-                                    </button>
-                                </div>
-                                <div class="col-3">
-                                    <button id="remove_annotation_set" class="btn btn-primary btn-block" type="button">Remove set</button>
-                                </div>
+                                    </td></tr>
+                                    <tr><td class="py-1">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Physical size:</span>
+                                            <span id="metadata_size">-</span>
+                                        </div>
+                                    </td></tr>
+                                    <tr><td class="py-1">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Acquisition date:</span>
+                                            <span id="metadata_date">-</span>
+                                        </div>
+                                    </td></tr>
+                                    <tr><td class="py-1">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Microscope model:</span>
+                                            <span id="metadata_microscope">-</span>
+                                        </div>
+                                    </td></tr>
+                                    <tr><td class="py-1">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Nominal magnification:</span>
+                                            <span id="metadata_magnification">-</span>
+                                        </div>
+                                    </td></tr>
+                                    <tr><td class="py-1">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Color depth:</span>
+                                            <span id="metadata_sigbits">-</span>
+                                        </div>
+                                    </td></tr>
+                                    <tr><td class="py-1">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Number of channels:</span>
+                                            <span id="metadata_nchannels">-</span>
+                                        </div>
+                                    </td></tr>
+                                    <tr><td class="py-1">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Number of markers:</span>
+                                            <span id="global_data_nmarkers">-</span>
+                                        </div>
+                                    </td></tr>
+                                    <tr><td class="py-1">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Number of regions:</span>
+                                            <span id="global_data_nregions">-</span>
+                                        </div>
+                                    </td></tr>
+                                </tbody>
+                            </table>
+                            <div class="card-body p-2" id="global_comments">
+                                <!-- Comments -->
                             </div>
                         </div>
                     </div>
-
-                    <!-- Import/Export -->
-                    <div class="card-body pb-0 px-1 px-md-2">
-                        <div class="row pb-1 pt-2">
-                            <div class="col-12">
-                                <h6 class="card-subtitle mb-1 text-muted">Manage annotations</h6>
-                            </div>
-                            <div class="col-3">
-                                <input class="d-none" type="file" id="data_files_import" onclick="this.value=null;" name="files[]" accept=".json">
-                                <button id="json_to_data" class="btn btn-primary btn-block" type="button"> Import </button>
-                            </div>
-                            <div class="col-3">
-                                <button id="points_to_json" class="btn btn-primary btn-block" type="button"> Export </button>
+                </div>
+                <hr class="py-0 my-0" />
+                <!-- Functionality buttons -->
+                <div class="card-body pb-0 pt-1 pt-lg-2 px-1 px-md-2">
+                    <div class="card-block pb-4">
+                        <div class="row mb-2" style="margin-top:-5px;">
+                            <div class="col-6">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="attention_track_switch">
+                                    <label class="custom-control-label px-1" for="attention_track_switch">Track attention</label>
+                                </div>
                             </div>
                             <div class="col-6">
-                                <button type="button" class="btn btn-dark btn-block" data-toggle="modal" data-target="#version-picker">Revert changes</btton>
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="attention_view_switch">
+                                    <label class="custom-control-label px-1" for="attention_view_switch">Overlay attention map</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <!-- Annotation tools -->
+                            <div class="col-8">
+                                <h6 class="card-subtitle mb-1 text-muted">Annotation tool</h6>
+                                <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with annotation button groups">
+                                    <div class="btn-group btn-group-toggle d-flex" data-toggle="buttons" role="group" onkeydown="noArrows()">
+                                        <label id="tool_marker" type="button" class="btn btn-primary">
+                                            <input name="tool_selection" type="radio" autocomplete="off">
+                                            Marker
+                                        </label>
+                                        <label id="tool_rect" type="button" class="btn btn-primary">
+                                            <input name="tool_selection" type="radio" autocomplete="off">
+                                            Rectangle
+                                        </label>
+                                        <label id="tool_poly" type="button" class="btn btn-primary">
+                                            <input name="tool_selection" type="radio" autocomplete="off">
+                                            Polygon
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Focus up/down --> <!-- TODO, move elsewhere -->
+                            <div class="col-4 ml-auto">
+                                <h6 class="card-subtitle mb-1 text-muted">Change focus</h6>
+                                <div class="btn-group d-flex" role="group" onkeydown="noArrows()">
+                                    <button id="focus_next" type="button" class="btn btn-primary">Up</button>
+                                    <button id="focus_prev" type="button" class="btn btn-primary">Down</button>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <div class="card-block pb-4">
+                        <div class="row">
+                            <!-- Annotation class buttons -->
+                            <div class="col">
+                                <h6 class="card-subtitle mb-1 text-muted">Annotation class</h6>
+                                <div id="class_buttons" class="btn-group btn-group-toggle d-flex" data-toggle="buttons" role="group" onkeydown="noArrows()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Annotation set buttons -->
+                    <div class="card-block">
+                        <div class="row pb-2">
+                            <div class="col">
+                                <h6 class="card-subtitle mb-1 text-muted">Annotation sets</h6>
+                                <div id="annotation_set_buttons" class="btn-group btn-group-toggle d-flex" data-toggle="buttons" role="group" onkeydown="noArrows()">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-3">
+                                <button id="add_annotation_set" type="button" class="btn btn-block btn-primary" data-toggle="modal" data-target="#annotation_set_menu">
+                                    Add set
+                                </button>
+                            </div>
+                            <div class="col-3">
+                                <button id="load_annotation_set" class="btn btn-primary btn-block" type="button">Load set</button>
+                            </div>
+                            <div class="col-3">
+                                <button id="rename_annotation_set" type="button" class="btn btn-block btn-primary" data-toggle="modal" data-target="#annotation_set_menu">
+                                    Rename set
+                                </button>
+                            </div>
+                            <div class="col-3">
+                                <button id="remove_annotation_set" class="btn btn-primary btn-block" type="button">Remove set</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                    <!-- Detect/Classify Nuclei -->
-                    <div class="card-body pb-0 px-1 px-md-2">
-                        <div class="row pb-1 pt-2">
-                            <div class="col-6 d-flex flex-column align-items-stretch">
-                                <h6 class="card-subtitle mb-1 text-muted">Analysis tools</h6>
-                                <button id="detect_nuclei" class="btn btn-primary btn-block mt-auto" type="button" data-toggle="modal" data-target="#detect_nuclei_menu">Detect nuclei</button>
-                            </div>
-                  
-                            <!-- Right Column -->
-                            <div class="col-6 d-flex flex-column align-items-stretch">
-                                <button id="classify_nuclei" class="btn btn-primary btn-block mt-auto" type="button" data-toggle="modal" data-target="#classify_nuclei_menu">Classify nuclei</button>
-                            </div>
+                <!-- Import/Export -->
+                <div class="card-body pb-0 px-1 px-md-2">
+                    <div class="row pb-1 pt-2">
+                        <div class="col-12">
+                            <h6 class="card-subtitle mb-1 text-muted">Manage annotations</h6>
+                        </div>
+                        <div class="col-3">
+                            <input class="d-none" type="file" id="data_files_import" onclick="this.value=null;" name="files[]" accept=".json">
+                            <button id="json_to_data" class="btn btn-primary btn-block" type="button"> Import </button>
+                        </div>
+                        <div class="col-3">
+                            <button id="points_to_json" class="btn btn-primary btn-block" type="button"> Export </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-dark btn-block" data-toggle="modal" data-target="#version-picker">Revert changes</btton>
                         </div>
                     </div>
+                </div>
+
+                <!-- Detect/Classify Nuclei -->
+                <div class="card-body pb-0 px-1 px-md-2">
+                    <div class="row pb-1 pt-2">
+                        <div class="col-6 d-flex flex-column align-items-stretch">
+                            <h6 class="card-subtitle mb-1 text-muted">Analysis tools</h6>
+                            <button id="detect_nuclei" class="btn btn-primary btn-block mt-auto" type="button" data-toggle="modal" data-target="#detect_nuclei_menu">Detect nuclei</button>
+                        </div>
+              
+                        <!-- Right Column -->
+                        <div class="col-6 d-flex flex-column align-items-stretch">
+                            <button id="classify_nuclei" class="btn btn-primary btn-block mt-auto" type="button" data-toggle="modal" data-target="#classify_nuclei_menu">Classify nuclei</button>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Annotation filter -->
                 <div class="card-body px-1 px-md-2">

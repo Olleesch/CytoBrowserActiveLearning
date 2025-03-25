@@ -1,5 +1,4 @@
 import random
-import numpy as np
 import torch
 import tqdm
 import json
@@ -19,7 +18,9 @@ def classify_nuclei(image_ID, method, nuclei):
             imagenet_normalize = method_dict["imagenetNormalize"]
             bs = method_dict["bs"]
     except Exception as e:
-        print(f"Error occurred in nucleus classification: {str(e)}. Check that method {method} is valid.")
+        error_message = f"Config file of the selected method ({method}) could not be found ({e})"
+        yield json.dumps({"error": error_message}) + "\n"
+        return
     
     # First return the class config of the model
     yield json.dumps({"classConfig": class_config}) + "\n"
@@ -38,6 +39,9 @@ def classify_nuclei(image_ID, method, nuclei):
                     chunk = []
         except Exception as e:
             print(f"Error occurred in nucleus classification: {str(e)}")
+            error_message = f"Error during random classification ({e})"
+            yield json.dumps({"error": error_message}) + "\n"
+            return
     
     else:
         try:
@@ -83,4 +87,6 @@ def classify_nuclei(image_ID, method, nuclei):
                         chunk = []
 
         except Exception as e:
-            print(f"Error occurred in nucleus classification: {str(e)}")
+            error_message = f"Error in nucleus classification pipeline ({e})"
+            yield json.dumps({"error": error_message}) + "\n"
+            return
