@@ -482,7 +482,7 @@ class Collaboration {
                 }).then(response => {
                     return response.json().then(responseJSON => {
                         if (!response.ok) {
-                            throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+                            throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"}`);
                         }
                         return responseJSON;
                     });
@@ -496,7 +496,11 @@ class Collaboration {
                         [sender]
                     );
                 }).catch((error) => {
-                    console.error("Error getting nuclei detection methods:", error);
+                    sender.send(JSON.stringify({
+                        type: "errorMessage",
+                        error: "analysiserror"
+                    }));
+                    this.log(`Error getting nuclei detection methods: ${error}`, console.error);
                 });
                 break;
             case "getClassificationMethods":
@@ -505,7 +509,7 @@ class Collaboration {
                 }).then(response => {
                     return response.json().then(responseJSON => {
                         if (!response.ok) {
-                            throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+                            throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"}`);
                         }
                         return responseJSON;
                     });
@@ -519,7 +523,11 @@ class Collaboration {
                         [sender]
                     );
                 }).catch((error) => {
-                    console.error("Error getting nuclei classification methods:", error);
+                    sender.send(JSON.stringify({
+                        type: "errorMessage",
+                        error: "analysiserror"
+                    }));
+                    this.log(`Error getting nuclei classification methods: ${error}`, console.error);
                 });
                 break;
             case "detection":
@@ -588,8 +596,10 @@ class Collaboration {
                 }).then(response => {
                     // Handle HTTP errors
                     if (!response.ok) {
-                        const responseJSON = response.json()
-                        throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+                        return response.json().then(data => {
+                            const errorMessage = data.error;
+                            throw new Error(`Error in nuclei detection python backend: ${errorMessage}`);
+                        });
                     }
                     // Function to process each chunk as it arrives
                     const reader = response.body.getReader();
@@ -597,57 +607,73 @@ class Collaboration {
                     const readStream = () => {
                         reader.read().then(({ done, value }) => {
                             if (done) {
-                                console.log("Nuclei detection stream complete.");
+                                this.log("Nuclei detection stream complete.");
                                 return;
                             }
-                
                             const chunk = decoder.decode(value, { stream: true });
                             try {
                                 const data = JSON.parse(chunk);
-                                // Add new annotations (and generate new unique ids)
-                                const newAnnotations = [];
-                                data.forEach(newAnnotation => {
-                                    newAnnotations.push({
-                                        "points": [{
-                                            "x": newAnnotation[0],
-                                            "y": newAnnotation[1]
-                                        }],
-                                        "id": this.generateAnnotationId(newAnnotations),
-                                        "originalAuthor": msg.method,
-                                        "assignments": {
-                                            [name]: {
-                                                "z": newAnnotation[2],
-                                                "mclass": classConfig[0].name,
-                                                "author": msg.method,
-                                                "bookmarked": false,
-                                                "prediction": null
+                                if (data.error) {
+                                    // Handle errors from python
+                                    throw new Error(`${data.error}`);
+                                }
+                                else if (data.annotations) {
+                                    // Add new annotations (and generate new unique ids)
+                                    const newAnnotations = [];
+                                    data.annotations.forEach(newAnnotation => {
+                                        newAnnotations.push({
+                                            "points": [{
+                                                "x": newAnnotation[0],
+                                                "y": newAnnotation[1]
+                                            }],
+                                            "id": this.generateAnnotationId(newAnnotations),
+                                            "originalAuthor": msg.method,
+                                            "assignments": {
+                                                [name]: {
+                                                    "z": newAnnotation[2],
+                                                    "mclass": classConfig[0].name,
+                                                    "author": msg.method,
+                                                    "bookmarked": false,
+                                                    "prediction": null
+                                                }
                                             }
-                                        }
+                                        });
                                     });
-                                });
-                                // Send the annotations to collaborators
-                                this.handleAnnotationAction(
-                                    null,
-                                    this.analyzer,
-                                    {
-                                        type: "annotationAction",
-                                        actionType: "add",
-                                        annotation: newAnnotations
-                                    }
-                                );
-                            } catch (error) {
-                                console.error("Error parsing streamed nuclei detection data:", error.message);
+                                    // Send the annotations to collaborators
+                                    this.handleAnnotationAction(
+                                        null,
+                                        this.analyzer,
+                                        {
+                                            type: "annotationAction",
+                                            actionType: "add",
+                                            annotation: newAnnotations
+                                        }
+                                    );
+                                }
+                                else {
+                                    throw new Error("Error parsing streamed nuclei detection data: unknown response");
+                                }
+                            } catch (err) {
+                                throw new Error(`Error parsing streamed nuclei detection data: ${err.message}`);
                             }
                             // Continue reading the next chunk
                             readStream();
-                        }).catch(error => {
-                            console.error("Error reading nuclei detection stream:", error.message);
+                        }).catch(err => {
+                            sender.send(JSON.stringify({
+                                type: "errorMessage",
+                                error: "analysiserror"
+                            }));
+                            this.log(`Error reading nuclei detection stream: ${err.message}`, console.error);
                         });
                     }
                     // Start reading stream
                     readStream();
-                }).catch((error) => {
-                    console.error("Error in nuclei detection:", error.message);
+                }).catch((err) => {
+                    sender.send(JSON.stringify({
+                        type: "errorMessage",
+                        error: "analysiserror"
+                    }));
+                    this.log(`Error in nuclei detection: ${err.message}`, console.error);
                 });
                 break;
             case "classification":
@@ -673,8 +699,10 @@ class Collaboration {
                 }).then(response => {
                     // Handle HTTP errors
                     if (!response.ok) {
-                        const responseJSON = response.json()
-                        throw new Error(`Error from Python backend: ${response.statusText}, ${responseJSON.error || "Unknown error"} ${responseJSON.details || ""}`);
+                        return response.json().then(data => {
+                            const errorMessage = data.error;
+                            throw new Error(`Error in nuclei classification python backend: ${errorMessage}`);
+                        });
                     }
                     // Make sure the new annotation set name does not already exist, add counter if it does
                     let name = msg.newAnnotationSetName;
@@ -691,7 +719,11 @@ class Collaboration {
                     const decoder = new TextDecoder();
                     const processData = (chunk) => {
                         const data = JSON.parse(chunk);
-                        if (data.classConfig) {
+                        if (data.error) {
+                            // Handle errors from python
+                            throw new Error(`${data.error}`);
+                        }
+                        else if (data.classConfig) {
                             // Add a new "classification" annotation set to config
                             const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
                             // Temporary fix to make sure default set is included if we add a set from server
@@ -753,14 +785,14 @@ class Collaboration {
                             );
                         }
                         else {
-                            console.error("Error parsing streamed nuclei detection data: unknown response");
+                            throw new Error("Error parsing streamed nuclei detection data: unknown response");
                         }
                     }
                     let buffer = "";
                     const readStream = () => {
                         reader.read().then(({ done, value }) => {
                             if (done) {
-                                console.log("Nuclei classification stream complete.");
+                                this.log("Nuclei classification stream complete.");
                                 return;
                             }
                             // Process stream (chunks of results may have been merged or split, but we
@@ -772,19 +804,27 @@ class Collaboration {
                                 chunks.forEach(chunk => {
                                     processData(chunk);
                                 });
-                            } catch (error) {
-                                console.error("Error parsing streamed nuclei detection data:", error.message);
+                            } catch (err) {
+                                this.log(`Error parsing streamed nuclei detection data: ${err.message}`, console.error);
                             }
                             // Continue reading the next chunk
                             readStream();
-                        }).catch(error => {
-                            console.error("Error reading nuclei detection stream:", error.message);
+                        }).catch(err => {
+                            sender.send(JSON.stringify({
+                                type: "errorMessage",
+                                error: "analysiserror"
+                            }));
+                            this.log(`Error reading nuclei detection stream: ${err.message}`, console.error);
                         });
                     }
                     // Start reading stream
                     readStream();
-                }).catch((error) => {
-                    console.error("Error in nuclei classification:", error.message);
+                }).catch((err) => {
+                    sender.send(JSON.stringify({
+                        type: "errorMessage",
+                        error: "analysiserror"
+                    }));
+                    this.log(`Error in nuclei classification: ${err.message}`, console.error);
                 });
                 break;
             default:

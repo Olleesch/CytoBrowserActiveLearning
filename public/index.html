@@ -72,6 +72,7 @@
     <main id="main_content" style="min-height:30vh; height:100%; position: relative;" tabindex="-1">
         <div id="ISS_viewer" class="ISS_viewer blurrable h-100 w-100"></div>
         <div id="alert_wrapper" style="height: 100%; width: 100%; display: flex; justify-content: center; align-items: center; position: absolute; top: 0; padding: 5%; pointer-events: none"></div>
+        <div id="error_wrapper" style="top: 5%; left: 50%; display: flex; justify-content: center; align-items: center; position: absolute; padding: 0; pointer-events: none; transform: translateX(-50%);"></div>
         <span id="qr-code" style="transition: width 0.2s; border-radius: 0 0 0 5px; position: absolute; top: 0; right: 0; overflow:hidden; width:0; height:fit-content; background-color: white;"></span>
     </main> <!-- End of main_content -->
 
@@ -369,20 +370,20 @@
                     </div>
                 </div>
 
-                    <!-- Detect/Classify Nuclei -->
-                    <div class="card-body pb-0 px-1 px-md-2">
-                        <div class="row pb-1 pt-2">
-                            <div class="col-6 d-flex flex-column align-items-stretch">
-                                <h6 class="card-subtitle mb-1 text-muted">Analysis tools</h6>
-                                <button id="detect_nuclei" class="btn btn-primary btn-block mt-auto" type="button" data-toggle="modal" data-target="#detect_nuclei_menu">Detect nuclei</button>
-                            </div>
-                  
-                            <!-- Right Column -->
-                            <div class="col-6 d-flex flex-column align-items-stretch">
-                                <button id="classify_nuclei" class="btn btn-primary btn-block mt-auto" type="button" data-toggle="modal" data-target="#classify_nuclei_menu">Classify nuclei</button>
-                            </div>
+                <!-- Detect/Classify Nuclei -->
+                <div class="card-body pb-0 px-1 px-md-2">
+                    <div class="row pb-1 pt-2">
+                        <div class="col-6 d-flex flex-column align-items-stretch">
+                            <h6 class="card-subtitle mb-1 text-muted">Analysis tools</h6>
+                            <button id="detect_nuclei" class="btn btn-primary btn-block mt-auto" type="button" data-toggle="modal" data-target="#detect_nuclei_menu">Detect nuclei</button>
+                        </div>
+              
+                        <!-- Right Column -->
+                        <div class="col-6 d-flex flex-column align-items-stretch">
+                            <button id="classify_nuclei" class="btn btn-primary btn-block mt-auto" type="button" data-toggle="modal" data-target="#classify_nuclei_menu">Classify nuclei</button>
                         </div>
                     </div>
+                </div>
 
                 <!-- Annotation filter -->
                 <div class="card-body py-1 px-1 px-md-2">
