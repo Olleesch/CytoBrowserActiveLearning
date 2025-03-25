@@ -447,6 +447,12 @@ class Collaboration {
             // Members who aren't ready shouldn't do anything with annotations
             return;
         }
+        // Error message to communicate the event of an error with collaborator who requested the analysis action
+        const analysisErrorMsg = {
+            message: "Something went wrong on the server running the analysis. " + 
+            "Try again or contact an administrator. Click to close this message.",
+            type: "alert-danger"
+        }
         switch (msg.actionType) {
             case "getDetectionMethods":
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/get-nuclei-detection-methods`, {
@@ -469,8 +475,13 @@ class Collaboration {
                     );
                 }).catch((error) => {
                     sender.send(JSON.stringify({
-                        type: "errorMessage",
-                        error: "analysiserror"
+                        type: "analysisMessage",
+                        message: {
+                            message: "Error getting nuclei detection methods from server. " + 
+                            "Try to refresh the page or contact an administrator. Click to " + 
+                            "close this message.",
+                            type: "alert-danger"
+                        }
                     }));
                     this.log(`Error getting nuclei detection methods: ${error}`, console.error);
                 });
@@ -496,8 +507,13 @@ class Collaboration {
                     );
                 }).catch((error) => {
                     sender.send(JSON.stringify({
-                        type: "errorMessage",
-                        error: "analysiserror"
+                        type: "analysisMessage",
+                        message: {
+                            message: "Error getting nuclei classification methods from server. " + 
+                            "Try to refresh the page or contact an administrator. Click to " + 
+                            "close this message.",
+                            type: "alert-danger"
+                        }
                     }));
                     this.log(`Error getting nuclei classification methods: ${error}`, console.error);
                 });
@@ -556,7 +572,15 @@ class Collaboration {
                         annotationSetConfig: updatedAnnotationSetConfig
                     }
                 );
-
+                this.broadcastMessage({
+                    type: "analysisMessage",
+                    message: {
+                        message: `${member.name} started running an analysis task in annotation set "${name}". ` + 
+                        `Please do not modify annotation set "${name}" until the analysis is complete. ` + 
+                        `This process may take several minutes. Click to close this message.`,
+                        type: "alert-info"
+                    }
+                });
                 // Add annotations from detection pipeline (calls python backend)
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/detect-nuclei`, {
                     method: "POST",
@@ -632,8 +656,8 @@ class Collaboration {
                             readStream();
                         }).catch(err => {
                             sender.send(JSON.stringify({
-                                type: "errorMessage",
-                                error: "analysiserror"
+                                type: "analysisMessage",
+                                message: analysisErrorMsg
                             }));
                             this.log(`Error reading nuclei detection stream: ${err.message}`, console.error);
                         });
@@ -642,8 +666,8 @@ class Collaboration {
                     readStream();
                 }).catch((err) => {
                     sender.send(JSON.stringify({
-                        type: "errorMessage",
-                        error: "analysiserror"
+                        type: "analysisMessage",
+                        message: analysisErrorMsg
                     }));
                     this.log(`Error in nuclei detection: ${err.message}`, console.error);
                 });
@@ -727,6 +751,15 @@ class Collaboration {
                                     annotationSetConfig: updatedAnnotationSetConfig
                                 }
                             );
+                            this.broadcastMessage({
+                                type: "analysisMessage",
+                                message: {
+                                    message: `${member.name} started running an analysis task in annotation set "${name}". ` + 
+                                    `Please do not modify annotation set "${name}" until the analysis is complete. ` + 
+                                    `This process may take several minutes. Click to close this message.`,
+                                    type: "alert-info"
+                                }
+                            });
                         } 
                         else if (data.annotations) {
                             // Add new annotations to data
@@ -783,8 +816,8 @@ class Collaboration {
                             readStream();
                         }).catch(err => {
                             sender.send(JSON.stringify({
-                                type: "errorMessage",
-                                error: "analysiserror"
+                                type: "analysisMessage",
+                                message: analysisErrorMsg
                             }));
                             this.log(`Error reading nuclei detection stream: ${err.message}`, console.error);
                         });
@@ -793,8 +826,8 @@ class Collaboration {
                     readStream();
                 }).catch((err) => {
                     sender.send(JSON.stringify({
-                        type: "errorMessage",
-                        error: "analysiserror"
+                        type: "analysisMessage",
+                        message: analysisErrorMsg
                     }));
                     this.log(`Error in nuclei classification: ${err.message}`, console.error);
                 });
