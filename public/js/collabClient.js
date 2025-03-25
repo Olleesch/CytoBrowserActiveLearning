@@ -63,8 +63,8 @@ const collabClient = (function(){
             case "analysisAction":
                 _handleAnalysisAction(msg);
                 break;
-            case "errorMessage":
-                tmappUI.displayErrorMessage(msg.error);
+            case "analysisMessage":
+                tmappUI.displayAnalysisMessage(msg.message);
                 break;
             default:
                 console.warn(`Unknown message type received in collab: ${msg.type}`);

@@ -39,11 +39,6 @@ const tmappUI = (function(){
             "contact an administrator.",
             type: "alert-warning"
         },
-        analysiserror: {
-            message: "Something went wrong on the server running the analysis. " + 
-            "Try again or contact an administrator.",
-            type: "alert-danger"
-        },
         unexpected: {
             message: "An unexpected error was encountered when retrieving " +
             "the image list.",
@@ -951,30 +946,23 @@ const tmappUI = (function(){
         htmlHelper.buildImageBrowser(container, images);
     }
 
-    function displayErrorMessage(error, duration) {
-        const errorInfo = _errors[error] || {message: error, type: "alert-info"};
-        console.warn(errorInfo.message);
+    function displayAnalysisMessage(message) {
+        console.warn(message.message);
         // Add alert to the UI
         const alert = $("<div></div>");
-        alert.addClass(`alert ${errorInfo.type}`);
-        alert.text(errorInfo.message);
-        window.clearTimeout(_errorDisplayTimeout);
+        alert.addClass(`alert ${message.type}`);
+        alert.text(message.message);
         $("#error_wrapper").removeClass("fade out");
         $("#error_wrapper").css("pointer-events", "auto");
         $("#error_wrapper").html(alert);
 
         // Close on click
         $("#error_wrapper").on("click", function() {
-            clearErrorMessage();
+            clearAnalysisMessage();
         });
-
-        // Fade out the alert after the duration has passed
-        if (duration) {
-            _errorDisplayTimeout = window.setTimeout(clearErrorMessage, duration);
-        }
     }
 
-    function clearErrorMessage() {
+    function clearAnalysisMessage() {
         $("#error_wrapper").css("pointer-events", "none");
         $("#error_wrapper").addClass("fade out");
     }
@@ -1257,7 +1245,7 @@ const tmappUI = (function(){
         clearImageError,
 
         updateImageBrowser,
-        displayErrorMessage,
+        displayAnalysisMessage,
 
         setUserName,
         setCollabName,
