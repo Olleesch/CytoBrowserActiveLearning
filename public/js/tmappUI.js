@@ -40,6 +40,11 @@ const tmappUI = (function(){
             "contact an administrator.",
             type: "alert-warning"
         },
+        analysiserror: {
+            message: "Something went wrong on the server running the analysis. " + 
+            "Try again or contact an administrator.",
+            type: "alert-danger"
+        },
         unexpected: {
             message: "An unexpected error was encountered when retrieving " +
             "the image list.",
@@ -1013,6 +1018,34 @@ const tmappUI = (function(){
     }
 
 
+    function displayErrorMessage(error, duration) {
+        const errorInfo = _errors[error] || {message: error, type: "alert-info"};
+        console.warn(errorInfo.message);
+        // Add alert to the UI
+        const alert = $("<div></div>");
+        alert.addClass(`alert ${errorInfo.type}`);
+        alert.text(errorInfo.message);
+        window.clearTimeout(_errorDisplayTimeout);
+        $("#error_wrapper").removeClass("fade out");
+        $("#error_wrapper").css("pointer-events", "auto");
+        $("#error_wrapper").html(alert);
+
+        // Close on click
+        $("#error_wrapper").on("click", function() {
+            clearErrorMessage();
+        });
+
+        // Fade out the alert after the duration has passed
+        if (duration) {
+            _errorDisplayTimeout = window.setTimeout(clearErrorMessage, duration);
+        }
+    }
+
+    function clearErrorMessage() {
+        $("#error_wrapper").css("pointer-events", "none");
+        $("#error_wrapper").addClass("fade out");
+    }
+
     /**
      * Set the displayed user name in the UI.
      * @param {string} txt The username to display.
@@ -1245,6 +1278,7 @@ const tmappUI = (function(){
 
         updateImageBrowser,
         clearImageBrowser,
+        displayErrorMessage,
 
         setUserName,
         setCollabName,

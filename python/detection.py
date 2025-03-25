@@ -18,18 +18,24 @@ def detect_nuclei(image_ID, method):
         with open(f"./detection_methods/{method}.json", "r") as method_json:
             method_path = json.load(method_json)["path"]
     except Exception as e:
-        print(f"Error occurred in nucleus detection: {str(e)}. Check that method {method} is valid.")
+        error_message = f"Config file of the selected method ({method}) could not be found ({e})"
+        yield json.dumps({"error": error_message}) + "\n"
+        return
 
     if method == "load-csv":
         # Load pre-detected nuclei from csv file
         csv_file_path = f'./../temp/nuclei_detection_results/nuclei_{image_ID}.csv'
         if not os.path.exists(csv_file_path):
-            raise FileNotFoundError(f"Nuclei detection csv file not found.")
+            error_message = "CSV-file with pre-computed nuclei detection results could not be found"
+            yield json.dumps({"error": error_message}) + "\n"
+            return
         try:
             detections = np.loadtxt(csv_file_path, delimiter=',')
             print(f"Loaded {len(detections)} detected nuclei.")
         except Exception as e:
-            print(f"Error occurred: {str(e)}")
+            error_message = f"CSV-file with pre-computed nuclei detection results could not be read ({e})"
+            yield json.dumps({"error": error_message}) + "\n"
+            return
 
     elif method == "regression-based-UNet":
         # Run regression-based UNet inference to detect nuclei
@@ -58,31 +64,40 @@ def detect_nuclei(image_ID, method):
             detections, _ = predict_img(net, device, args)
             print(f"Detected {len(detections)} nuclei.")
         except Exception as e:
-            print(f"Error occurred: {str(e)}")
+            error_message = f"Error running model ({method}) inference ({e})"
+            yield json.dumps({"error": error_message}) + "\n"
+            return
 
     else:
-        raise ValueError(f"Nuclei detection method '{method}' not implemented!")
+        error_message = f"Selected nuclei detection method is not implemented"
+        yield json.dumps({"error": error_message}) + "\n"
+        return
     
     # Focus selection
-    print("Running focus selection on detected nuclei...")
-    dataset = ZStackSingleInstanceDataset(detections, image_ID, 56)
-    dataloader = DataLoader(dataset, 1, shuffle=False, num_workers=4, collate_fn=lambda x: x)
+    try:
+        print("Running focus selection on detected nuclei...")
+        dataset = ZStackSingleInstanceDataset(detections, image_ID, 56)
+        dataloader = DataLoader(dataset, 1, shuffle=False, num_workers=4, collate_fn=lambda x: x)
 
-    # Chunk size 100 is suitable since focus estimation is still quite slow. If the chunk size 
-    # is increased or reduced significantly, there may occur issues in server/collaboration.js 
-    # due to chunks being merged or split up in the stream. To handle this, look at the classification
-    # code in server/collaboration.js (which deals with this issue due to large chunks being returned). 
-    chunk_size = 100
-    chunk = []
+        # Chunk size 100 is suitable since focus estimation is still quite slow. If the chunk size 
+        # is increased or reduced significantly, there may occur issues in server/collaboration.js 
+        # due to chunks being merged or split up in the stream. To handle this, look at the classification
+        # code in server/collaboration.js (which deals with this issue due to large chunks being returned). 
+        chunk_size = 100
+        chunk = []
 
-    patch_focus_estimates = np.zeros(len(get_z_levels(image_ID)), dtype=float)
-    for i, patch in tqdm(enumerate(dataloader)):
-        patch = patch[0]
-        for z in range(len(patch)):
-            patch_focus_estimates[z] = focus_estimate(patch[z])
-        chunk.append([detections[i,0], 
-                      detections[i,1], 
-                      int(np.argmax(patch_focus_estimates)) - patch_focus_estimates.shape[0]//2])
-        if len(chunk) == chunk_size or i == len(dataset) - 1:
-            yield json.dumps(chunk) + "\n"
-            chunk = []
+        patch_focus_estimates = np.zeros(len(get_z_levels(image_ID)), dtype=float)
+        for i, patch in tqdm(enumerate(dataloader)):
+            patch = patch[0]
+            for z in range(len(patch)):
+                patch_focus_estimates[z] = focus_estimate(patch[z])
+            chunk.append([detections[i,0], 
+                        detections[i,1], 
+                        int(np.argmax(patch_focus_estimates)) - patch_focus_estimates.shape[0]//2])
+            if len(chunk) == chunk_size or i == len(dataset) - 1:
+                yield json.dumps({"annotations": chunk}) + "\n"
+                chunk = []
+    except Exception as e:
+        error_message = f"Error in focus selection pipeline ({e})"
+        yield json.dumps({"error": error_message}) + "\n"
+        return
