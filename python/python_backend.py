@@ -9,32 +9,6 @@ from utils import get_methods
 
 app = Flask(__name__)
 
-@app.errorhandler(Exception)
-def handle_exception(e):
-    print("In exception handler")
-    print(e)
-    response = jsonify({
-        "success": False,
-        "error": type(e).__name__,
-        "message": str(e)
-    })
-    response.status_code = 500
-    response.headers["Content-Type"] = "application/json"
-    return response
-
-@app.errorhandler(FileNotFoundError)
-def handle_file_not_found_error(e):
-    print("In exception handler")
-    print(e)
-    response = jsonify({
-        "success": False,
-        "error": "FileNotFoundError",
-        "message": str(e)
-    })
-    response.status_code = 404
-    response.headers["Content-Type"] = "application/json"
-    return response
-
 
 @app.route("/api/analysis/get-nuclei-detection-methods", methods=["GET"])
 def analysis_get_detection_methods():
