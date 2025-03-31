@@ -83,7 +83,7 @@ function getSavedCollabInfo(image) {
                         author: data.author,
                         createdOn: data.createdOn,
                         updatedOn: data.updatedOn,
-                        nAnnotationSets: data.annotationSetConfig ? data.annotationSetConfig.length : 0,
+                        nAnnotationSets: data.annotationSetConfig ? data.annotationSetConfig.length : 0,    // Q: why else?
                         nAnnotations: data.nAnnotations,
                         nComments: data.nComments
                     };

@@ -240,6 +240,49 @@ const tmappUI = (function(){
         globalDataHandler.setCommentUpdateFun(updateFun);
     }
 
+    function _initAnnotationSetData() {
+        const container = $("#annotationset_collapse_table");
+
+        container.html("");
+        annotationSetHandler.forEachAnnotationSet(s => {
+            const container_element = `
+                <tr>
+                    <td class="py-1">
+                        <div class="d-flex justify-content-between"">
+                            <strong>${s.name}</strong>
+                            <span id="${s.name}_name">Author: ${s.author}</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="py-1">
+                        <div class="d-flex justify-content-between">
+                            <span>Number of markers:</span>
+                            <span id="${s.name}_nmarkers">-</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="py-1">
+                        <div class="d-flex justify-content-between">
+                            <span>Number of regions:</span>
+                            <span id="${s.name}_nregions">-</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="py-1">
+                        <div class="d-flex justify-content-between">
+                            <span>Number of classes:</span>
+                            <span id="${s.name}_nclasses">-</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            container.append(container_element)
+        });
+    }
+
     function _initClassSelectionButtons() {
         const initialMclass = annotationSetHandler.getClassFromID(0);
         annotationTool.setMclass(initialMclass.name);
@@ -718,6 +761,7 @@ const tmappUI = (function(){
         _initCollabPicker();
         _initVersionPicker();
         _initGlobalComments();
+        _initAnnotationSetData();
         _initClassSelectionButtons();
         _initAnnotationSetSelectionButtons();
         _initAnnotationSetButtons();
@@ -750,6 +794,10 @@ const tmappUI = (function(){
 
     function updateAnnotationSetSelectionButtons(selectedIndex) {
         _initAnnotationSetSelectionButtons(selectedIndex);
+    }
+
+    function updateAnnotationSetData() {
+        _initAnnotationSetData();
     }
 
     /**
@@ -1232,6 +1280,7 @@ const tmappUI = (function(){
         updateAnnotationList,
         updateClassSelectionButtons,
         updateAnnotationSetSelectionButtons,
+        updateAnnotationSetData,
         choice,
         openAnnotationEditMenu,
 
