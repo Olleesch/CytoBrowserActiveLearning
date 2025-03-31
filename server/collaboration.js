@@ -530,7 +530,9 @@ class Collaboration {
                     updatedAnnotationSetConfig.push({
                             name: "Default",
                             description: "Default annotation set for manual annotation",
-                            classConfig: []
+                            classConfig: [],
+                            author: this.members.get(sender).name,
+                            createdOn: getCurrentTimeAsString()
                     });
                 }
                 // Make sure the new annotation set name does not already exist, add counter if it does
@@ -558,7 +560,9 @@ class Collaboration {
                 updatedAnnotationSetConfig.push({
                     name: name,
                     description: description,
-                    classConfig: classConfig
+                    classConfig: classConfig,
+                    author: this.members.get(sender).name,
+                    createdOn: getCurrentTimeAsString()
                 });
                 // Send to collaborators
                 // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
@@ -731,13 +735,17 @@ class Collaboration {
                                 updatedAnnotationSetConfig.push({
                                         name: "Default",
                                         description: "Default annotation set for manual annotation",
-                                        classConfig: []
+                                        classConfig: [],
+                                        author: this.members.get(sender).name,
+                                        createdOn: getCurrentTimeAsString()
                                 });
                             }
                             updatedAnnotationSetConfig.push({
                                 name: name,
                                 description: description,
-                                classConfig: data.classConfig
+                                classConfig: data.classConfig,
+                                author: this.members.get(sender).name,
+                                createdOn: getCurrentTimeAsString()
                             });
                             // Send to collaborators
                             // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
@@ -914,6 +922,10 @@ class Collaboration {
     saveState() {
         if (this.hasUnsavedChanges) {
             const updateTime = getCurrentTimeAsString();
+            let nAnnotations = 0;
+            this.annotations.forEach(annotation => {
+                nAnnotations += Object.keys(annotation.assignments).length;
+            })
             const data = { //Format specification (less canonicalized, order is important)
                 version: "1.2",
                 id: this.id,
@@ -922,7 +934,7 @@ class Collaboration {
                 author: this.author,
                 createdOn: this.createdOn,
                 updatedOn: updateTime,
-                nAnnotations: this.annotations.length,
+                nAnnotations: nAnnotations,
                 nComments: this.comments.length,
                 annotationSetConfig: this.annotationSetConfig,
                 annotations: this.annotations,

@@ -56,11 +56,11 @@ const annotationHandler = (function (){
         // We only want to include annotations in the currently active annotation set
         const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet().name;
         globalDataHandler.updateAnnotationCounts(
-            _nMarkers[activeAnnotationSet], 
-            _nRegions[activeAnnotationSet], 
+            _nMarkers, 
+            _nRegions, 
             _classCounts[activeAnnotationSet]
         );
-        globalDataHandler.updateAnnotationSetCounts(_annotationSetCounts);
+        globalDataHandler.updateAnnotationSetCounts(_annotationSetCounts, _nMarkers, _nRegions, _classCounts);
     }
 
     // Restart annotation counts
