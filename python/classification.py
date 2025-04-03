@@ -7,10 +7,10 @@ from torch.utils.data import DataLoader
 from data_utils import SingleInstanceDataset
 from utils import get_free_gpu
 
-
+import os
 def classify_nuclei(image_ID, method, nuclei):
     try:
-        with open(f"./classification_methods/{method}.json", "r") as method_json:
+        with open(f"./analysis_methods/classification/{method}.json", "r") as method_json:
             method_dict = json.load(method_json)
             path = method_dict["path"]
             class_config = method_dict["classConfig"]

@@ -6,4 +6,4 @@ temp
 **/.vscode**
 **/__pycache__**
 **/NucleusDetection
-**/trained_models
+**/analysis_methods
