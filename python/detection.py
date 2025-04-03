@@ -15,7 +15,7 @@ from NucleusDetection import predict_img, load_network
 
 def detect_nuclei(image_ID, method):
     try:
-        with open(f"./detection_methods/{method}.json", "r") as method_json:
+        with open(f"./analysis_methods/detection/{method}.json", "r") as method_json:
             method_path = json.load(method_json)["path"]
     except Exception as e:
         error_message = f"Config file of the selected method ({method}) could not be found ({e})"
@@ -37,7 +37,7 @@ def detect_nuclei(image_ID, method):
             yield json.dumps({"error": error_message}) + "\n"
             return
 
-    elif method == "regression-based-UNet":
+    elif method == "IFCRN":
         # Run regression-based UNet inference to detect nuclei
         try:
             print("Running nucleus detection model inference...")
