@@ -730,7 +730,7 @@ const htmlHelper = (function() {
     }
 
     function buildDetectionMethodSelector(methods) {
-        _setMethodDropdownMenu(methods, "#dropdown_detect_nuclei_menu", "regression-based-UNet");
+        _setMethodDropdownMenu(methods, "#dropdown_detect_nuclei_menu", "IFCRN");
     }
 
     function buildClassificationMethodSelector(methods) {
