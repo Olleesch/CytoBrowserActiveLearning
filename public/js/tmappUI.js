@@ -305,8 +305,8 @@ const tmappUI = (function(){
         //     return "Annotation set name must only contain letters (A-Z, a-z), \
         //         digits (0-9), hyphens (-), and underscores (_)";
         // }
-        if (name.toLowerCase() in ["points", "id", "x", "y", "originalauthor", "assignments", 
-            "z", "mclass", "author", "bookmarked", "prediction", "originalid", "comments"]) {
+        if (["points", "id", "x", "y", "originalauthor", "assignments", "z", "mclass", "author", 
+             "bookmarked", "prediction", "originalid", "comments"].includes(name.toLowerCase())) {
             return "Annotation set name must not be the same as an internal key name of the \
                 annotation storage format to avoid confusion."
         }
