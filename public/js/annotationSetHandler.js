@@ -216,7 +216,6 @@ const annotationSetHandler = (function(){
     function lockAnnotationSet(annotationSetName) {
         if (!isLockedAnnotationSet(annotationSetName)) {
             _lockedAnnotationSets.push(annotationSetName);
-            $(`#annotation_set_${getIDFromAnnotationSetName(annotationSetName)} .spinner-border`).removeClass("d-none");
             htmlHelper.updateLockedAnnotationSetButtonDisplays();
         } else {
             console.log(`Tried to lock already locked annotation set ${annotationSetName}, ignoring`);
@@ -226,7 +225,6 @@ const annotationSetHandler = (function(){
     function unlockAnnotationSet(annotationSetName) {
         if (isLockedAnnotationSet(annotationSetName)) {
             _lockedAnnotationSets = _lockedAnnotationSets.filter(a => a !== annotationSetName);
-            $(`#annotation_set_${getIDFromAnnotationSetName(annotationSetName)} .spinner-border`).addClass("d-none");
             htmlHelper.updateLockedAnnotationSetButtonDisplays();
         } else {
             console.log(`Tried to unlock already unlocked annotation set ${annotationSetName}, ignoring`);
