@@ -250,7 +250,7 @@ const tmappUI = (function(){
                     <td class="py-1">
                         <div class="d-flex justify-content-between"">
                             <strong>${s.name}</strong>
-                            <span id="${s.name}_name">Author: ${s.author}</span>
+                            <span id="${annotationSetHandler.getIDFromAnnotationSetName(s.name)}_name">Author: ${s.author}</span>
                         </div>
                     </td>
                 </tr>
@@ -258,7 +258,7 @@ const tmappUI = (function(){
                     <td class="py-1">
                         <div class="d-flex justify-content-between">
                             <span>Number of markers:</span>
-                            <span id="${s.name}_nmarkers">-</span>
+                            <span id="${annotationSetHandler.getIDFromAnnotationSetName(s.name)}_nmarkers">-</span>
                         </div>
                     </td>
                 </tr>
@@ -266,7 +266,7 @@ const tmappUI = (function(){
                     <td class="py-1">
                         <div class="d-flex justify-content-between">
                             <span>Number of regions:</span>
-                            <span id="${s.name}_nregions">-</span>
+                            <span id="${annotationSetHandler.getIDFromAnnotationSetName(s.name)}_nregions">-</span>
                         </div>
                     </td>
                 </tr>
@@ -274,7 +274,7 @@ const tmappUI = (function(){
                     <td class="py-1">
                         <div class="d-flex justify-content-between">
                             <span>Number of classes:</span>
-                            <span id="${s.name}_nclasses">-</span>
+                            <span id="${annotationSetHandler.getIDFromAnnotationSetName(s.name)}_nclasses">-</span>
                         </div>
                     </td>
                 </tr>
@@ -301,10 +301,10 @@ const tmappUI = (function(){
         if (name === "") {
             return "Annotation set name must not be empty";
         }
-        if (!(/^[A-Za-z0-9_-]+$/.test(name))) {
-            return "Annotation set name must only contain letters (A-Z, a-z), \
-                digits (0-9), hyphens (-), and underscores (_)";
-        }
+        // if (!(/^[A-Za-z0-9_-]+$/.test(name))) {
+        //     return "Annotation set name must only contain letters (A-Z, a-z), \
+        //         digits (0-9), hyphens (-), and underscores (_)";
+        // }
         if (name.toLowerCase() in ["points", "id", "x", "y", "originalauthor", "assignments", 
             "z", "mclass", "author", "bookmarked", "prediction", "originalid", "comments"]) {
             return "Annotation set name must not be the same as an internal key name of the \
