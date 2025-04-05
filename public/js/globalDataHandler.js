@@ -60,10 +60,14 @@ const globalDataHandler = (function() {
     */
    function updateAnnotationSetCounts(annotationSetCounts, nMarkers, nRegions, classCounts) {
        annotationSetHandler.forEachAnnotationSet(s => {
-           $(`#${s.name}_nmarkers`).text(nMarkers[s.name]);
-           $(`#${s.name}_nregions`).text(nRegions[s.name]);
-           $(`#${s.name}_nclasses`).text(Object.keys(classCounts[s.name]).length);
-           const id = `#annotation_set_counter_${s.name}`;
+           $(`#${annotationSetHandler.getIDFromAnnotationSetName(s.name)}_nmarkers`).text(nMarkers[s.name]);
+           $(`#${annotationSetHandler.getIDFromAnnotationSetName(s.name)}_nregions`).text(nRegions[s.name]);
+           $(`#${annotationSetHandler.getIDFromAnnotationSetName(s.name)}_nclasses`).text(Object.keys(classCounts[s.name]).length);
+
+        //    $(`#${s.name}_nmarkers`).text(nMarkers[s.name]);
+        //    $(`#${s.name}_nregions`).text(nRegions[s.name]);
+        //    $(`#${s.name}_nclasses`).text(Object.keys(classCounts[s.name]).length);
+           const id = `#annotation_set_counter_${annotationSetHandler.getIDFromAnnotationSetName(s.name)}`;
            $(id).text(_shortenInt(annotationSetCounts[s.name]));
        });
    }
