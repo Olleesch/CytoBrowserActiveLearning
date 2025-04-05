@@ -579,7 +579,8 @@ const annotationHandler = (function (){
             else {
                 // Remove the entry of the annotation set in question from mclass
                 removedAnnotation = annotations[deletedIndex];
-                annotations[deletedIndex].assignments.filter(a => a.annotationSet !== annotationSetName);
+                const removedAssignmentIndex = annotations[deletedIndex].assignments.findIndex(a => a.annotationSet === annotationSetName);
+                annotations[deletedIndex].assignments.splice(removedAssignmentIndex, 1);
             }
             
             // Update the class/annotation counts

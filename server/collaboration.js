@@ -317,7 +317,8 @@ class Collaboration {
             // If the annotation contains classes in multiple sets, only remove the class entry 
             // for the annotation set in question, keep the rest of it
             else {
-                this.annotations[deletedIndex].assignments.filter(a => a.annotationSet !== annotationSetName);
+                const removedAssignmentIndex = this.annotations[deletedIndex].assignments.findIndex(a => a.annotationSet === annotationSetName);
+                this.annotations[deletedIndex].assignments.splice(removedAssignmentIndex, 1);
             }
         });
     }
