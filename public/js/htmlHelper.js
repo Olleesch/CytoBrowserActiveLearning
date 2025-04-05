@@ -411,9 +411,9 @@ const htmlHelper = (function() {
     
     function _annotationSetSelectionButton(annotationSet, active) {
         const button = $(`
-            <label id="annotation_set_${annotationSet.name}" class="btn btn-primary px-0 px-md-1 px-lg-2" title="${annotationSet.description}">
+            <label id="annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(annotationSet.name)}" class="btn btn-primary px-0 px-md-1 px-lg-2" title="${annotationSet.description}">
                 <input type="radio" name="annotation_set_options" autocomplete="off">${annotationSet.name}</input>
-                <span class="badge badge-light mt-1 d-block" id="annotation_set_counter_${annotationSet.name}">0</span>
+                <span class="badge badge-light mt-1 d-block" id="annotation_set_counter_${annotationSetHandler.getIDFromAnnotationSetName(annotationSet.name)}">0</span>
             </label>
         `);
         if (active)
@@ -426,7 +426,7 @@ const htmlHelper = (function() {
 
     function setSelectedAnnotationSetSelectionButton(selectedAnnotationSetName) {
         annotationSetHandler.forEachAnnotationSet(annotationSet => {
-            const button = $(`#annotation_set_${annotationSet.name}`);
+            const button = $(`#annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(annotationSet.name)}`);
             if (annotationSet.name === selectedAnnotationSetName) {
                 button.addClass("active");
             } else {
