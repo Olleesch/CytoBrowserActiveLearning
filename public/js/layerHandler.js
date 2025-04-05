@@ -160,7 +160,7 @@ const layerHandler = (function (){
     function updateAnnotations(annotations) {
         const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         const activeAnnotations = annotations.filter(annotation =>
-            annotation.assignments[activeAnnotationSetName] !== undefined
+            annotation.assignments.find(a => a.annotationSet === activeAnnotationSetName) !== undefined
         );
         _forEachLayer("updateAnnotations", activeAnnotations);
     }
