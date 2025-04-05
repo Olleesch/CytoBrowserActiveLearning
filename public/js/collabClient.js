@@ -318,7 +318,7 @@ const collabClient = (function(){
             if (_followedMember.updated) {
                 tmapp.moveTo(_followedMember.position);
                 if (_followedMember.annotationSet !== annotationSetHandler.getActiveAnnotationSet().name) {
-                    $(`#annotation_set_${_followedMember.annotationSet}`).click();
+                    $(`#annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(_followedMember.annotationSet)}`).click();
                 }
                 _followedMember.updated = false;
             }
