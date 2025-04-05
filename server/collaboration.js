@@ -243,17 +243,12 @@ class Collaboration {
             case "clear":
                 {
                     const annotationSetName = msg.annotationSet;
-<<<<<<< HEAD
                     const ids = [];
                     for (const [id, annotation] of this.annotationMap) {
                         if (annotation.assignments.some(a => a.annotationSet === annotationSetName)) {
                             ids.push(id);
                         }
                     }
-=======
-                    const ids = this.annotations.filter(annotation => annotation.assignments.some(a => a.annotationSet === annotationSetName))
-                        .map(annotation => annotation.id);
->>>>>>> 2e3a112 (Update annotation save format to remove dynamic dict keys in the assignments-field)
                     this.removeAnnotations(member, ids, annotationSetName);
                     this.forwardMessage(sender, msg);
                 }
@@ -289,11 +284,7 @@ class Collaboration {
             if (overlappingAnnotation) {
                 for (const newAssignment of newAnnotation.assignments) {
                     // Check if the overlapping annotation has a class in the annotation set of the new annotation
-<<<<<<< HEAD
                     if (overlappingAnnotation.assignments.some(a => a.annotationSet === newAssignment.annotationSet)) {
-=======
-                    if (newAssignment.annotationSet in (overlappingAnnotation.assignments.map(a => a.annotationSet))) {
->>>>>>> 2e3a112 (Update annotation save format to remove dynamic dict keys in the assignments-field)
                         this.log(`${member.name} tried to add an annotation to a point that already has \
                             an annotation in the annotation set, ignoring.`, console.info);
                     }
@@ -315,39 +306,26 @@ class Collaboration {
         ids.forEach(id => {
             // Check if the annotation exists first (annotation with ID exists and 
             // has an annotation in the annotation set)
-<<<<<<< HEAD
             const removedAnnotation = this.annotationMap.get(id);
             if (!removedAnnotation || !(removedAnnotation.assignments.some(a => a.annotationSet === annotationSetName))) {
-=======
-            if (deletedIndex === -1 || !(this.annotations[deletedIndex].assignments.some(a => a.annotationSet === annotationSetName))) {
->>>>>>> 2e3a112 (Update annotation save format to remove dynamic dict keys in the assignments-field)
                 this.log(`${member.name} tried to remove nonexisting annotation with ID ${id} in \
                     annotation set ${annotationSetName}`, console.warn);
                 return;
             }
             // Check if the annotation contains classes in multiple annotation sets
             // If the annotation is only included in one annotation set, remove the entire annotation
-<<<<<<< HEAD
             if (removedAnnotation.assignments.length === 1) {
                 this.annotationMap.delete(id);
                 const index = this.annotations.indexOf(removedAnnotation);
                 if (index >= 0) {
                     this.annotations.splice(index, 1);
                 }
-=======
-            if (this.annotations[deletedIndex].assignments.length === 1) {
-                this.annotations.splice(deletedIndex, 1)[0];
->>>>>>> 2e3a112 (Update annotation save format to remove dynamic dict keys in the assignments-field)
             } 
             // If the annotation contains classes in multiple sets, only remove the class entry 
             // for the annotation set in question, keep the rest of it
             else {
-<<<<<<< HEAD
                 const removedAssignmentIndex = removedAnnotation.assignments.findIndex(a => a.annotationSet === annotationSetName);
                 removedAnnotation.assignments.splice(removedAssignmentIndex, 1);
-=======
-                this.annotations[deletedIndex].assignments.filter(a => a.annotationSet !== annotationSetName);
->>>>>>> 2e3a112 (Update annotation save format to remove dynamic dict keys in the assignments-field)
             }
         });
     }
@@ -630,11 +608,21 @@ class Collaboration {
                     type: "analysisMessage",
                     message: {
                         message: `${member.name} started running an analysis task in annotation set "${name}". ` + 
-                        `Please do not modify annotation set "${name}" until the analysis is complete. ` + 
+                        `Annotation set "${name}" cannot be renamed or removed until the analysis is complete. ` + 
                         `This process may take several minutes. Click to close this message.`,
                         type: "alert-info"
                     }
                 });
+                // Lock the annotation set to stop any modifications to it until the analysis stream is finished
+                this.handleAnnotationSetConfigAction(
+                    null, 
+                    this.analyzer,
+                    {
+                        type: "annotationSetConfigAction",
+                        actionType: "lock",
+                        annotationSetName: name
+                    }
+                );
                 // Add annotations from detection pipeline (calls python backend)
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/detect-nuclei`, {
                     method: "POST",
@@ -658,6 +646,16 @@ class Collaboration {
                         reader.read().then(({ done, value }) => {
                             if (done) {
                                 this.log("Nuclei detection stream complete.");
+                                // Unlock set after stream is finished
+                                this.handleAnnotationSetConfigAction(
+                                    null, 
+                                    this.analyzer,
+                                    {
+                                        type: "annotationSetConfigAction",
+                                        actionType: "unlock",
+                                        annotationSetName: name
+                                    }
+                                );
                                 return;
                             }
                             const chunk = decoder.decode(value, { stream: true });
@@ -714,6 +712,16 @@ class Collaboration {
                                 type: "analysisMessage",
                                 message: analysisErrorMsg
                             }));
+                            // Unlock set on error
+                            this.handleAnnotationSetConfigAction(
+                                null, 
+                                this.analyzer,
+                                {
+                                    type: "annotationSetConfigAction",
+                                    actionType: "unlock",
+                                    annotationSetName: name
+                                }
+                            );
                             this.log(`Error reading nuclei detection stream: ${err.message}`, console.error);
                         });
                     }
@@ -724,6 +732,16 @@ class Collaboration {
                         type: "analysisMessage",
                         message: analysisErrorMsg
                     }));
+                    // Unlock set on error
+                    this.handleAnnotationSetConfigAction(
+                        null, 
+                        this.analyzer,
+                        {
+                            type: "annotationSetConfigAction",
+                            actionType: "unlock",
+                            annotationSetName: name
+                        }
+                    );
                     this.log(`Error in nuclei detection: ${err.message}`, console.error);
                 });
                 break;
@@ -814,11 +832,21 @@ class Collaboration {
                                 type: "analysisMessage",
                                 message: {
                                     message: `${member.name} started running an analysis task in annotation set "${name}". ` + 
-                                    `Please do not modify annotation set "${name}" until the analysis is complete. ` + 
+                                    `Annotation set "${name}" cannot be renamed or removed until the analysis is complete. ` + 
                                     `This process may take several minutes. Click to close this message.`,
                                     type: "alert-info"
                                 }
                             });
+                            // Lock the annotation set to stop any modifications to it until the analysis stream is finished
+                            this.handleAnnotationSetConfigAction(
+                                null, 
+                                this.analyzer,
+                                {
+                                    type: "annotationSetConfigAction",
+                                    actionType: "lock",
+                                    annotationSetName: name
+                                }
+                            );
                         } 
                         else if (data.annotations) {
                             // Add new annotations to data
@@ -858,6 +886,16 @@ class Collaboration {
                         reader.read().then(({ done, value }) => {
                             if (done) {
                                 this.log("Nuclei classification stream complete.");
+                                // Unlock set after stream is finished
+                                this.handleAnnotationSetConfigAction(
+                                    null, 
+                                    this.analyzer,
+                                    {
+                                        type: "annotationSetConfigAction",
+                                        actionType: "unlock",
+                                        annotationSetName: name
+                                    }
+                                );
                                 return;
                             }
                             // Process stream (chunks of results may have been merged or split, but we
@@ -879,6 +917,16 @@ class Collaboration {
                                 type: "analysisMessage",
                                 message: analysisErrorMsg
                             }));
+                            // Unlock set on error
+                            this.handleAnnotationSetConfigAction(
+                                null, 
+                                this.analyzer,
+                                {
+                                    type: "annotationSetConfigAction",
+                                    actionType: "unlock",
+                                    annotationSetName: name
+                                }
+                            );
                             this.log(`Error reading nuclei detection stream: ${err.message}`, console.error);
                         });
                     }
@@ -889,6 +937,16 @@ class Collaboration {
                         type: "analysisMessage",
                         message: analysisErrorMsg
                     }));
+                    // Unlock set on error
+                    this.handleAnnotationSetConfigAction(
+                        null, 
+                        this.analyzer,
+                        {
+                            type: "annotationSetConfigAction",
+                            actionType: "unlock",
+                            annotationSetName: name
+                        }
+                    );
                     this.log(`Error in nuclei classification: ${err.message}`, console.error);
                 });
                 break;
