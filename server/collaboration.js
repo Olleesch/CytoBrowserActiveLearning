@@ -50,6 +50,7 @@ class Collaboration {
         this.loadState(false);
         this.log(`Initializing collaboration.`, console.info);
         this.annotationSetConfig = [];
+        this.lockedAnnotationSets = [];
 
         // Q: Should the analyzer be added as a full member?
         this.analyzer = {
@@ -337,6 +338,22 @@ class Collaboration {
                     this.forwardMessage(sender, msg);
                 }
                 break;
+            case "lock":
+                {
+                    if (!this.lockedAnnotationSets.includes(msg.annotationSetName)) {
+                        this.lockedAnnotationSets.push(msg.annotationSetName);
+                    }
+                }
+                this.forwardMessage(sender, msg);
+                break;
+            case "unlock":
+                {
+                    if (this.lockedAnnotationSets.includes(msg.annotationSetName)) {
+                        this.lockedAnnotationSets = this.lockedAnnotationSets.filter(a => a !== msg.annotationSetName);
+                    }
+                }
+                this.forwardMessage(sender, msg);
+                break;
         }
         this.flagUnsavedChanges();
         this.trySavingState();
@@ -581,11 +598,21 @@ class Collaboration {
                     type: "analysisMessage",
                     message: {
                         message: `${member.name} started running an analysis task in annotation set "${name}". ` + 
-                        `Please do not modify annotation set "${name}" until the analysis is complete. ` + 
+                        `Annotation set "${name}" cannot be renamed or removed until the analysis is complete. ` + 
                         `This process may take several minutes. Click to close this message.`,
                         type: "alert-info"
                     }
                 });
+                // Lock the annotation set to stop any modifications to it until the analysis stream is finished
+                this.handleAnnotationSetConfigAction(
+                    null, 
+                    this.analyzer,
+                    {
+                        type: "annotationSetConfigAction",
+                        actionType: "lock",
+                        annotationSetName: name
+                    }
+                );
                 // Add annotations from detection pipeline (calls python backend)
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/detect-nuclei`, {
                     method: "POST",
@@ -609,6 +636,16 @@ class Collaboration {
                         reader.read().then(({ done, value }) => {
                             if (done) {
                                 this.log("Nuclei detection stream complete.");
+                                // Unlock set after stream is finished
+                                this.handleAnnotationSetConfigAction(
+                                    null, 
+                                    this.analyzer,
+                                    {
+                                        type: "annotationSetConfigAction",
+                                        actionType: "unlock",
+                                        annotationSetName: name
+                                    }
+                                );
                                 return;
                             }
                             const chunk = decoder.decode(value, { stream: true });
@@ -665,6 +702,16 @@ class Collaboration {
                                 type: "analysisMessage",
                                 message: analysisErrorMsg
                             }));
+                            // Unlock set on error
+                            this.handleAnnotationSetConfigAction(
+                                null, 
+                                this.analyzer,
+                                {
+                                    type: "annotationSetConfigAction",
+                                    actionType: "unlock",
+                                    annotationSetName: name
+                                }
+                            );
                             this.log(`Error reading nuclei detection stream: ${err.message}`, console.error);
                         });
                     }
@@ -675,6 +722,16 @@ class Collaboration {
                         type: "analysisMessage",
                         message: analysisErrorMsg
                     }));
+                    // Unlock set on error
+                    this.handleAnnotationSetConfigAction(
+                        null, 
+                        this.analyzer,
+                        {
+                            type: "annotationSetConfigAction",
+                            actionType: "unlock",
+                            annotationSetName: name
+                        }
+                    );
                     this.log(`Error in nuclei detection: ${err.message}`, console.error);
                 });
                 break;
@@ -765,11 +822,21 @@ class Collaboration {
                                 type: "analysisMessage",
                                 message: {
                                     message: `${member.name} started running an analysis task in annotation set "${name}". ` + 
-                                    `Please do not modify annotation set "${name}" until the analysis is complete. ` + 
+                                    `Annotation set "${name}" cannot be renamed or removed until the analysis is complete. ` + 
                                     `This process may take several minutes. Click to close this message.`,
                                     type: "alert-info"
                                 }
                             });
+                            // Lock the annotation set to stop any modifications to it until the analysis stream is finished
+                            this.handleAnnotationSetConfigAction(
+                                null, 
+                                this.analyzer,
+                                {
+                                    type: "annotationSetConfigAction",
+                                    actionType: "lock",
+                                    annotationSetName: name
+                                }
+                            );
                         } 
                         else if (data.annotations) {
                             // Add new annotations to data
@@ -809,6 +876,16 @@ class Collaboration {
                         reader.read().then(({ done, value }) => {
                             if (done) {
                                 this.log("Nuclei classification stream complete.");
+                                // Unlock set after stream is finished
+                                this.handleAnnotationSetConfigAction(
+                                    null, 
+                                    this.analyzer,
+                                    {
+                                        type: "annotationSetConfigAction",
+                                        actionType: "unlock",
+                                        annotationSetName: name
+                                    }
+                                );
                                 return;
                             }
                             // Process stream (chunks of results may have been merged or split, but we
@@ -830,6 +907,16 @@ class Collaboration {
                                 type: "analysisMessage",
                                 message: analysisErrorMsg
                             }));
+                            // Unlock set on error
+                            this.handleAnnotationSetConfigAction(
+                                null, 
+                                this.analyzer,
+                                {
+                                    type: "annotationSetConfigAction",
+                                    actionType: "unlock",
+                                    annotationSetName: name
+                                }
+                            );
                             this.log(`Error reading nuclei detection stream: ${err.message}`, console.error);
                         });
                     }
@@ -840,6 +927,16 @@ class Collaboration {
                         type: "analysisMessage",
                         message: analysisErrorMsg
                     }));
+                    // Unlock set on error
+                    this.handleAnnotationSetConfigAction(
+                        null, 
+                        this.analyzer,
+                        {
+                            type: "annotationSetConfigAction",
+                            actionType: "unlock",
+                            annotationSetName: name
+                        }
+                    );
                     this.log(`Error in nuclei classification: ${err.message}`, console.error);
                 });
                 break;
@@ -858,6 +955,7 @@ class Collaboration {
             members: Array.from(this.members.values()),
             annotations: this.annotations,
             annotationSetConfig: this.annotationSetConfig,
+            lockedAnnotationSets: this.lockedAnnotationSets,
             comments: this.comments,
             metadata: metadata.getMetadataForImage(this.image)
         }

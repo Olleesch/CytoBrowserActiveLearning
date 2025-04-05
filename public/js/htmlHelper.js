@@ -409,7 +409,10 @@ const htmlHelper = (function() {
     function _annotationSetSelectionButton(annotationSet, active) {
         const button = $(`
             <label id="annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(annotationSet.name)}" class="btn btn-primary px-0 px-md-1 px-lg-2" title="${annotationSet.description}">
-                <input type="radio" name="annotation_set_options" autocomplete="off">${annotationSet.name}</input>
+                <input type="radio" name="annotation_set_options" autocomplete="off">
+                    ${annotationSet.name}
+                    <span class="spinner-border spinner-border-sm ms-1 d-none" role="status" aria-hidden="true"></span>
+                </input>
                 <span class="badge badge-light mt-1 d-block" id="annotation_set_counter_${annotationSetHandler.getIDFromAnnotationSetName(annotationSet.name)}">0</span>
             </label>
         `);
@@ -430,6 +433,45 @@ const htmlHelper = (function() {
                 button.removeClass("active");
             }
         });
+    }
+
+    function updateLockedAnnotationSetButtonDisplays() {
+        const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
+        const disableColor = "#ea918f";
+        if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSetName)) {
+            $("#rename_annotation_set").css({
+                "background-color": disableColor,
+                "border-color": disableColor
+            });
+            $("#remove_annotation_set").css({
+                "background-color": disableColor,
+                "border-color": disableColor
+            });
+        } else {
+            $("#rename_annotation_set").css({
+                "background-color": "",
+                "border-color": ""
+            });
+            $("#remove_annotation_set").css({
+                "background-color": "",
+                "border-color": ""
+            });
+        }
+        // Personally think it's enough to have the spinning circle animation, but this code would also display the
+        // annotation set as disabled among the annotation set selection buttons:
+        // annotationSetHandler.forEachAnnotationSet(a => {
+        //     if (a.name !== activeAnnotationSetName && annotationSetHandler.isLockedAnnotationSet(a.name)) {
+        //         $(`#annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(a.name)}`).css({
+        //             "background-color": disableColor,
+        //             "border-color": disableColor
+        //         });
+        //     } else {
+        //         $(`#annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(a.name)}`).css({
+        //             "background-color": "",
+        //             "border-color": ""
+        //         });
+        //     }
+        // });
     }
 
     function _collaboratorListEntry(member, local, active, following) {
@@ -746,6 +788,7 @@ const htmlHelper = (function() {
         buildClassSelectionButtons,
         buildAnnotationSetSelectionButtons,
         setSelectedAnnotationSetSelectionButton,
+        updateLockedAnnotationSetButtonDisplays,
         buildCollaboratorList,
         buildImageBrowser,
         buildDetectionMethodSelector,
