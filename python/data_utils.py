@@ -107,6 +107,7 @@ class SingleInstanceDataset(Dataset):
         self.image_ID = image_ID
         self.z_levels = get_z_levels(image_ID)
         self.crop_size = crop_size
+        self.transform = None
         if imagenet_normalize:
             mean = [0.485, 0.456, 0.406]
             std = [0.229, 0.224, 0.225]
@@ -125,6 +126,6 @@ class SingleInstanceDataset(Dataset):
         z = self.z_levels[nucleus["z"] + len(self.z_levels)//2]
         patch = assemble_patch(x, y, z, self.image_ID, self.crop_size)
         tensor = torch.tensor(patch).permute(2,0,1) / 255
-        if self.transform:
+        if not self.transform is None:
             tensor = self.transform(tensor)
         return tensor
