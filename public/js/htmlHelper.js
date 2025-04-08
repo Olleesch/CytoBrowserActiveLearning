@@ -788,7 +788,7 @@ const htmlHelper = (function() {
     }
 
     function buildClassificationMethodSelector(methods) {
-        _setMethodDropdownMenu(methods, "#dropdown_classify_nuclei_menu", "marco-ResNet50");
+        _setMethodDropdownMenu(methods, "#dropdown_classify_nuclei_menu", "transfer-ResNet50");
     }
 
     return {
