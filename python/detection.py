@@ -16,7 +16,8 @@ from NucleusDetection import predict_img, load_network
 def detect_nuclei(image_ID, method):
     try:
         with open(f"./analysis_methods/detection/{method}.json", "r") as method_json:
-            method_path = json.load(method_json)["path"]
+            method_json = json.load(method_json)
+            method_path = method_json["path"]
     except Exception as e:
         error_message = f"Config file of the selected method ({method}) could not be found ({e})"
         yield json.dumps({"error": error_message}) + "\n"
@@ -37,10 +38,11 @@ def detect_nuclei(image_ID, method):
             yield json.dumps({"error": error_message}) + "\n"
             return
 
-    elif method == "IFCRN":
+    elif "IFCRN" in method:
         # Run regression-based UNet inference to detect nuclei
         try:
             print("Running nucleus detection model inference...")
+            threshold = method_json["threshold"]
             data_path = [f"./../data/{image_ID}_z{z}.dzi" for z in [0,-2000,2000]]
             # Select device based on available GPU memory (approx 3x the required memory)
             min_free_mem = 1500
@@ -52,7 +54,7 @@ def detect_nuclei(image_ID, method):
             args = argparse.Namespace(
                 input=data_path,
                 level=2,
-                threshold=0.4,
+                threshold=threshold,
                 min_dist=5,
                 workers=4,
                 save_masks=False,
