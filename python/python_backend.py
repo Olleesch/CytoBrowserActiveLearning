@@ -1,4 +1,5 @@
 import sys
+import torch
 
 from flask import Flask, request, Response, jsonify
 
