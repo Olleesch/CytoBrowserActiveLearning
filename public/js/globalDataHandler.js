@@ -136,9 +136,13 @@ const globalDataHandler = (function() {
    /**
     * Clear the currently set metadata.
     **/
-   function clear() {
-       _comments.length = 0;
-       _updateCommentSection();
+   function clear(transmit = false) {
+       if (transmit) {
+          _comments.forEach(c => sendCommentRemovalToServer(c.id));
+       } else {
+          _comments.length = 0;
+          _updateCommentSection();
+       }
    }
 
    return {

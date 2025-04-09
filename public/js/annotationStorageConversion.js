@@ -28,23 +28,72 @@ const annotationStorageConversion = (function() {
      * information.
      */
     function addAnnotationStorageData(data, ignoreMismatch=false) {
-        if (data.version === "1.0" || data.version === "1.1") {
-            let currentClassSystem = classUtils.getClassConfig();
+        if (data.version === "1.0" || data.version === "1.1" || data.version === "1.2") {
 
-            // Ensure backward compatibility: If no class system is defined, use default system.
-            let targetClassesSystem = (data.classConfig) ? data.classConfig : defaultClassConfig;
+            // Find new annotation set name "Imported set [num]" based on existing sets
+            let importedAnnotationSetName = "Imported set";
 
-            const rebuildClassConfig = () => {
-                classUtils.setClassConfig(targetClassesSystem);
-                tmappUI.updateClassSelectionButtons();
-                annotationHandler.updateClassConfig(targetClassesSystem);
+            // TODO: Figure out what to do with existing annotations if we load a set the name of which
+            // already exists in the current collaboration. 
+
+            const loadAnnotationSetConfig = () => {
+                if (data.version === "1.0" || data.version === "1.1") {
+                    data.annotationSetConfig = [
+                        {
+                            name: importedAnnotationSetName,
+                            description: "Imported annotation set from older data version",
+                            classConfig: data.classConfig ?? [],
+                            author: data.author ?? "Unknown",
+                            createdOn: data.createdOn ?? annotationSetHandler.getCurrentTimeAsString()
+                        }
+                    ];
+                }
+                return data.annotationSetConfig;
+            }
+
+            const addAnnotationSetConfig = () => {
+                const newAnnotationSetConfig = loadAnnotationSetConfig();
+                const annotationSetConfig = annotationSetHandler.getAnnotationSetConfig();
+                console.log(JSON.stringify(newAnnotationSetConfig, null, 2));
+                // Add new annotation sets to end of existing annotation set config and send to collaborators
+                annotationSetConfig.push(...newAnnotationSetConfig);
+                annotationSetHandler.update(annotationSetConfig, true);
+            }
+
+            const replaceAnnotationSetConfig = () => {
+                const newAnnotationSetConfig = loadAnnotationSetConfig();
+                // Replace existing annotation set config with new annotation set config and send to collaborators
+                annotationSetHandler.update(newAnnotationSetConfig, true);
+            }
+
+            const loadAnnotations = () => {
+                if (data.version === "1.0" || data.version === "1.1") {
+                    data.annotations.forEach(a => {
+                        a.originalAuthor = a.author ?? (data.author ?? "Unknown");
+                        a.assignments = [
+                            {
+                                annotationSet: importedAnnotationSetName,
+                                z: a.z,
+                                mclass: a.mclass,
+                                author: a.author ?? (data.author ?? "Unknown"),
+                                bookmarked: a.bookmarked ?? false,
+                                prediction: a.prediction ?? null
+                            }
+                        ];
+                        delete a.author;
+                        delete a.mclass;
+                        delete a.z;
+                    });
+                }
+                return data.annotations;
             }
 
             const addAnnotations = () => {
-                annotationHandler.add(data.annotations, "image");
-                if (data.version === "1.1") {
+                const newAnnotations = loadAnnotations();
+                annotationHandler.add(newAnnotations, "image", true);
+                if (data.version === "1.1" || data.version === "1.2") {
                     data.comments.forEach(comment => {
-                        globalDataHandler.handleCommentFromServer(comment);
+                        globalDataHandler.sendCommentToServer(comment);
                     });
                 }
             }
@@ -62,43 +111,25 @@ const annotationStorageConversion = (function() {
                         }
                     }
                 ]);
-            }
-            
-            else if (!annotationHandler.isEmpty()) {
-                if (classUtils.compareTwoClassSystems(currentClassSystem, targetClassesSystem)) {
-                    tmappUI.choice("What should be done with the current annotations?", null, [
-                        {
-                            label: "Add loaded annotations to existing ones",
-                            click: () => {addAnnotations();}
-                        },
-                        {
-                            label: "Replace existing annotations with loaded ones",
-                            click: () => {
-                                annotationHandler.clear();
-                                globalDataHandler.clear();
-                                addAnnotations();
-                            }
+            } else {
+                tmappUI.choice("What should be done with the current annotations?", null, [
+                    {
+                        label: "Add loaded annotation sets to existing ones",
+                        click: () => {
+                            addAnnotationSetConfig();
+                            addAnnotations();
                         }
-                    ]);
-                }
-                else {
-                    tmappUI.choice("Warning: Current and loaded class systems are incompatible", null, [
-                        {
-                            label: "Replace class system and annotations with loaded ones",
-                            click: () => {
-                                annotationHandler.clear();
-                                globalDataHandler.clear();
-                                rebuildClassConfig();
-                                addAnnotations();
-                            }
+                    },
+                    {
+                        label: "Replace existing annotation sets with loaded ones",
+                        click: () => {
+                            annotationSetHandler.forEachAnnotationSet(s => annotationHandler.clear(s.name));
+                            globalDataHandler.clear(true);
+                            replaceAnnotationSetConfig();
+                            addAnnotations();
                         }
-                    ]);
-                }
-            }
-
-            else {
-                rebuildClassConfig()
-                addAnnotations();
+                    }
+                ]);
             }
         }
         else {
@@ -112,23 +143,26 @@ const annotationStorageConversion = (function() {
      */
     function getAnnotationStorageData() {
         const data = {
-            version: "1.1", // Version of the formatting
+            version: "1.2", // Version of the formatting
             image: tmapp.getImageName(),
             author: userInfo.getName(),
             updatedOn: new Date().toISOString(),
+            annotationSetConfig: annotationSetHandler.getAnnotationSetConfig(),
             annotations: [],
             comments: []
         };
-        if (!classUtils.isDefaultClassSystem(classUtils.getClassConfig())) {
-            data.classConfig = classUtils.getClassConfig();
-        }
         annotationHandler.forEachAnnotation(annotation => {
             data.annotations.push(annotation)
         }, false); //don't copy computables (centroid, diameter,...) or defaults (bookmarked=false,...)
         globalDataHandler.forEachComment(comment => {
             data.comments.push(comment)
         });
-        data.nAnnotations = data.annotations.length;
+        
+        let nAnnotations = 0;
+        data.annotations.forEach(annotation => {
+            nAnnotations += annotation.assignments.length;
+        })
+        data.nAnnotations = nAnnotations;
         data.nComments = data.comments.length;
         return data;
     }
