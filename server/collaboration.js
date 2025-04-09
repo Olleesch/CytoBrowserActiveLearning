@@ -42,15 +42,15 @@ class Collaboration {
         this.author = author;
         this.createdOn = getCurrentTimeAsString();
         this.updatedOn = getCurrentTimeAsString();
-        this.nextMemberId = 0;
+        this.nextMemberId = 0;    // Never used?
         this.nextColor = generateColor();
         this.image = image;
+        this.annotationSetConfig = [];
+        this.lockedAnnotationSets = [];
         this.ongoingLoad = new Promise(r => r()); // Dummy promise just in case
         this.hasUnsavedChanges = false;
         this.loadState(false);
         this.log(`Initializing collaboration.`, console.info);
-        this.annotationSetConfig = [];
-        this.lockedAnnotationSets = [];
     }
 
     close() {
@@ -484,12 +484,13 @@ class Collaboration {
             return autosave.loadAnnotations(this.id, this.image);
         }).then(data => {
             data || this.log('WARNING: loadAnnotations returned zero data', console.warn);
+            // Name field equal for all data versions
             if (data.version === "1.0" || data.version === "1.1" || data.version === "1.2") {
                 if (data.name) {
                     this.name = data.name;
                 }
-                this.annotations = data.annotations;
             }
+            // Author, createdOn, updatedOn, comments new in data version 1.1, equal in data version 1.2
             if (data.version === "1.1" || data.version === "1.2") {
                 this.author = data.author;
                 this.createdOn = data.createdOn;
@@ -500,13 +501,52 @@ class Collaboration {
                     this.nextCommentId = Math.max(...commentIds) + 1;
                 }
             }
-            if (data.version === "1.2") {
-                if (data.annotationSetConfig === undefined) { //Ensure backwards compatibility?
+            // Annotation format updated in data version 1.2 but equal in data versions 1.0 and 1.1. 
+            if (data.version === "1.0" || data.version === "1.1") {
+                // Ensure backwards compatability by transforming annotation format to introduced format in 1.2
+                data.annotations.forEach(a => {
+                    a.originalAuthor = a.author
+                    a.assignments = [
+                        {
+                            annotationSet: "Default",
+                            z: a.z,
+                            mclass: a.mclass,
+                            author: a.author ?? (data.author ?? "Unknown"),
+                            bookmarked: a.bookmarked ?? false,
+                            prediction: a.prediction ?? null
+                        }
+                    ];
+                    delete a.author;
+                    delete a.mclass;
+                    delete a.z;
+                });
+                this.annotations = data.annotations;
+            }
+            // classConfig new in data version 1.1, replaced by annotationSetConfig in data version 1.2
+            if (data.version === "1.1") {
+                // Ensure backwards compatability by converting classConfig to annotationSetConfig introduced in version 1.2
+                if (data.classConfig === undefined) {
                     data.annotationSetConfig = [];
+                }
+                if (data.classConfig) {
+                    data.annotationSetConfig = {
+                        name: "Default",
+                        description: "Default annotation set for manual annotation",
+                        classConfig: data.classConfig,
+                        author: data.author,
+                        createdOn: data.createdOn
+                    };
                 }
                 this.annotationSetConfig = data.annotationSetConfig;
             }
-            //Q: Backwards compatibility before annotation sets?
+            // AnnotationSetConfig new in data version 1.2
+            if (data.version === "1.2") {
+                if (data.annotationSetConfig === undefined) {
+                    data.annotationSetConfig = [];
+                }
+                this.annotationSetConfig = data.annotationSetConfig;
+                this.annotations = data.annotations;
+            }
         }).catch(() => {
             this.log(`Couldn't load preexisting annotations for ${this.image}.`, console.info);
             this.annotations = [];
