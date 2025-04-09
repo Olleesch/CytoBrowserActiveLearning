@@ -348,6 +348,7 @@ const annotationSetHandler = (function(){
     return {
         count: () => _annotationSetConfig.length,
         classCount: () => _activeClassConfig.length,
+        getCurrentTimeAsString,
 
         getActiveClassConfig,
         setActiveClassConfig,
