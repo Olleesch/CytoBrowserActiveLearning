@@ -449,8 +449,24 @@ const tmappUI = (function(){
             }
         });
         $("#points_to_json").click(() => {
-            const annotationData = annotationStorageConversion.getAnnotationStorageData();
-            localStorage.saveJSON(annotationData);
+            const title = "Which annotations would you like to export?";
+            const choices = [
+                {
+                    label: "All annotation sets (data version 1.2)",
+                    click: () => {
+                        const annotationData = annotationStorageConversion.getAnnotationStorageData("1.2");
+                        localStorage.saveJSON(annotationData);
+                    }
+                },
+                {
+                    label: "Currently selected annotation set (data version 1.1)",
+                    click: () => {
+                        const annotationData = annotationStorageConversion.getAnnotationStorageData("1.1");
+                        localStorage.saveJSON(annotationData);
+                    }
+                }
+            ];
+            tmappUI.choice(title, null, choices);
         });
     }
 
