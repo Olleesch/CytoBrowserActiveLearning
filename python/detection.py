@@ -25,14 +25,16 @@ def detect_nuclei(image_ID, method):
 
     if method == "load-csv":
         # Load pre-detected nuclei from csv file
-        csv_file_path = f'./../temp/nuclei_detection_results/nuclei_{image_ID}.csv'
+        csv_file_path = f'{method_path}/{image_ID}.csv'
         if not os.path.exists(csv_file_path):
             error_message = "CSV-file with pre-computed nuclei detection results could not be found"
             yield json.dumps({"error": error_message}) + "\n"
             return
         try:
-            detections = np.loadtxt(csv_file_path, delimiter=',')
+            detections = np.loadtxt(csv_file_path, delimiter=',', skiprows=1)
             print(f"Loaded {len(detections)} detected nuclei.")
+            yield json.dumps({"annotations": detections.tolist()}) + "\n"
+            return
         except Exception as e:
             error_message = f"CSV-file with pre-computed nuclei detection results could not be read ({e})"
             yield json.dumps({"error": error_message}) + "\n"
