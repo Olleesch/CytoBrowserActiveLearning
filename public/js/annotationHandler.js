@@ -319,7 +319,7 @@ const annotationHandler = (function (){
                 
                 // Set the author of the annotation assignment
                 if (newAssignment.author === undefined)
-                    newAssignment.author = userInfo.getName();
+                    newAssignment.author = userInfo.getName() ?? "Unnamed";
                 
                 // Set the prediction score if the annotation assignment
                 if (newAssignment.prediction === undefined) {
@@ -382,7 +382,7 @@ const annotationHandler = (function (){
 
                 // Set the original author of the annotation
                 if (!addedAnnotation.originalAuthor)
-                    addedAnnotation.originalAuthor = userInfo.getName();
+                    addedAnnotation.originalAuthor = userInfo.getName() ?? "Unnamed";
 
                 // Store a data representation of the annotation
                 _addAnnotation(addedAnnotation);
