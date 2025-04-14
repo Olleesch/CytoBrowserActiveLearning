@@ -632,6 +632,51 @@ class Collaboration {
                     // Function to process each chunk as it arrives
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
+                    const processData = (chunk) => {
+                        const data = JSON.parse(chunk);
+                        if (data.error) {
+                            // Handle errors from python
+                            throw new Error(`${data.error}`);
+                        }
+                        else if (data.annotations) {
+                            // Add new annotations (and generate new unique ids)
+                            const newAnnotations = [];
+                            data.annotations.forEach(newAnnotation => {
+                                newAnnotations.push({
+                                    "points": [{
+                                        "x": newAnnotation[0],
+                                        "y": newAnnotation[1]
+                                    }],
+                                    "id": this.generateAnnotationId(newAnnotations),
+                                    "originalAuthor": msg.method,
+                                    "assignments": [
+                                        {
+                                            "annotationSet": name,
+                                            "z": newAnnotation[2],
+                                            "mclass": classConfig[0].name,
+                                            "author": msg.method,
+                                            "bookmarked": false,
+                                            "prediction": null
+                                        }
+                                    ]
+                                });
+                            });
+                            // Send the annotations to collaborators
+                            this.handleAnnotationAction(
+                                null,
+                                this.analyzer,
+                                {
+                                    type: "annotationAction",
+                                    actionType: "add",
+                                    annotation: newAnnotations
+                                }
+                            );
+                        }
+                        else {
+                            throw new Error("Error parsing streamed nuclei detection data: unknown response");
+                        }
+                    }
+                    let buffer = "";
                     const readStream = () => {
                         reader.read().then(({ done, value }) => {
                             if (done) {
@@ -648,52 +693,17 @@ class Collaboration {
                                 );
                                 return;
                             }
-                            const chunk = decoder.decode(value, { stream: true });
+                            // Process stream (chunks of results may have been merged or split, but we
+                            // know that a complete chunk always ends in "\n")
+                            buffer += decoder.decode(value, { stream: true });
+                            const chunks = buffer.split("\n");
+                            buffer = chunks.pop();
                             try {
-                                const data = JSON.parse(chunk);
-                                if (data.error) {
-                                    // Handle errors from python
-                                    throw new Error(`${data.error}`);
-                                }
-                                else if (data.annotations) {
-                                    // Add new annotations (and generate new unique ids)
-                                    const newAnnotations = [];
-                                    data.annotations.forEach(newAnnotation => {
-                                        newAnnotations.push({
-                                            "points": [{
-                                                "x": newAnnotation[0],
-                                                "y": newAnnotation[1]
-                                            }],
-                                            "id": this.generateAnnotationId(newAnnotations),
-                                            "originalAuthor": msg.method,
-                                            "assignments": [
-                                                {
-                                                    "annotationSet": name,
-                                                    "z": newAnnotation[2],
-                                                    "mclass": classConfig[0].name,
-                                                    "author": msg.method,
-                                                    "bookmarked": false,
-                                                    "prediction": null
-                                                }
-                                            ]
-                                        });
-                                    });
-                                    // Send the annotations to collaborators
-                                    this.handleAnnotationAction(
-                                        null,
-                                        this.analyzer,
-                                        {
-                                            type: "annotationAction",
-                                            actionType: "add",
-                                            annotation: newAnnotations
-                                        }
-                                    );
-                                }
-                                else {
-                                    throw new Error("Error parsing streamed nuclei detection data: unknown response");
-                                }
+                                chunks.forEach(chunk => {
+                                    processData(chunk);
+                                });
                             } catch (err) {
-                                throw new Error(`Error parsing streamed nuclei detection data: ${err.message}`);
+                                this.log(`Error parsing streamed nuclei detection data: ${err.message}`, console.error);
                             }
                             // Continue reading the next chunk
                             readStream();
