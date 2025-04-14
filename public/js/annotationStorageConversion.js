@@ -141,28 +141,50 @@ const annotationStorageConversion = (function() {
      * Convert the currently placed annotations to an annotation storage object.
      * @returns {Object} The annotation storage representation of the annotations.
      */
-    function getAnnotationStorageData() {
+    function getAnnotationStorageData(version) {
         const data = {
-            version: "1.2", // Version of the formatting
+            version: version, // Version of the formatting
             image: tmapp.getImageName(),
-            author: userInfo.getName(),
-            updatedOn: new Date().toISOString(),
-            annotationSetConfig: annotationSetHandler.getAnnotationSetConfig(),
-            annotations: [],
-            comments: []
+            updatedOn: new Date().toISOString()
         };
-        annotationHandler.forEachAnnotation(annotation => {
-            data.annotations.push(annotation)
-        }, false); //don't copy computables (centroid, diameter,...) or defaults (bookmarked=false,...)
+        if (version === "1.1") {
+            const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
+            data.classConfig = annotationSetHandler.getActiveClassConfig();
+            data.annotations = [];
+            annotationHandler.forEachAnnotation(annotation => {
+                if (annotation.assignments.some(a => a.annotationSet === activeAnnotationSetName)) {
+                    const assignment = annotation.assignments.find(a => a.annotationSet === activeAnnotationSetName);
+                    data.annotations.push({
+                        points: annotation.points,
+                        z: assignment.z,
+                        mclass: assignment.mclass,
+                        author: assignment.author,
+                        id: annotation.id,
+                        bookmarked: assignment.bookmarked,
+                        prediction: assignment.prediction
+                    });
+                }
+            });
+            data.nAnnotations = data.annotations.length;
+        } else if (version === "1.2") {
+            data.annotationSetConfig = annotationSetHandler.getAnnotationSetConfig();
+            data.annotations = [];
+            annotationHandler.forEachAnnotation(annotation => {
+                data.annotations.push(annotation)
+            }, false); //don't copy computables (centroid, diameter,...) or defaults (bookmarked=false,...)
+            let nAnnotations = 0;
+            data.annotations.forEach(annotation => {
+                nAnnotations += annotation.assignments.length;
+            });
+            data.nAnnotations = nAnnotations;
+        } else {
+            console.warn("Data export version not supported, skipping");
+            return;
+        }
+        data.comments = [];
         globalDataHandler.forEachComment(comment => {
             data.comments.push(comment)
         });
-        
-        let nAnnotations = 0;
-        data.annotations.forEach(annotation => {
-            nAnnotations += annotation.assignments.length;
-        })
-        data.nAnnotations = nAnnotations;
         data.nComments = data.comments.length;
         return data;
     }
