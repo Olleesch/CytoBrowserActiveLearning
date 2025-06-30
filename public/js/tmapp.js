@@ -1122,9 +1122,14 @@ function _fetchImages(callback) {
     }
 
 
+    function getViewer() {
+        return _viewer;
+    }
+
     return {
         init,
         openImage,
+        getViewer,
 
         moveTo,
         moveToDefaultState,

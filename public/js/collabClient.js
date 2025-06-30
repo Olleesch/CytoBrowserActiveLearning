@@ -22,6 +22,13 @@ const collabClient = (function(){
     let _ongoingDestruction = new Promise(r => r());
     let _resolveOngoingDestruction;
 
+    let _summaryResolve;
+    function waitForSummary() {
+        return new Promise((resolve, reject) => {
+            _summaryResolve = resolve;  // store resolve so it can be called later
+        });
+    }
+
     const _member = {};
 
     /**
@@ -48,6 +55,8 @@ const collabClient = (function(){
                 break;
             case "summary": //info about the session
                 _handleSummary(msg);
+                _summaryResolve();
+                _summaryResolve = null;
                 break;
             case "imageSwap": //for follower
                 _handleImageSwap(msg);
@@ -423,7 +432,7 @@ const collabClient = (function(){
      * prompted about the inclusion of annotations.
      */
     const retryCount = (function () { let i = 0; const fun=()=>++i; fun.get=()=>i; fun.set=(x)=>{i=x;}; return fun; })();
-    function connect(id, name=getDefaultName(), include=false, askAboutInclude=false, callback=null) {
+    function connect(id, name=getDefaultName(), include=false, askAboutInclude=false, done=undefined, waitForData=false) {
         tmappUI.displayImageError("loadingcollab");
         if (_ws) {
             if (_ws.readyState === WebSocket.OPEN) {
@@ -467,7 +476,15 @@ const collabClient = (function(){
                     disconnect();
                 }
 
-                callback && callback();
+                if (done) {
+                    if (waitForData) {
+                        waitForSummary().then(() => {
+                            done();
+                        });
+                    } else {
+                        done();
+                    }
+                }
             }
 
             const count = (function () { let i = 0; return () => ++i; })();
@@ -959,6 +976,7 @@ const collabClient = (function(){
     }
 
     return {
+        waitForSummary,
         createCollab,
         connect,
         disconnect,

@@ -50,6 +50,7 @@ if (argv.h || argv.help) {
 const express = require("express");
 const availableImages = require("./server/availableImages")(dataDir);
 const collaboration = require("./server/collaboration")(collabDir, metadataDir);
+const activeLearningManager = require("./server/activeLearningManager")(collaboration);
 const { version : serverVersion } = require("./package.json");
 const { spawn } = require("child_process");
 const net = require("net");
@@ -144,6 +145,16 @@ app.ws("/collaboration/:id", (ws, req) => {
     });
 });
 
+app.post("/api/activeLearning/", (req, res) => {
+    const msg = req.body;
+    activeLearningManager.handleRequest(msg).then(response => {
+        res.json({response});
+    }).catch(err => {
+        console.warn(err.message);
+        res.status(400).json({ error: err.message });
+    });
+});
+
 // Launch python and nodejs servers
 async function runApp() {
     // Get a free port for the python backend
@@ -154,6 +165,8 @@ async function runApp() {
         cwd: "./python",
         stdio: "inherit"
     });
+
+    activeLearningManager.setPythonLocation(pythonHost, pythonPort);
 
     // Track error and exit codes of python backend
     pythonBackend.on("error", (err) => {
@@ -182,7 +195,9 @@ async function runApp() {
         if (family === 'IPv6') {
             address = `[${address}]`;
         }
-    
+        
+        activeLearningManager.setCallbackURL(`http://${address}:${port}`);
+
         console.info(`CytoBrowser server (v${serverVersion}) listening at http://${address}:${port}`);
     
         // Opens the URL in the default browser.

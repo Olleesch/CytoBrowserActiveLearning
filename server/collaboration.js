@@ -1285,6 +1285,7 @@ module.exports = function(autosaveDir, metadataJsonDir) {
     metadata = require("./metadata")(metadataJsonDir);
     return {
         getId,
+        getCollab,
         joinCollab,
         leaveCollab,
         handleMessage,

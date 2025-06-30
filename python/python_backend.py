@@ -1,5 +1,6 @@
 import sys
 import torch
+import threading
 
 from flask import Flask, request, Response, jsonify
 
@@ -7,6 +8,7 @@ from detection import detect_nuclei
 from classification import classify_nuclei
 from utils import get_methods
 
+from active_learning import active_learning_experiment
 
 app = Flask(__name__)
 
@@ -64,6 +66,43 @@ def analysis_classify_nuclei():
         classify_nuclei(image_ID, method, nuclei),
         content_type="application/json"
     )
+
+
+active_learning_process_events = {}
+active_learning_process_annotations = {}
+
+@app.route("/api/activeLearning/start", methods=["POST"])
+def run_active_learning_experiment():
+    data = request.json
+    experiment_id = data.get("id", None)
+    parameters = data.get("parameters", None)
+    callback_url = data.get("callbackURL", None)
+    
+    if experiment_id is None:
+        return jsonify({"error": "Missing experiment ID parameter"}), 400
+    if parameters is None:
+        return jsonify({"error": "Missing experiment parameters"}), 400
+    if callback_url is None:
+        return jsonify({"error": "Missing callback URL parameter"}), 400
+
+    proceed_query = threading.Event()
+    active_learning_process_events[experiment_id] = proceed_query
+    active_learning_process_annotations[experiment_id] = {}
+    threading.Thread(target=active_learning_experiment, args=(experiment_id, callback_url, parameters, proceed_query, active_learning_process_annotations[experiment_id])).start()
+    return jsonify({"message": f"Successfully launched active learning process {experiment_id}"}), 200
+
+
+@app.route("/api/activeLearning/annotate", methods=["POST"])
+def annotate_query():
+    data = request.json
+    experiment_id = data.get("id", None)
+    event = active_learning_process_events.get(experiment_id)
+    active_learning_process_annotations[experiment_id]["samples"] = data.get("samples")
+    if event:
+        event.set()
+        return jsonify({"message": f"Successfully annotated query by active learning process {experiment_id}"}), 200
+    else:
+        return jsonify({"error": f"Error: Could not find active learning process {experiment_id}"}), 404
 
 
 if __name__=="__main__":
