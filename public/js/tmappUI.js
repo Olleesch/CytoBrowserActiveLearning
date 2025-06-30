@@ -190,6 +190,22 @@ const tmappUI = (function(){
         collabPicker.init();
     }
 
+    function _initActiveLearningPicker() {
+        activeLearningPicker.init();
+        $("#active_learning").click(function(event) {
+            activeLearningPicker.open();
+        });
+        $("#start-new-active-learning").click(() => {
+            activeLearningPicker.openConfiguration();
+        });
+        $("#classify_nuclei_menu").on("hide.bs.modal", function () {
+            $("#launch_ALConfig").blur();
+            $("#name_ALConfig_error_message").hide();
+            $("#annotaion_rounds_ALConfig_error_message").hide();
+            $("#budget_ALConfig_error_message").hide();
+        });
+    }
+
     function _initVersionPicker() {
         versionRevert.init();
     }
@@ -493,7 +509,7 @@ const tmappUI = (function(){
                     $("#classify_nuclei_menu_name_error_message").text(nameErrorMessage).show();
                 }
             });
-        })
+        });
         $("#classify_nuclei_menu").on("hide.bs.modal", function () {
             $("#classify_nuclei_menu_button").blur();
             $("#dropdown_classify_nuclei_menu").blur();
@@ -741,6 +757,7 @@ const tmappUI = (function(){
     function initUI() {
         _initAnnotationList();
         _initCollabPicker();
+        _initActiveLearningPicker();
         _initVersionPicker();
         _initGlobalComments();
         _initAnnotationSetData();
@@ -983,6 +1000,11 @@ const tmappUI = (function(){
     function updateImageBrowser(images) {
         const container = $("#available_images");
         htmlHelper.buildImageBrowser(container, images);
+    }
+    
+    function updateALQueryBrowser(images) {
+        const container = $("#active-learning-quried-samples");
+        htmlHelper.buildALQueryBrowser(container, images);
     }
 
     function displayAnalysisMessage(message) {
@@ -1285,6 +1307,7 @@ const tmappUI = (function(){
         clearImageError,
 
         updateImageBrowser,
+        updateALQueryBrowser,
         displayAnalysisMessage,
 
         setUserName,

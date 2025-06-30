@@ -943,6 +943,70 @@ const htmlHelper = (function() {
         classData.classConfigButtonRow.find(".class-btn").first().click();
     }
 
+    function _emptyALQueryBrowser() {
+        return $(`
+            <div class="col-12 text-center">
+                <p class="m-4">No images were found on the server.</p>
+            </div>
+        `);
+    }
+
+    function _ALQueryBrowserEntry(image) {
+        let entry;
+        if (image.thumbnails && image.thumbnails.overview && image.thumbnails.detail) {
+            entry = $(`
+            <div class="col-3 d-flex">
+                <div class="card w-100">
+                    <img src="${image.thumbnails.overview}" class="card-img-top position-absolute"
+                    style="height: 130px; object-fit: cover;">
+                    <img src="${image.thumbnails.detail}" class="card-img-top fade hide"
+                    style="z-index: 9000; pointer-events: none; height: 130px; object-fit: cover;">
+                    <div class="card-body text-center" style="padding:0;" >
+                        <a class="card-link stretched-link" href="?image=${image.name}">
+                            ${image.name}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            `);
+            const anchor = entry.find("a");
+            const detail = entry.find("img:eq(1)");
+            anchor.click(event => {
+                event.preventDefault();
+                entry.closest(".modal").modal("hide");
+                activeLearningPicker.openQueriedSample(image);
+            });
+            anchor.hover(
+                () => detail.addClass("show").removeClass("hide"),
+                () => detail.addClass("hide").removeClass("show")
+            );
+        }
+        else {
+            entry = $(`
+            <div class="col-3 d-flex">
+                <div class="card w-100">
+                    <img src="data:," alt="&nbsp;Broken image path" class="card-img-top position-absolute m-1 m-xl-4">
+                    <div class="card-body text-center" style="padding:0;padding-top:130px;" >
+                        <a class="card-link stretched-link" href="?image=${image.name}">
+                            ${image.name}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            `);
+        }
+        return entry;
+    }
+
+    function _ALQueryBrowserRow(images) {
+        const row = $(`
+            <div class="row mb-4">
+            </div>
+        `);
+        images.forEach(image => row.append(_ALQueryBrowserEntry(image)));
+        return row;
+    }
+
     // Seemingly not in use (not up to date)
     // /**
     //  * Fill a jquery selection with a comment section.
@@ -1399,6 +1463,25 @@ const htmlHelper = (function() {
         }
     }
 
+    function buildALQueryBrowser(container, images) {
+        container.empty();
+        if (images.length > 0) {
+            let rowNumber = 0;
+            while (rowNumber * 4 < images.length) {
+                const start = rowNumber * 4;
+                const end = start + 4;
+                const rowContent = images.slice(start, end);
+                const row = _ALQueryBrowserRow(rowContent);
+                container.append(row);
+                rowNumber++;
+            }
+        }
+        else {
+            const message = _emptyALQueryBrowser();
+            container.append(message);
+        }
+    }
+
     function _setMethodDropdownMenu(methods, buttonID, defaultOption) {
         const dropdown = document.querySelector(buttonID);
         const button = dropdown.querySelector('.dropdown-toggle');
@@ -1467,6 +1550,7 @@ const htmlHelper = (function() {
         updateLockedAnnotationSetButtonDisplays,
         buildCollaboratorList,
         buildImageBrowser,
+        buildALQueryBrowser,
         buildDetectionMethodSelector,
         buildClassificationMethodSelector,
 
