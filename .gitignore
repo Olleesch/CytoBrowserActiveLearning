@@ -7,3 +7,5 @@ temp
 **/__pycache__**
 **/NucleusDetection
 **/analysis_methods
+**/active_learning_results
+**/active_learning_annotations

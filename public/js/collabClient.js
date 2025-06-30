@@ -21,6 +21,13 @@ const collabClient = (function(){
     let _ongoingDestruction = new Promise(r => r());
     let _resolveOngoingDestruction;
 
+    let _summaryResolve;
+    function waitForSummary() {
+        return new Promise((resolve, reject) => {
+            _summaryResolve = resolve;  // store resolve so it can be called later
+        });
+    }
+
     const _member = {};
 
     /**
@@ -47,6 +54,8 @@ const collabClient = (function(){
                 break;
             case "summary": //info about the session
                 _handleSummary(msg);
+                _summaryResolve();
+                _summaryResolve = null;
                 break;
             case "imageSwap": //for follower
                 _handleImageSwap(msg);
@@ -408,7 +417,7 @@ const collabClient = (function(){
      * @param {boolean} askAboutInclude Whether or not the user should be
      * prompted about the inclusion of annotations.
      */
-    function connect(id, name=getDefaultName(), include=false, askAboutInclude=false) {
+    function connect(id, name=getDefaultName(), include=false, askAboutInclude=false, done=undefined) {
         tmappUI.displayImageError("loadingcollab");
         if (_ws) {
             if (_ws.readyState === 1) {
@@ -445,6 +454,12 @@ const collabClient = (function(){
                 else {
                     disconnect();
                 }
+                if (done) {
+                    waitForSummary().then(() => {
+                        done();
+                    });
+                }
+                
             }
 
             const count = (function () { let i = 1; return () => i++; })();
@@ -884,6 +899,7 @@ const collabClient = (function(){
     }
 
     return {
+        waitForSummary,
         createCollab,
         connect,
         disconnect,

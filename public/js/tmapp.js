@@ -945,9 +945,14 @@ const tmapp = (function() {
         }
     }
 
+    function getViewer() {
+        return _viewer;
+    }
+
     return {
         init,
         openImage,
+        getViewer,
 
         moveTo,
         moveToAnnotation,

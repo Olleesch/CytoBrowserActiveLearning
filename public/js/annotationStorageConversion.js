@@ -44,7 +44,7 @@ const annotationStorageConversion = (function() {
                             description: "Imported annotation set from older data version",
                             classConfig: data.classConfig ?? [],
                             author: data.author ?? "Unknown",
-                            createdOn: data.createdOn ?? annotationSetHandler.getCurrentTimeAsString()
+                            createdOn: data.createdOn ?? dateUtils.getCurrentTimeAsString()
                         }
                     ];
                 }

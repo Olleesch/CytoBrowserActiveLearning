@@ -6,10 +6,6 @@
 const annotationSetHandler = (function(){
     "use strict";
 
-    function getCurrentTimeAsString() {
-        return new Date().toISOString();
-    }
-
     // ==== Class config functions ====
 
     /**
@@ -120,7 +116,7 @@ const annotationSetHandler = (function(){
             _annotationSetConfig = [];
             Object.assign(_annotationSetConfig, defaultAnnotationSetConfig);
             _annotationSetConfig[0].author = userInfo.getName();
-            _annotationSetConfig[0].createdOn = getCurrentTimeAsString();
+            _annotationSetConfig[0].createdOn = dateUtils.getCurrentTimeAsString();
         }
 
         // If the active annotation set is not in the new annotation set config, 
@@ -253,7 +249,7 @@ const annotationSetHandler = (function(){
             description: description,
             classConfig: classConfig,
             author: userInfo.getName(),
-            createdOn: getCurrentTimeAsString()
+            createdOn: dateUtils.getCurrentTimeAsString()
         });
         update(_annotationSetConfig, transmit);
     }
@@ -310,26 +306,43 @@ const annotationSetHandler = (function(){
      * @param {boolean} [transmit=true] Any collaborators should also be
      * told to remove the annotation set.
      */
-    function removeAnnotationSet(transmit = true) {
-        // Ask user if they are sure that they want to remove the annotation set (and all included annotations) first.
-        const title = "Are you sure you want to remove the currently selected annotation set and all its annotations?"
-        const choices = [{
-            label: "Yes",
-            click: () => {
-                if (isLockedAnnotationSet(_activeAnnotationSet.name)) {
-                    console.warn("Cannot remove a locked annotation set, skipping");
-                    return;
-                }
-                // Clear all annotations in the annotation set.
-                annotationHandler.clear(_activeAnnotationSet.name, transmit);
-                // Update annotation set config.
-                _annotationSetConfig = _annotationSetConfig.filter(annotationSet => {
-                    return annotationSet.name !== _activeAnnotationSet.name;
-                });
-                update(_annotationSetConfig, transmit);
+    function removeAnnotationSet(transmit = true, removedAnnotationSetID = null, force = false) {
+        function _removeFn(removedAnnotationSetName) {
+            if (isLockedAnnotationSet(removedAnnotationSetName)) {
+                console.warn("Cannot remove a locked annotation set, skipping");
+                return;
             }
-        }];
-        tmappUI.choice(title, null, choices);
+            // Clear all annotations in the annotation set.
+            annotationHandler.clear(removedAnnotationSetName, transmit);
+            // Update annotation set config.
+            _annotationSetConfig = _annotationSetConfig.filter(annotationSet => {
+                return annotationSet.name !== removedAnnotationSetName;
+            });
+            update(_annotationSetConfig, transmit);
+        }
+        
+        let removedAnnotationSetName;
+        if (removedAnnotationSetID) {
+            removedAnnotationSetName = getAnnotationSetFromID(removedAnnotationSetID).name;
+        }
+        else {
+            removedAnnotationSetName = _activeAnnotationSet.name;
+        }
+
+        if (force) {
+            _removeFn(removedAnnotationSetName);
+        }
+        else {
+            // Ask user if they are sure that they want to remove the annotation set (and all included annotations) first.
+            const title = "Are you sure you want to remove the currently selected annotation set and all its annotations?"
+            const choices = [{
+                label: "Yes",
+                click: () => {
+                    _removeFn(removedAnnotationSetName);
+                }
+            }];
+            tmappUI.choice(title, null, choices);
+        }
     }
 
     /**
@@ -347,7 +360,6 @@ const annotationSetHandler = (function(){
     return {
         count: () => _annotationSetConfig.length,
         classCount: () => _activeClassConfig.length,
-        getCurrentTimeAsString,
 
         getActiveClassConfig,
         setActiveClassConfig,

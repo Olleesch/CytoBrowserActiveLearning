@@ -35,7 +35,12 @@ const dateUtils = (function() {
         }
     }
 
+    function getCurrentTimeAsString() {
+        return new Date().toISOString();
+    }
+
     return {
-        formatReadableDate: formatReadableDate
+        formatReadableDate: formatReadableDate,
+        getCurrentTimeAsString: getCurrentTimeAsString
     };
 })();

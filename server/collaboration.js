@@ -283,7 +283,7 @@ class Collaboration {
             if (overlappingAnnotation) {
                 for (const newAssignment of newAnnotation.assignments) {
                     // Check if the overlapping annotation has a class in the annotation set of the new annotation
-                    if (newAssignment.annotationSet in (overlappingAnnotation.assignments.map(a => a.annotationSet))) {
+                    if (overlappingAnnotation.assignments.map(a => a.annotationSet).includes(newAssignment.annotationSet)) {
                         this.log(`${member.name} tried to add an annotation to a point that already has \
                             an annotation in the annotation set, ignoring.`, console.info);
                     }
@@ -1264,6 +1264,7 @@ module.exports = function(autosaveDir, metadataJsonDir) {
     metadata = require("./metadata")(metadataJsonDir);
     return {
         getId,
+        getCollab,
         joinCollab,
         leaveCollab,
         handleMessage,
