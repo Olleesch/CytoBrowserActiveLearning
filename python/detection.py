@@ -4,6 +4,7 @@ import json
 import torch
 import numpy as np
 from tqdm import tqdm
+from typing import Generator
 
 from torch.utils.data import DataLoader
 from FocusEstimate import focus_estimate
@@ -13,7 +14,19 @@ from utils import get_free_gpu
 from NucleusDetection import predict_img, load_network
 
 
-def detect_nuclei(image_ID, method):
+def detect_nuclei(
+        image_ID, 
+        method
+) -> Generator[str, None, None]:
+    """ Detect nuclei in an image by a specified method.
+    
+    Args: 
+        image_ID: The name/id of the image.
+        method: The detection method to use. 
+
+    Yields: 
+        A JSON string containing the coordinates of detected nuclei from an array.
+    """
     try:
         with open(f"./analysis_methods/detection/{method}.json", "r") as method_json:
             method_json = json.load(method_json)

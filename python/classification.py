@@ -2,13 +2,28 @@ import random
 import torch
 import tqdm
 import json
+from typing import Generator
 from torch.utils.data import DataLoader
 
 from data_utils import SingleInstanceDataset
 from utils import get_free_gpu
 
 
-def classify_nuclei(image_ID, method, nuclei):
+def classify_nuclei(
+        image_ID: str, 
+        method: str, 
+        nuclei: list[dict]
+) -> Generator[str, None, None]:
+    """ Classify provided nuclei in an image by a specified method.
+    
+    Args: 
+        image_ID: The name/id of the image.
+        method: The classification method to use. 
+        nuclei: A list of dictionaries specifying the location of nuclei in the image.
+
+    Yields: 
+        A CytoBrowser-style JSON string containing the nuclei and their predictions.
+    """
     try:
         with open(f"./analysis_methods/classification/{method}.json", "r") as method_json:
             method_dict = json.load(method_json)

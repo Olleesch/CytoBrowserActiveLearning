@@ -1,6 +1,7 @@
 /**
- * Information about the representation of the different annotation sets 
- * //     specified in the defaultClassConfig.js file.
+ * Namespace for handling annotation sets. All manipulation of the annotation 
+ * sets should go through this namespace's functions to ensure that all necessary 
+ * steps are performed.
  * @namespace annotationSetHandler
  */
 const annotationSetHandler = (function(){
@@ -19,8 +20,8 @@ const annotationSetHandler = (function(){
      */
 
     /**
-     * Get the current class config.
-     * @returns {Object} The active class config.
+     * Get the class config of the active annotation set (active class config).
+     * @returns {Array<MClass>} The active class config.
      */
     function getActiveClassConfig() {
         return _activeClassConfig;
@@ -84,19 +85,21 @@ const annotationSetHandler = (function(){
     // ==== Annotation set config functions ====
 
     /**
-     * Information for a specific set from the set configuration, including
-     * information about its visual representation in the user interface.
+     * Information for a specific set from the annotation set configuration, including
+     * its name, description, and class configuration. 
      * @typedef {Object} AnnotationSet
      * @property {string} name The name of the annotation set.
      * @property {string} description The extended description of the
      * annotation set.
-     * @property {Object} classConfig The class configuration of the annotation 
-     * set, array of MClass objects.
+     * @property {Array<MClass>} classConfig The class configuration of the annotation 
+     * set.
+     * @property {string} [author] The author of the annotation set.
+     * @property {string} [createdOn] The time the annotation set was created. 
      */
 
     /**
      * Get the current annotation set config.
-     * @returns {Object} The active annotation set config.
+     * @returns {Array<AnnotationSet>} The active annotation set config.
      */
     function getAnnotationSetConfig() {
         return _annotationSetConfig;
@@ -104,7 +107,7 @@ const annotationSetHandler = (function(){
 
     /**
      * Set the annotation set config.
-     * @param {Object} updatedAnnotationSetConfig The new annotation set config.
+     * @param {Array<AnnotationSet>} updatedAnnotationSetConfig The new annotation set config.
      */
     function setAnnotationSetConfig(updatedAnnotationSetConfig) {
         // If the updated annotaion set config is not valid, use the default annotation set config
@@ -143,7 +146,7 @@ const annotationSetHandler = (function(){
 
     /**
      * Update the active annotation set to a specified one.
-     * @param {string} annotationSetName The name of the annotation set.
+     * @param {string} annotationSetName The name of the new active annotation set.
      */
     function setActiveAnnotationSet(annotationSetName) {
         // Get the annotation set with the name of the new active set.
@@ -171,20 +174,19 @@ const annotationSetHandler = (function(){
         }
     }
 
-
     /**
-     * Get a set based on its id.
-     * @param {number} id The id of the sought set.
-     * @returns {AnnotationSet} The set with the corresponding id.
+     * Get an annotation set based on its id.
+     * @param {number} id The id of the sought annotation set.
+     * @returns {AnnotationSet} The annotation set with the corresponding id.
      */
     function getAnnotationSetFromID(id) {
         return _annotationSetConfig[id];
     }
 
     /**
-     * Get the id of a set based on its name.
-     * @param {string} name The name of the set.
-     * @returns {number} The id of the set.
+     * Get the id of an annotation set based on its name.
+     * @param {string} name The name of the annotation set.
+     * @returns {number} The id of the annotation set.
      */
     function getIDFromAnnotationSetName(name) {
         return _annotationSetConfig.findIndex((entry) => name == entry.name);
@@ -192,7 +194,7 @@ const annotationSetHandler = (function(){
 
     /**
      * Execute a function with each annotation set as an argument.
-     * @param {Function} f The function to be executed with the sets.
+     * @param {Function} f The function to be executed with the annotation sets.
      */
     function forEachAnnotationSet(f) {
         _annotationSetConfig.forEach(f);
@@ -201,15 +203,25 @@ const annotationSetHandler = (function(){
 
     // ==== Collaborative functions ====
 
+    // To keep track of annotation set configs
     let _annotationSetConfig = defaultAnnotationSetConfig;
     let _activeAnnotationSet = defaultAnnotationSetConfig[0];
     let _activeClassConfig = defaultClassConfig;
     let _lockedAnnotationSets = [];
 
+    /**
+     * Check if an annotation set is locked. 
+     * @param {string} annotationSetName The name of the annotation set to check.
+     * @returns {boolean} Whether the annotation set is locked or not. 
+     */
     function isLockedAnnotationSet(annotationSetName) {
         return _lockedAnnotationSets.includes(annotationSetName);
     }
 
+    /**
+     * Lock a specified annotation set.
+     * @param {string} annotationSetName The name of the annotation set to lock.
+     */
     function lockAnnotationSet(annotationSetName) {
         if (!isLockedAnnotationSet(annotationSetName)) {
             _lockedAnnotationSets.push(annotationSetName);
@@ -219,6 +231,10 @@ const annotationSetHandler = (function(){
         }
     }
 
+    /**
+     * Unlock a specified annotation set. 
+     * @param {string} annotationSetName The name of the annotation set to unlock. 
+     */
     function unlockAnnotationSet(annotationSetName) {
         if (isLockedAnnotationSet(annotationSetName)) {
             _lockedAnnotationSets = _lockedAnnotationSets.filter(a => a !== annotationSetName);
@@ -242,7 +258,6 @@ const annotationSetHandler = (function(){
             console.warn("Cannot add an annotation set with the same name as a previously existing set.");
             return;
         }
-
         // Add annotation set to config and update.
         _annotationSetConfig.push({
             name: name,
@@ -256,10 +271,10 @@ const annotationSetHandler = (function(){
 
     /**
      * Rename an annotation set.
-     * @param {*} prevAnnotationSet The annotation set to be renamed.
-     * @param {*} newName The new name.
-     * @param {*} newDescription The new description.
-     * @param {*} [transmit=true] Any collaborators should also be
+     * @param {AnnotationSet} prevAnnotationSet The annotation set to be renamed.
+     * @param {string} newName The new name.
+     * @param {string} newDescription The new description.
+     * @param {boolean} [transmit=true] Any collaborators should also be
      * told to rename the annotation set.
      */
     function renameAnnotationSet(prevAnnotationSet, newName, newDescription, transmit = true) {
@@ -287,12 +302,12 @@ const annotationSetHandler = (function(){
             return;
         }
 
-        // If the name of the annotation set is changed, we need to rename the mclass key of 
+        // If the name of the annotation set is changed, we need to rename the assignment of 
         // the set in all annotations in addition to updating the annotation set config. Note 
         // that this has to happen before we update the annotation set config to ensure correct
         // counting and interface updates.
         if (prevName !== newName) {
-            annotationHandler.renameAssignmentKey(prevName, newName, transmit);
+            annotationHandler.renameAssignment(prevName, newName, transmit);
         }
 
         // Update the annotation set config.
@@ -302,11 +317,18 @@ const annotationSetHandler = (function(){
     }
 
     /**
-     * Remove the currently active annotation set from the config.
+     * Remove an annotation set from the config. If no annotation set ID is 
+     * provided, the currently active annotation set is removed. 
      * @param {boolean} [transmit=true] Any collaborators should also be
      * told to remove the annotation set.
+     * @param {number} [removedAnnotationSetID=null] The ID of the annotation set 
+     * to remove. 
+     * @param {boolean} [force=false] Whether the removal is forced or not. If 
+     * not forced, the user will be prompted to confirm the removal in the interface
+     * before the remove function is triggered. 
      */
     function removeAnnotationSet(transmit = true, removedAnnotationSetID = null, force = false) {
+        // Help function to remove an annotation set and associated annotations. 
         function _removeFn(removedAnnotationSetName) {
             if (isLockedAnnotationSet(removedAnnotationSetName)) {
                 console.warn("Cannot remove a locked annotation set, skipping");
@@ -321,6 +343,7 @@ const annotationSetHandler = (function(){
             update(_annotationSetConfig, transmit);
         }
         
+        // Get the name of the annotation set to remove.
         let removedAnnotationSetName;
         if (removedAnnotationSetID) {
             removedAnnotationSetName = getAnnotationSetFromID(removedAnnotationSetID).name;
@@ -329,6 +352,7 @@ const annotationSetHandler = (function(){
             removedAnnotationSetName = _activeAnnotationSet.name;
         }
 
+        // Either force removal or prompt the user for confirmation.
         if (force) {
             _removeFn(removedAnnotationSetName);
         }
@@ -347,9 +371,9 @@ const annotationSetHandler = (function(){
 
     /**
      * Update the annotation set config.
-     * @param {Object} annotationSetConfig The new annotation set config.
-     * @param {boolean} [transmit=true] Any collaborators should also be
-     * told to update the annotation set config.
+     * @param {Array<AnnotationSet>} annotationSetConfig The new annotation set config.
+     * @param {boolean} [transmit=true] Any collaborators should also be told to update 
+     * the annotation set config.
      */
     function update(annotationSetConfig, transmit = true) {
         setAnnotationSetConfig(annotationSetConfig);

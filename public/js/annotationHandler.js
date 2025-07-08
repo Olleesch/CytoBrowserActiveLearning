@@ -20,22 +20,40 @@ const annotationHandler = (function (){
      * @property {Array<Object>} points The x and y positions of each
      * point in the annotation; a single point if marker, multiple
      * if region.
-     * @property {number} z Z value when the annotation was placed.
-     * @property {Array<Object>} mclass Dict with class names of the annotation.
+     * @property {Array<AnnotationAssignment>} assignments The annotation
+     * set assignments of the annotation. 
      * @property {Object} centroid The centroid of the annotated point
      * or region.
      * @property {Object} diameter The diameter of the annotation
-     * @property {boolean} [bookmarked] Whether or not the annotation has
-     * been bookmarked.
      * @property {Array} [comments] Comments associated with the annotation.
-     * @property {string} [author] The name of the person who originally
-     * placed the annotation.
      * @property {number} [id] Hard-coded ID of the annotation.
      * @property {number} [originalId] Original ID of annotation, that
      * may have had to be changed if the annotation was added when the
      * id was already in use.
+     * @property {string} [originalAuthor] Original author of annotation, 
+     * that is the author that first created the annotation in any annotation
+     * set. 
+     */
+    /**
+     * Data representation of an annotation assignment. Some properties of an 
+     * annotation are common over all annotation sets (such as points, centroid, 
+     * id, etc), and some are annotation-set-specific (such as class, auther, 
+     * etc). The specific properties that can vary between annotation sets are
+     * stored as an annotation assignment, i.e. assigned values in a given 
+     * annotation set. 
+     * @typedef {Object} AnnotationAssignment
+     * @property {string} annotationSet The name of the annotation set the 
+     * annotation assignment belongs to. 
+     * @property {number} z Z value when the annotation was placed in the 
+     * annotation set.
+     * @property {string} mclass The class name of the annotation in the
+     * annotation set.
+     * @property {string} [author] The name of the person who placed the 
+     * annotation in the annotation set.
+     * @property {boolean} [bookmarked] Whether or not the annotation has
+     * been bookmarked in the annotation set.
      * @property {number} [prediction] Optional prediction score indicating
-     * cancer probability.
+     * class probability of the annotation in the annotation set.
      */
     /**
      * Representation of the OpenSeadragon coordinate system used to
@@ -634,13 +652,13 @@ const annotationHandler = (function (){
     }
 
     /**
-     * Rename a specific mclass key (annotation set name).
-     * @param {string} prevName The previous class key name.
-     * @param {string} newName The new class key name.
+     * Rename a specific assignment annotation set name.
+     * @param {string} prevName The previous name.
+     * @param {string} newName The new name.
      * @param {boolean} [transmit=true] Any collaborators should also
-     * be told to rename the class key.
+     * be told to rename the assignment.
      */
-    function renameAssignmentKey(prevName, newName, transmit = true) {
+    function renameAssignment(prevName, newName, transmit = true) {
         // Update key in counts (Right now this first step is completely unnecessary 
         // as the annoation counts are reset after regardless, but in the future this
         // should be fixed)
@@ -664,7 +682,7 @@ const annotationHandler = (function (){
         });
         
         // Notify collaborators
-        transmit && collabClient.renameAnnotationAssignmentKey(prevName, newName);
+        transmit && collabClient.renameAnnotationAssignmentName(prevName, newName);
     }
 
     /**
@@ -715,7 +733,8 @@ const annotationHandler = (function (){
     }
 
     /**
-     * Called for each row, so should be fast
+     * Check whether or not the annotation set contains any prediction values.
+     * @returns {boolean} Whether or not the annotation set contains any prediction values. 
      */
     function hasPrediction(annotationSetName) {
         return _hasPrediction[annotationSetName];
@@ -737,7 +756,7 @@ const annotationHandler = (function (){
         remove,
         clear,
         clearAll,
-        renameAssignmentKey,
+        renameAssignment,
         forEachAnnotation,
         getAnnotationById,
         isEmpty,

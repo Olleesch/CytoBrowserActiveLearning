@@ -21,10 +21,11 @@ const collabClient = (function(){
     let _ongoingDestruction = new Promise(r => r());
     let _resolveOngoingDestruction;
 
+    // Help function to enable synchronizing events to user session connection.
     let _summaryResolve;
     function waitForSummary() {
         return new Promise((resolve, reject) => {
-            _summaryResolve = resolve;  // store resolve so it can be called later
+            _summaryResolve = resolve;
         });
     }
 
@@ -54,6 +55,8 @@ const collabClient = (function(){
                 break;
             case "summary": //info about the session
                 _handleSummary(msg);
+                // After the summary is handled, the user is connected to the session, 
+                // and we can resolve the promise.
                 _summaryResolve();
                 _summaryResolve = null;
                 break;
@@ -94,8 +97,8 @@ const collabClient = (function(){
             case "clear":
                 annotationHandler.clear(msg.annotationSet, false);
                 break;
-            case "renameAssignmentKey":
-                annotationHandler.renameAssignmentKey(msg.prevName, msg.newName, false);
+            case "renameAssignment":
+                annotationHandler.renameAssignment(msg.prevName, msg.newName, false);
                 break;
             default:
                 console.warn(`Unknown annotation action type: ${msg.actionType}`);
@@ -359,6 +362,7 @@ const collabClient = (function(){
             if (_followedMember.updated) {
                 tmapp.moveTo(_followedMember.position);
                 if (_followedMember.annotationSet !== annotationSetHandler.getActiveAnnotationSet().name) {
+                    // TODO: Better handling?
                     $(`#annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(_followedMember.annotationSet)}`).click();
                 }
                 _followedMember.updated = false;
@@ -607,10 +611,10 @@ const collabClient = (function(){
      * @param {string} prevName The previous mclass key name.
      * @param {string} newName The new mclass key name.
      */
-    function renameAnnotationAssignmentKey(prevName, newName) {
+    function renameAnnotationAssignmentName(prevName, newName) {
         send({
             type: "annotationAction",
-            actionType: "renameAssignmentKey",
+            actionType: "renameAssignment",
             prevName: prevName,
             newName: newName
         });
@@ -854,6 +858,9 @@ const collabClient = (function(){
         });
     }
 
+    /**
+     * Get available nucleus detection methods from the server.
+     */
     function getDetectionMethods() {
         send({
             type: "analysisAction",
@@ -861,6 +868,9 @@ const collabClient = (function(){
         });
     }
 
+    /**
+     * Get available nucleus classification methods from the server.
+     */
     function getClassificationMethods() {
         send({
             type: "analysisAction",
@@ -872,6 +882,8 @@ const collabClient = (function(){
      * Notify collaborators about a nuclei detection pipeline being run
      * (which clears annotations/adds a new set). 
      * @param {string} method The name of the nuclei detection method to use.
+     * @param {string} newAnnotationSetName The name of the annotation set
+     * to create and store the results in.
      */
     function detectNuclei(method, newAnnotationSetName) {
         send({
@@ -886,6 +898,12 @@ const collabClient = (function(){
      * Notify collaborators about a nuclei classification pipeline being run
      * (which updates all annotations/adds a new set). 
      * @param {string} method The name of the nuclei classification method to use.
+     * @param {string} newAnnotationSetName The name of the annotation set
+     * to create and store the results in.
+     * @param {string} srcAnnotationSetName The name of the source annotation set
+     * containing marked nuclei to classify.
+     * @param {string} srcAnnotationSetName The name of the source classes in the 
+     * source annotation set containing marked nuclei to classify.
      */
     function classifyNuclei(method, newAnnotationSetName, srcAnnotationSetName, srcClassName) {
         send({
@@ -909,7 +927,7 @@ const collabClient = (function(){
         updateAnnotation,
         removeAnnotation,
         clearAnnotations,
-        renameAnnotationAssignmentKey,
+        renameAnnotationAssignmentName,
         updateAnnotationSetConfig,
         addComment,
         removeComment,

@@ -46,13 +46,13 @@ class Collaboration {
         this.nextColor = generateColor();
         this.image = image;
         this.annotationSetConfig = [];
-        this.lockedAnnotationSets = [];
+        this.lockedAnnotationSets = [];     // To keep track of which annotation sets are locked
         this.ongoingLoad = new Promise(r => r()); // Dummy promise just in case
         this.hasUnsavedChanges = false;
         this.loadState(false);
         this.log(`Initializing collaboration.`, console.info);
 
-        // Q: Should the analyzer be added as a full member?
+        // The "analyzer", a member connecting the collaboration to the python backend for analysis-tasks
         this.analyzer = {
             id: this.id,
             name: "Analyzer",
@@ -253,8 +253,9 @@ class Collaboration {
                     this.forwardMessage(sender, msg);
                 }
                 break;
-            case "renameAssignmentKey":
+            case "renameAssignment":
                 {
+                    // If an annotation set is renamed, go through all annotations and change the assignment name accordingly
                     this.annotations.forEach(annotation => {
                         if (annotation.assignments.some(a => a.annotationSet === msg.prevName)) {
                             const assignment = annotation.assignments.find(a => a.annotationSet === msg.prevName);
@@ -332,7 +333,6 @@ class Collaboration {
         switch (msg.actionType) {
             case "update":
                 {
-                    // Q: Best way of doing this?
                     this.annotationSetConfig = [];
                     Object.assign(this.annotationSetConfig, msg.annotationSetConfig);
                     this.forwardMessage(sender, msg);
@@ -341,7 +341,7 @@ class Collaboration {
             case "lock":
                 {
                     if (!this.lockedAnnotationSets.includes(msg.annotationSetName)) {
-                        this.lockedAnnotationSets.push(msg.annotationSetName);
+                        this.lockedAnnotationSets.push(msg.annotationSetName);  // Mark the annotation set as locked
                     }
                 }
                 this.forwardMessage(sender, msg);
@@ -460,7 +460,6 @@ class Collaboration {
     }
 
     handleAnalysisAction(sender, member, msg) {
-        // Q: Not exactly sure what this means, but I assume correct even for analysis tasks?
         if (!member.ready && msg.actionType !== "getDetectionMethods" && msg.actionType !== "getClassificationMethods") {
             // Members who aren't ready shouldn't do anything with annotations
             return;
@@ -473,6 +472,7 @@ class Collaboration {
         }
         switch (msg.actionType) {
             case "getDetectionMethods":
+                // Get available nuclei detection methods from the analyzer
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/get-nuclei-detection-methods`, {
                     method: "GET"
                 }).then(response => {
@@ -505,6 +505,7 @@ class Collaboration {
                 });
                 break;
             case "getClassificationMethods":
+                // Get available nuclei classification methods from the analyzer
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/get-nuclei-classification-methods`, {
                     method: "GET"
                 }).then(response => {
@@ -537,6 +538,7 @@ class Collaboration {
                 });
                 break;
             case "detection":
+                // Detect nulcei in the image of the collaboration
                 // Add a new "detection" annotation set to config
                 const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
                 // Temporary fix to make sure default set is included if we add a set from server
@@ -583,8 +585,6 @@ class Collaboration {
                     createdOn: getCurrentTimeAsString()
                 });
                 // Send to collaborators
-                // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
-                // simply to make sure everything is done in the same order as usual?
                 this.handleAnnotationSetConfigAction(
                     null,
                     this.analyzer,
@@ -676,6 +676,7 @@ class Collaboration {
                             throw new Error("Error parsing streamed nuclei detection data: unknown response");
                         }
                     }
+                    // Function to read the streamed response
                     let buffer = "";
                     const readStream = () => {
                         reader.read().then(({ done, value }) => {
@@ -746,10 +747,13 @@ class Collaboration {
                 });
                 break;
             case "classification":
+                // Classify nulcei in the image of the collaboration
+                // Extract nuclei to classify from the annotations and the specified source annotation set and class
                 const nuclei = this.annotations.filter(annotation => {
                     return (annotation.assignments.some(a => a.annotationSet === msg.srcAnnotationSetName)) && 
                         ((msg.srcClassName === "All") || (msg.srcClassName === annotation.assignments.find(a => a.annotationSet === msg.srcAnnotationSetName).mclass));
                 }).map(annotation => {
+                    // Convert annotations to a minimal format to pass to the analyzer
                     return {
                         points: annotation.points,
                         z: annotation.assignments.find(a => a.annotationSet === msg.srcAnnotationSetName).z,
@@ -817,8 +821,6 @@ class Collaboration {
                                 createdOn: getCurrentTimeAsString()
                             });
                             // Send to collaborators
-                            // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
-                            // simply to make sure everything is done in the same order as usual?
                             this.handleAnnotationSetConfigAction(
                                 null,
                                 this.analyzer,
@@ -881,6 +883,7 @@ class Collaboration {
                             throw new Error("Error parsing streamed nuclei detection data: unknown response");
                         }
                     }
+                    // Function to read the streamed response
                     let buffer = "";
                     const readStream = () => {
                         reader.read().then(({ done, value }) => {
@@ -1033,6 +1036,10 @@ class Collaboration {
                 this.annotations = data.annotations;
             }
             // classConfig new in data version 1.1, replaced by annotationSetConfig in data version 1.2
+            if (data.version === "1.0") {
+                data.annotationSetConfig = [];
+                this.annotationSetConfig = data.annotationSetConfig;
+            }
             if (data.version === "1.1") {
                 // Ensure backwards compatability by converting classConfig to annotationSetConfig introduced in version 1.2
                 if (data.classConfig === undefined) {

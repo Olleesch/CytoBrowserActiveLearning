@@ -6,6 +6,8 @@ const globalDataHandler = (function() {
    const _comments = [];
    let _updateFun = null;
 
+   // Help function to get a shortened string of a number (used to display annotation 
+   // counts, etc in an abbreviated way).
    function _shortenInt(x) {
        if (x < 1000) {
            return x;
@@ -38,10 +40,9 @@ const globalDataHandler = (function() {
     * Update all displayed information about the number of annotations of the active annotation set.
     * @param {number} nMarkers The number of markers.
     * @param {number} nRegions The number of regions.
-    * @param {Object} classCounts The number of annotations for each class.
-    * The object contains key-value pairs where the keys are the class
-    * names and the values are the number of annotation for the corresponding
-    * class.
+    * @param {Object} classCounts The number of annotations for each class. The object contains 
+    * key-value pairs where the keys are the class names and the values are the number of annotation 
+    * for the corresponding class.
     * 
     * No change when objects are not visible (e.g. in FullScreen mode)
     */
@@ -57,6 +58,11 @@ const globalDataHandler = (function() {
    /**
     * Update all displayed information about the number of annotations per annotation set.
     * @param {Object} annotationSetCounts The number of annotation for each annotation set.
+    * @param {Object} nMarkers The number of markers for each annotation set.
+    * @param {Object} nRegions The number of regions for each annotation set.
+    * @param {Object} classCounts The number of annotations for each class. The object contains 
+    * key-value pairs where the keys are the class names and the values are the number of annotation 
+    * for the corresponding class.
     */
    function updateAnnotationSetCounts(annotationSetCounts, nMarkers, nRegions, classCounts) {
        annotationSetHandler.forEachAnnotationSet(s => {

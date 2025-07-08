@@ -16,6 +16,7 @@ from skimage.feature import peak_local_max
 
 
 def pred_peak_uncertainty(mask):
+    """ Get the prediction peak uncertainty in the output detection mask """
     peak_coords = peak_local_max(mask, min_distance=5, threshold_abs=0, p_norm=2)
     if peak_coords.size == 0:
         return 0
@@ -24,6 +25,17 @@ def pred_peak_uncertainty(mask):
     return np.sum(peak_dist ** 2)
 
 class ActiveLearningQuery():
+    """ Query samples using active learning.
+    
+    Construct the queried set using some specified active learning methods. 
+    The implemented methods are extensively described in https://urn.kb.se/resolve?urn=urn%3Anbn%3Ase%3Auu%3Adiva-561306.
+
+    Attributes: 
+        args_informativeness_function: The argument value for the informativeness function.
+        informativeness: The function handle of the selected informativeness function.
+        args_sampling_strategy: The argument value for the sampling strategy.
+        sampler: The function handle of the selected sampling strategy.
+    """
 
     def peak_uncertainty(
             self, 
@@ -33,6 +45,9 @@ class ActiveLearningQuery():
             batch_size,
             device
     ):
+        """ Aggregated prediction peak uncertainty informativeness function """
+
+        # Run model inference
         dataloader = torch.utils.data.DataLoader(unlabeled_set, batch_size, False, collate_fn=unlabeled_set.collate)
         num_focal_planes = unlabeled_set.get_num_focal_planes()
         informativeness_scores = np.zeros((len(unlabeled_set),1))
@@ -41,13 +56,18 @@ class ActiveLearningQuery():
             with tqdm(total=len(unlabeled_set), desc=f'Running model inference', unit='img') as pbar:
                 for i, batch in enumerate(dataloader):
                     batch_images = batch["image"]
+                    # Format input images into one stack if the dataset contains multiple focal planes
                     if num_focal_planes > 1:
                         batch_images = batch_images.view(-1, batch_images.size(2), batch_images.size(3), batch_images.size(4))
                     batch_images = batch_images.to(device=device, dtype=torch.float32)
+                    # Model inference
                     with torch.inference_mode():
                         masks_pred = model(batch_images)
+                    # Revert shape of output to match the dataset if it contains multiple focal planes
                     if num_focal_planes > 1:
                         masks_pred = masks_pred.view(len(batch["image"]), num_focal_planes, 1, batch_images.size(2), batch_images.size(3)).squeeze(axis=2)
+                    # Compute prediction peak uncertainty values per input
+                    # TODO: Is multiple focal planes really handled correctly here?
                     masks_pred = masks_pred.detach().cpu().numpy().max(axis=1)
                     scores = Parallel(n_jobs=-2)(delayed(pred_peak_uncertainty)(mask) for mask in masks_pred)
                     informativeness_scores[i*batch_size:i*batch_size+len(scores), 0] = scores
@@ -62,12 +82,15 @@ class ActiveLearningQuery():
             batch_size,
             device
     ):
-        k = min(budget, len(unlabeled_set))
+        """ Clustering-based representativeness informativeness function """
+
+        # Register hook to extract features at the bottleneck layer of the network
         features = []
         def hook_fn(module, input, output):
             features.append(torch.mean(output, dim=[2,3]).squeeze(-1).squeeze(-1).detach().cpu())
         hook = model.down1.maxpool_conv[1].double_conv[5].register_forward_hook(hook_fn)
 
+        # Run model inference
         dataloader = torch.utils.data.DataLoader(unlabeled_set, batch_size, False, collate_fn=unlabeled_set.collate)
         num_focal_planes = unlabeled_set.get_num_focal_planes()
         model.eval()
@@ -75,25 +98,31 @@ class ActiveLearningQuery():
             with tqdm(total=len(unlabeled_set), desc=f'Running model inference', unit='img') as pbar:
                 for i, batch in enumerate(dataloader):
                     batch_images = batch["image"]
+                    # Format input images into one stack if the dataset contains multiple focal planes
                     if num_focal_planes > 1:
                         batch_images = batch_images.view(-1, batch_images.size(2), batch_images.size(3), batch_images.size(4))
                     batch_images = batch_images.to(device=device, dtype=torch.float32)
+                    # Model inference
                     with torch.inference_mode():
                         masks_pred = model(batch_images)
                     pbar.update(batch["image"].shape[0])
         hook.remove()
 
+        # Concatenate features and convert to numpy
         if num_focal_planes > 1:
             features = features[::num_focal_planes] # Could be handled differently, now just takes the features from one of the planes (presumably plane 0)
         features = torch.cat(features, dim=0)
         features = features.numpy()
-        np.save("./active_learning_results/temp_representativeness_embeddings.npy", features)
+        np.save("./active_learning_results/temp_representativeness_embeddings.npy", features)   # Temporarily during development save the embeddings to file to examine closer
         
+        # Cluster the embeddings using k-means++
+        k = min(budget, len(unlabeled_set))
         kmeans = KMeans(n_clusters=k, init='k-means++')
         kmeans.fit(features)
         centers = kmeans.cluster_centers_
         distances = cdist(features, centers)
 
+        # Find cluster belongings of each embedding and calculate the informativeness
         closest_cluster_ids = np.argmin(distances, axis=1)
         closest_distances = np.min(distances, axis=1)
         min_d = closest_distances.min()
@@ -112,6 +141,7 @@ class ActiveLearningQuery():
             batch_size,
             device
     ):
+        """ Random sampling """
         N = min(budget, len(unlabeled_set))
         queried_idxs = random.sample(unlabeled_set.idxs, N)
         return queried_idxs
@@ -125,10 +155,9 @@ class ActiveLearningQuery():
             batch_size,
             device
     ):
+        """ Top-k sampling """
         k = min(budget, len(unlabeled_set))
         top_k = informativeness_scores[:,0].argsort()[-k:][::-1]
-        for i in top_k:
-            print(informativeness_scores[i])
         queried_idxs = list(np.array(unlabeled_set.idxs)[top_k])
         return queried_idxs
 
@@ -141,17 +170,23 @@ class ActiveLearningQuery():
             batch_size,
             device
     ):
+        """ Clustering-based diversity sampling """
+
+        # Make sure the informativeness score contains two dimensions to store both the score and the cluster belonging
         if (len(informativeness_scores.shape) == 1):
             informativeness_scores = np.expand_dims(informativeness_scores, 1)
 
         if (informativeness_scores.shape[1] == 1):
-            # Cluster assignments not provided, cluster data here
-            k = min(budget, len(unlabeled_set))
+            # Cluster assignments not provided, cluster data here. 
+            # TODO: Same code as in the representativeness informativeness function, unnecessary repetition
+            
+            # Register hook to extract features at the bottleneck layer of the network
             features = []
             def hook_fn(module, input, output):
                 features.append(torch.mean(output, dim=[2,3]).squeeze(-1).squeeze(-1).detach().cpu())
             hook = model.down1.maxpool_conv[1].double_conv[5].register_forward_hook(hook_fn)
 
+            # Run model inference
             dataloader = torch.utils.data.DataLoader(unlabeled_set, batch_size, False, collate_fn=unlabeled_set.collate)
             num_focal_planes = unlabeled_set.get_num_focal_planes()
             model.eval()
@@ -159,31 +194,35 @@ class ActiveLearningQuery():
                 with tqdm(total=len(unlabeled_set), desc=f'Running model inference', unit='img') as pbar:
                     for i, batch in enumerate(dataloader):
                         batch_images = batch["image"]
+                        # Format input images into one stack if the dataset contains multiple focal planes
                         if num_focal_planes > 1:
                             batch_images = batch_images.view(-1, batch_images.size(2), batch_images.size(3), batch_images.size(4))
                         batch_images = batch_images.to(device=device, dtype=torch.float32)
+                        # Model inference
                         with torch.inference_mode():
                             masks_pred = model(batch_images)
                         pbar.update(batch["image"].shape[0])
             hook.remove()
 
+            # Concatenate features and convert to numpy
             if num_focal_planes > 1:
                 features = features[::num_focal_planes] # Could be handled differently, now just takes the features from one of the planes (presumably plane 0)
-
             features = torch.cat(features, dim=0)
             features = features.numpy()
             
+            # Cluster the embeddings using k-means++
+            k = min(budget, len(unlabeled_set))
             kmeans = KMeans(n_clusters=k, init='k-means++')
             kmeans.fit(features)
             centers = kmeans.cluster_centers_
             distances = cdist(features, centers)
-
             closest_cluster_ids = np.argmin(distances, axis=1)
             informativeness_scores = np.stack((informativeness_scores[:,0], closest_cluster_ids), axis=1)
 
         assert (len(informativeness_scores.shape) == 2 and informativeness_scores.shape[1] == 2), \
             "Error: Wrong input format of the informativeness scores (must also contain cluster belongings)"
 
+        # Extract the highest informativeness score in each cluster
         k = min(budget, len(unlabeled_set))
         scores = informativeness_scores[:, 0]
         clusters = informativeness_scores[:, 1].astype(int)
@@ -196,9 +235,6 @@ class ActiveLearningQuery():
             cluster_representatives.append(best_idx_in_cluster)
         queried_idxs = list(np.array(unlabeled_set.idxs)[cluster_representatives])
         return queried_idxs
-
-    def hybrid_sampler():
-        pass
 
     def __init__(
             self,
@@ -234,6 +270,7 @@ class ActiveLearningQuery():
             batch_size,
             device
     ):
+        """ Apply informativeness function and sampling strategy to construct the queried set """
         if self.informativeness:
             informativeness_scores = self.informativeness(unlabeled_set, budget, model, batch_size, device)
         else:
@@ -283,7 +320,6 @@ class TotalLocalizationError:
 
         Returns:
             filtered_gt: GT centroids away from edges
-            filtered_pred: corresponding predictions
             valid_indices: indices of valid GT centroids
         """
         # Check which GT centroids are far enough from edges
@@ -339,6 +375,9 @@ class TotalLocalizationError:
         --------
         float: Localization error for the image
         dict: Additional error metrics
+        int: Number of true positives
+        int: Number of predicted points
+        int: Number of ground truth points
         """
         n_gt = len(gt_points)
         n_pred = len(pred_points)
@@ -414,8 +453,7 @@ class TotalLocalizationError:
 
         Returns:
         --------
-        float: average localization error
-        list: Detailed error breakdown for each image
+        dict: A dictionary with the results, including the total error, precision, recall, F1-score, number of true positives, negatices, etc
         """
         image_errors = []
         detailed_errors = []
@@ -510,6 +548,8 @@ class TotalLocalizationError:
 
 
 def find_spots(img, threshold, min_dist=5):
+    """ Help function to extract the predicted nuclei locations from the output detection mask """
+
     def _find_spots(im):
         return np.fliplr(peak_local_max(im, min_distance=min_dist, threshold_abs=threshold, p_norm=2))
     if len(img.shape) == 2:
@@ -520,6 +560,8 @@ def find_spots(img, threshold, min_dist=5):
 
 
 def save_eval_json(filename, res):
+    """ Help function to save the evaluation results to a JSON file """
+
     eval_json = {
         "total_error": res["total_error"],
         "total_precision": res["total_precision"],
@@ -538,8 +580,12 @@ def save_eval_json(filename, res):
 
 
 def evaluate_net(args, net, dataset, device):
+    """ Evaluate the model on the test dataset """
+
+    # To store inference results
     tiles_info = []
 
+    # Run model inference
     num_focal_planes = dataset.get_num_focal_planes()
     loader_args = dict(batch_size=args.batch_size, num_workers=args.workers, pin_memory=True)
     data_loader = DataLoader(dataset, shuffle=False, collate_fn=dataset.collate, **loader_args)
@@ -551,16 +597,21 @@ def evaluate_net(args, net, dataset, device):
                 batch_images = batch["image"]
                 batch_nuclei_gt = batch["nuclei_loc"]
 
+                # Format input images into one stack if the dataset contains multiple focal planes
                 if num_focal_planes > 1:
                     batch_images = batch_images.view(-1, batch_images.size(2), batch_images.size(3), batch_images.size(4))
                 batch_images = batch_images.to(device=device, dtype=torch.float32)
+                # Model inference
                 with torch.inference_mode():
                     masks_pred = net(batch_images)
+                # Revert shape of output to match the dataset if it contains multiple focal planes
                 if num_focal_planes > 1:
                     masks_pred = masks_pred.view(len(batch["image"]), num_focal_planes, 1, batch_images.size(2), batch_images.size(3)).squeeze(axis=2)
                 masks = masks_pred.detach().cpu().numpy().max(axis=1)
+                # Find predicted nuclei locations from the output detection masks
                 batch_nuclei_pred = find_spots(masks,args.threshold,args.min_dist)
 
+                # Construct dataframes to process the results and compute evaluation metrics
                 for (nuclei_gt, nuclei_pred, image) in zip(batch_nuclei_gt, batch_nuclei_pred, batch_images):
                     count += nuclei_pred.shape[0]
                     gt_centroids = pd.DataFrame({'x': nuclei_gt[:,0], 'y': nuclei_gt[:,1]})
@@ -575,6 +626,7 @@ def evaluate_net(args, net, dataset, device):
                 pbar.update(batch["image"].shape[0])
                 pbar.set_postfix_str(f'Count={count:5d}')
     
+    # Compute evaluation metrics
     tle_calculator = TotalLocalizationError(
         tiles_info,
         alpha=args.alpha,
@@ -601,6 +653,8 @@ def evaluate_net(args, net, dataset, device):
 
 
 def save_metric_label_curve(n_labels, metric, title, label, filename, metric_std=None):
+    """ Help function to save the metric-label curve of a measuremed sequence of results """
+
     plt.figure(figsize=(5, 5))
     if not metric_std is None:
         plt.errorbar(n_labels, metric, yerr=metric_std, fmt='o-', capsize=4, ms=5, color="black")
@@ -628,6 +682,8 @@ def save_metric_label_curve(n_labels, metric, title, label, filename, metric_std
 
 
 def plot_results(res, res_dir, res_std=None):
+    """ Help function to plot the full results of an experiment """
+
     a_t_combos = res["r0"].keys()
 
     for key in a_t_combos:
