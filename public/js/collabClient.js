@@ -22,10 +22,11 @@ const collabClient = (function(){
     let _ongoingDestruction = new Promise(r => r());
     let _resolveOngoingDestruction;
 
+    // Help function to enable synchronizing events to user session connection.
     let _summaryResolve;
     function waitForSummary() {
         return new Promise((resolve, reject) => {
-            _summaryResolve = resolve;  // store resolve so it can be called later
+            _summaryResolve = resolve;
         });
     }
 
@@ -55,6 +56,8 @@ const collabClient = (function(){
                 break;
             case "summary": //info about the session
                 _handleSummary(msg);
+                // After the summary is handled, the user is connected to the session, 
+                // and we can resolve the promise.
                 _summaryResolve();
                 _summaryResolve = null;
                 break;
@@ -918,6 +921,9 @@ const collabClient = (function(){
         });
     }
 
+    /**
+     * Get available nucleus detection methods from the server.
+     */
     function getDetectionMethods() {
         send({
             type: "analysisAction",
@@ -925,6 +931,9 @@ const collabClient = (function(){
         });
     }
 
+    /**
+     * Get available nucleus classification methods from the server.
+     */
     function getClassificationMethods() {
         send({
             type: "analysisAction",
@@ -936,6 +945,8 @@ const collabClient = (function(){
      * Notify collaborators about a nuclei detection pipeline being run
      * (which clears annotations/adds a new set). 
      * @param {string} method The name of the nuclei detection method to use.
+     * @param {string} newAnnotationSetName The name of the annotation set
+     * to create and store the results in.
      */
     function detectNuclei(method, newAnnotationSetName) {
         send({
@@ -950,6 +961,12 @@ const collabClient = (function(){
      * Notify collaborators about a nuclei classification pipeline being run
      * (which updates all annotations/adds a new set). 
      * @param {string} method The name of the nuclei classification method to use.
+     * @param {string} newAnnotationSetName The name of the annotation set
+     * to create and store the results in.
+     * @param {string} srcAnnotationSetName The name of the source annotation set
+     * containing marked nuclei to classify.
+     * @param {string} srcAnnotationSetName The name of the source classes in the 
+     * source annotation set containing marked nuclei to classify.
      */
     function classifyNuclei(method, newAnnotationSetName, srcAnnotationSetName, srcClassName) {
         send({

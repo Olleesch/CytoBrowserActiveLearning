@@ -53,7 +53,7 @@ class Collaboration {
         this.loadState(false);
         this.log(`Initializing collaboration.`, console.info);
 
-        // Q: Should the analyzer be added as a full member?
+        // The "analyzer", a member connecting the collaboration to the python backend for analysis-tasks
         this.analyzer = {
             id: this.id,
             name: "Analyzer",
@@ -470,7 +470,6 @@ class Collaboration {
     }
 
     handleAnalysisAction(sender, member, msg) {
-        // Q: Not exactly sure what this means, but I assume correct even for analysis tasks?
         if (!member.ready && msg.actionType !== "getDetectionMethods" && msg.actionType !== "getClassificationMethods") {
             // Members who aren't ready shouldn't do anything with annotations
             return;
@@ -483,6 +482,7 @@ class Collaboration {
         }
         switch (msg.actionType) {
             case "getDetectionMethods":
+                // Get available nuclei detection methods from the analyzer
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/get-nuclei-detection-methods`, {
                     method: "GET"
                 }).then(response => {
@@ -515,6 +515,7 @@ class Collaboration {
                 });
                 break;
             case "getClassificationMethods":
+                // Get available nuclei classification methods from the analyzer
                 fetch(`http://${this.analyzer.pythonHost}:${this.analyzer.pythonPort}/api/analysis/get-nuclei-classification-methods`, {
                     method: "GET"
                 }).then(response => {
@@ -547,6 +548,7 @@ class Collaboration {
                 });
                 break;
             case "detection":
+                // Detect nulcei in the image of the collaboration
                 // Add a new "detection" annotation set to config
                 const updatedAnnotationSetConfig = JSON.parse(JSON.stringify(this.annotationSetConfig));
                 // Temporary fix to make sure default set is included if we add a set from server
@@ -593,8 +595,6 @@ class Collaboration {
                     createdOn: getCurrentTimeAsString()
                 });
                 // Send to collaborators
-                // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
-                // simply to make sure everything is done in the same order as usual?
                 this.handleAnnotationSetConfigAction(
                     null,
                     this.analyzer,
@@ -686,6 +686,7 @@ class Collaboration {
                             throw new Error("Error parsing streamed nuclei detection data: unknown response");
                         }
                     }
+                    // Function to read the streamed response
                     let buffer = "";
                     const readStream = () => {
                         reader.read().then(({ done, value }) => {
@@ -756,10 +757,13 @@ class Collaboration {
                 });
                 break;
             case "classification":
+                // Classify nulcei in the image of the collaboration
+                // Extract nuclei to classify from the annotations and the specified source annotation set and class
                 const nuclei = this.annotations.filter(annotation => {
                     return (annotation.assignments.some(a => a.annotationSet === msg.srcAnnotationSetName)) && 
                         ((msg.srcClassName === "All") || (msg.srcClassName === annotation.assignments.find(a => a.annotationSet === msg.srcAnnotationSetName).mclass));
                 }).map(annotation => {
+                    // Convert annotations to a minimal format to pass to the analyzer
                     return {
                         points: annotation.points,
                         z: annotation.assignments.find(a => a.annotationSet === msg.srcAnnotationSetName).z,
@@ -827,8 +831,6 @@ class Collaboration {
                                 createdOn: getCurrentTimeAsString()
                             });
                             // Send to collaborators
-                            // Q: A little unnecessary to go through handleAnnotationSetConfig(), but it might be a good idea 
-                            // simply to make sure everything is done in the same order as usual?
                             this.handleAnnotationSetConfigAction(
                                 null,
                                 this.analyzer,
@@ -891,6 +893,7 @@ class Collaboration {
                             throw new Error("Error parsing streamed nuclei detection data: unknown response");
                         }
                     }
+                    // Function to read the streamed response
                     let buffer = "";
                     const readStream = () => {
                         reader.read().then(({ done, value }) => {

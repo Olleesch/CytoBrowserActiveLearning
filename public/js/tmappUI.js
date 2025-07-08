@@ -1002,11 +1002,28 @@ const tmappUI = (function(){
         htmlHelper.buildImageBrowser(container, images);
     }
     
+    /**
+     * Representation of a selectable image.
+     * @typedef {Object} QueriedImageDetails
+     * @property {string} name Name of the image.
+     * @property {Object} thumbnails Thumbnail for image preview.
+     */
+    /**
+     * Add image selection elements to the queried image browser.
+     * @param {Array<QueriedImageDetails>} images Information about the images
+     * being added.
+     */
     function updateALQueryBrowser(images) {
         const container = $("#active-learning-quried-samples");
         htmlHelper.buildALQueryBrowser(container, images);
     }
 
+    /**
+     * Simple display of messages from the server analyzer (primarily error
+     * messages) in the user interface.
+     * @param {Object} message A dictionary defining the message and its type 
+     * (dictates how it is displayed).
+     */
     function displayAnalysisMessage(message) {
         console.warn(message.message);
         // Add alert to the UI
@@ -1023,6 +1040,9 @@ const tmappUI = (function(){
         });
     }
 
+    /**
+     * Clear the displayed analysis message.
+     */
     function clearAnalysisMessage() {
         $("#error_wrapper").css("pointer-events", "none");
         $("#error_wrapper").addClass("fade out");

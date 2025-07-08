@@ -953,13 +953,13 @@ const htmlHelper = (function() {
 
     function _ALQueryBrowserEntry(image) {
         let entry;
-        if (image.thumbnails && image.thumbnails.overview && image.thumbnails.detail) {
+        if (image.thumbnail) {
             entry = $(`
             <div class="col-3 d-flex">
                 <div class="card w-100">
-                    <img src="${image.thumbnails.overview}" class="card-img-top position-absolute"
+                    <img src="${image.thumbnail}" class="card-img-top position-absolute"
                     style="height: 130px; object-fit: cover;">
-                    <img src="${image.thumbnails.detail}" class="card-img-top fade hide"
+                    <img src="${image.thumbnail}" class="card-img-top fade hide"
                     style="z-index: 9000; pointer-events: none; height: 130px; object-fit: cover;">
                     <div class="card-body text-center" style="padding:0;" >
                         <a class="card-link stretched-link" href="?image=${image.name}">
@@ -1463,6 +1463,14 @@ const htmlHelper = (function() {
         }
     }
 
+    /**
+     * Fill a jquery selection with an image browser of queried tiles
+     * of an active learning process.
+     * @param {Object} container The selection that should contain the
+     * queried images.
+     * @param {Array<Object>} images The queried images that should be 
+     * browsable.
+     */
     function buildALQueryBrowser(container, images) {
         container.empty();
         if (images.length > 0) {
@@ -1529,10 +1537,22 @@ const htmlHelper = (function() {
         }
     }
 
+    /**
+     * Build the nuclei detection method selector button.
+     * Q: Rewrite in the same style as other functions here (jquery selection)? 
+     * @param {Array<Object>} methods An array of nuclei detection method
+     * specifications.
+     */
     function buildDetectionMethodSelector(methods) {
         _setMethodDropdownMenu(methods, "#dropdown_detect_nuclei_menu", "IFCRN");
     }
 
+    /**
+     * Build the nuclei classification method selector button.
+     * Q: Rewrite in the same style as other functions here (jquery selection)? 
+     * @param {Array<Object>} methods An array of nuclei classification method
+     * specifications.
+     */
     function buildClassificationMethodSelector(methods) {
         _setMethodDropdownMenu(methods, "#dropdown_classify_nuclei_menu", "transfer-ResNet50");
     }

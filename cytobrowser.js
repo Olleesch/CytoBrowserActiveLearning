@@ -61,7 +61,7 @@ const expressWs = require("express-ws")(app);
 
 // Setup python host and port
 const pythonHost = "127.0.0.1"
-let pythonPort  // Q: Not sure if a global variable is the best way of handling this?
+let pythonPort
 
 // Help function to find a free port for python backend server initialization
 async function getFreePort() {
@@ -145,6 +145,7 @@ app.ws("/collaboration/:id", (ws, req) => {
     });
 });
 
+// Add API endpoint for communication with the active learning manager
 app.post("/api/activeLearning/", (req, res) => {
     const msg = req.body;
     activeLearningManager.handleRequest(msg).then(response => {
@@ -166,6 +167,7 @@ async function runApp() {
         stdio: "inherit"
     });
 
+    // Let the active learning manager know the location of the python backend
     activeLearningManager.setPythonLocation(pythonHost, pythonPort);
 
     // Track error and exit codes of python backend
@@ -196,10 +198,11 @@ async function runApp() {
             address = `[${address}]`;
         }
         
-        activeLearningManager.setCallbackURL(`http://${address}:${port}`);
-
         console.info(`CytoBrowser server (v${serverVersion}) listening at http://${address}:${port}`);
     
+        // Set callback URL in the active learning manager (so the python backend can send messages back)
+        activeLearningManager.setCallbackURL(`http://${address}:${port}`);
+
         // Opens the URL in the default browser.
         if (argv['open-browser']) {
             open(`http://${address}:${port}/${urlQuery}`);  

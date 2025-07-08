@@ -19,6 +19,7 @@ from PIL import Image
 from scipy.ndimage import gaussian_filter
 
 
+# Extract z-levels from the data dir
 def get_z_levels(image_ID):
     files = glob.glob(f'./../data/{image_ID}_z*.dzi')
     z_values = sorted(
@@ -44,6 +45,7 @@ def dzi_info(filename):
     tiledir = filename.removesuffix('.dzi')+'_files'
     return returntuple("filename,tiledir,format,overlap,tilesize,size",filename,tiledir,format,overlap,tilesize,size)
 
+# Extract a patch around the center-coordinate from the dzi files of an image
 def assemble_patch(x, y, z, image_ID, crop_size, level_sample=0):
     image = f"./../data/{image_ID}_z{z}.dzi"
 
@@ -65,8 +67,13 @@ def assemble_patch(x, y, z, image_ID, crop_size, level_sample=0):
 
     crop_x = x - crop_size//2
     crop_y = y - crop_size//2
-    assert math.ceil((crop_x+crop_size)/subsample) <= global_width and math.ceil((crop_y+crop_size)/subsample) <= global_height, \
-        "Cannot crop outside the image borders."
+    assert (
+        math.ceil((crop_x+crop_size)/subsample) <= global_width and 
+        math.ceil((crop_y+crop_size)/subsample) <= global_height and 
+        math.floor(crop_x/subsample) >= 0 and 
+        math.floor(crop_y/subsample) >= 0
+    ), (f"Cannot crop outside the image borders (center_x={x}, center_y={y}, "
+        f"crop_size={crop_size}, image_width={global_width}, image_height={global_height})")
     min_x = _get_tile_idx(crop_x, subsample, info.tilesize)             # Extract tile of start coordinate x
     min_y = _get_tile_idx(crop_y, subsample, info.tilesize)             # Extract tile of start coordinate y
     max_x = _get_tile_idx(crop_x+crop_size, subsample, info.tilesize)   # Extract tile of end coordinate x
@@ -93,7 +100,28 @@ def assemble_patch(x, y, z, image_ID, crop_size, level_sample=0):
 
 
 class ZStackSingleInstanceDataset(Dataset):
-    def __init__(self, detections, image_ID, crop_size):
+    """ Dataset class to extract full z-stacks of patches.
+    
+    Attributes: 
+        detections: Array of patch center coordinates.
+        image_ID: The name/id of the image to extract patches from. 
+        z_levels: All captured z-offsets of the image.
+        crop_size: The size of the patches to extract.
+    """
+
+    def __init__(
+            self, 
+            detections: np.ndarray, 
+            image_ID: str, 
+            crop_size: int
+    ):
+        """ Initialize the dataset.
+        
+        Args: 
+            detections: Array of patch center coordinates. 
+            image_ID: The name/id of the image to extract patches from. 
+            crop_size: The size of the patches to extract.
+        """
         self.detections = detections
         self.image_ID = image_ID
         self.z_levels = get_z_levels(image_ID)
@@ -102,7 +130,7 @@ class ZStackSingleInstanceDataset(Dataset):
     def __len__(self):
         return len(self.detections)
     
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> np.ndarray:
         coords = self.detections[index]
         x = coords[0]
         y = coords[1]
@@ -113,7 +141,32 @@ class ZStackSingleInstanceDataset(Dataset):
 
 
 class SingleInstanceDataset(Dataset):
-    def __init__(self, nuclei, image_ID, crop_size, imagenet_normalize):
+    """ Dataset class to extract patches of in-focus nuclei from dzi WSIs.
+    
+    Attributes: 
+        nuclei: A dict containing the positions of nuclei in the image.
+        image_ID: The name/id of the image to extract patches from.
+        z_levels: All captured z-offsets of the image.
+        crop_size: The size of the patches to extract.
+        transform: A potential transformation to apply to extracted patches 
+                   (presumably data augmentation for model training).
+    """
+
+    def __init__(
+            self, 
+            nuclei: dict, 
+            image_ID: str, 
+            crop_size: int, 
+            imagenet_normalize: bool
+    ):
+        """ Initialize the dataset.
+        
+        Args:
+            nuclei: A dict containing the positions of nuclei in the image.
+            image_ID: The name/id of the image to extract patches from.
+            crop_size: The size of the patches to extract.
+            imagenet_normalize: A boolean indicating if the extracted patches should be imagenet-normalized.
+        """
         self.nuclei = nuclei
         self.image_ID = image_ID
         self.z_levels = get_z_levels(image_ID)
@@ -129,7 +182,7 @@ class SingleInstanceDataset(Dataset):
     def __len__(self):
         return len(self.nuclei)
     
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> torch.Tensor:
         nucleus = self.nuclei[index]
         coords = nucleus["points"][0]
         x = coords["x"]
@@ -143,13 +196,45 @@ class SingleInstanceDataset(Dataset):
 
 
 class NucleusDetectionPool(Dataset):
-    def __init__(self,
-                 slide_ids: str,
-                 slide_dir: str,
-                 annotation_dir: str,
-                 only_labeled: bool = False,
-                 subsample: int = 2,
-                 gauss_sigma: float = 3):
+    """ Dataset class to construct a pool of samples used in the nucleus detection active learning pipeline. 
+
+    This dataset does not return images, but returns information about samples (nucleus locations, image name, etc). 
+    Initially, samples (dzi WSI tiles) form a large unlabeled dataframe of information about each tile. This class 
+    then contains functions to label some tile, which will add information to this large dataframe. Labeled and unlabeled
+    tiles can then be acquired by calling designated get-functions in the class. Essentially, this dataset serves to keep
+    track of the full sample pool in active learning experiments, and the indexes which correspond to labeled and unlabeled
+    samples. 
+    
+    Attributes: 
+        slide_dir: The directory with the WSIs. 
+        sample_df: The dataframe this dataset keeps track of all information in. 
+        bin_size: Corresponds to the downsampling factor of the tiles to use in the dataset.
+        gauss_sigma: The Gaussian sigma value the ground truth masks are blurred by (not used in this class, but easy to
+                     keep track of if stored here). 
+    """
+    
+    def __init__(
+            self,
+            slide_ids: str,
+            slide_dir: str,
+            annotation_dir: str,
+            only_labeled: bool = False,
+            subsample: int = 2,
+            gauss_sigma: float = 3
+    ):
+        """ Initialize the dataset.
+        
+        Args: 
+            slide_ids: 
+            slide_dir: The directory with the WSIs. 
+            annotation_dir: The directory with the initial annotations to construct the initial labeled dataset.
+            only_labeled: A flag indicating of only labeled samples should be included in the dataset, which drops 
+                          any samples that are not annotated in the annotation_dir (used to construct fully labeled
+                          validation and test sample pools).
+            subsample: The subsample level of the tiles (generally 2 for the IFCRN detection model).
+            gauss_sigma: The Gaussian sigma value the ground truth masks are blurred by (not used in this class, but easy to
+                         keep track of if stored here). 
+        """
         self.slide_dir = slide_dir
         self.sample_df = pd.DataFrame(columns=["slide_id", "slide_name", "tile_paths", "nuclei_loc", "nuclei_loc_global"])
         
@@ -217,7 +302,13 @@ class NucleusDetectionPool(Dataset):
         if only_labeled:
             self.sample_df = self.sample_df[(self.sample_df["labeled"])].reset_index(drop=True)
     
-    def add_labels(self, annotation_json):
+    def add_labels(self, annotation_json: dict):
+        """ Adds labels to unlabeled samples in the dataframe.
+        
+        Args: 
+            annotation_json: The dict acquired from the JSON with the annotated regions (CytoBrowser storage version 1.1 
+                             currently expected, with some specific classes).
+        """
         slide_name = annotation_json["image"]
 
         z_values = sorted(
@@ -281,28 +372,64 @@ class NucleusDetectionPool(Dataset):
                     self.sample_df.at[idx, "nuclei_loc_global"] = p_global
 
     def get_labeled_idxs(self):
+        """ Get the indexes of the labeled samples in the dataset. """
         return self.sample_df[(self.sample_df["labeled"])].index.tolist()
     
     def get_unlabeled_idxs(self):
+        """ Get the indexes of the unlabeled samples in the dataset. """
         return self.sample_df[(self.sample_df["labeled"] == False)].index.tolist()
 
     def __len__(self):
         return len(self.sample_df)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> dict:
         tile = self.sample_df.loc[idx].to_dict()
         return tile
     
 
 class NucleusDetectionDataset(Dataset):
-    def __init__(self,
-                 tile_pool: NucleusDetectionPool,
-                 idxs: list[int],
-                 z: list[int] | int = 0,
-                 nuclei_loc: bool=False,
-                 masks: bool=False,
-                 transform=None,
-                 aux_data=None):
+    """ Dataset class to extract tiles for nucleus detection.
+
+    This dataset can be either labeled or unlabeled. If labeled, the output will contain the image tile as well as a ground
+    truth mask. This dataset was designed with active learning experiments in mind, wrapping the above NucleusDetectionPool. 
+    Information about the data (tile coordinates, image name, nuclei ground truth locations, etc) are acquired by the input 
+    NucleusDetectionPool instance, along with a set of indices corresponding to the specific samples the dataset consists of. 
+    Additionally, there are functions to add and remove indices in line with the active learning process and the evolving 
+    labeled and unlabeled datasets. 
+    
+    Attributes: 
+        tile_pool: The pool of samples the dataset is a subset of. 
+        idxs: The indices of the full pool of samples that make out this subset.
+        z: The z-offsets to include in the output (in my experiments only one at z=0, but could be multiple).
+        nuclei_loc: A flag indicating if the ground truth nuclei locations should be included in the output.
+        masks: A flag indicating if the ground truth masks should be included in the output.
+        gauss_sigma: The Gaussian sigma value the ground truth masks are blurred by.
+        peakval: The maximum value of a single pixel peak after Gaussian blurring (to normalize ground truth masks by).
+        transform: A potential transformation to apply to the tile images (presumably data augmentation for model training).
+        aux_data: Auxiliary data to include in dataset output (not used anywhere by me, but present in the NucleusDetection repo).
+    """
+
+    def __init__(
+            self,
+            tile_pool: NucleusDetectionPool,
+            idxs: list[int],
+            z: list[int] | int = 0,
+            nuclei_loc: bool=False,
+            masks: bool=False,
+            transform=None,
+            aux_data=None
+    ):
+        """ Initialize the dataset.
+        
+        Args:
+            tile_pool: The pool of samples the dataset is a subset of. 
+            idxs: The indices of the full pool of samples that make out this subset.
+            z: The z-offsets to include in the output (in my experiments only one at z=0, but could be multiple).
+            nuclei_loc: A flag indicating if the ground truth nuclei locations should be included in the output.
+            masks: A flag indicating if the ground truth masks should be included in the output.
+            transform: A potential transformation to apply to the tile images (presumably data augmentation for model training).
+            aux_data: Auxiliary data to include in dataset output (not used anywhere by me, but present in the NucleusDetection repo).
+        """
         self.tile_pool = tile_pool
         self.idxs = idxs
         if not isinstance(z, list): z = [z]
@@ -319,6 +446,7 @@ class NucleusDetectionDataset(Dataset):
         return len(self.idxs)
     
     def add_idxs(self, new_idxs: list[int]):
+        """ Add samples at the given indices in the sample pool to this dataset. """
         if not isinstance(new_idxs, list):
             new_idxs = [new_idxs] 
         for idx in new_idxs:
@@ -328,6 +456,7 @@ class NucleusDetectionDataset(Dataset):
                 print(f"Warning when adding tile to set: Tile at data pool index {idx} already in set, ignoring.")
 
     def remove_idxs(self, removed_idxs: list[int]):
+        """ Remove samples at the given indices in the sample pool from this dataset. """
         if not isinstance(removed_idxs, list):
             removed_idxs = [removed_idxs] 
         for idx in removed_idxs:
@@ -338,6 +467,7 @@ class NucleusDetectionDataset(Dataset):
 
     @staticmethod
     def load(filename):
+        """ Load image tile. """
         ext = splitext(filename)[1]
         if ext in ['.npz', '.npy']:
             return Image.fromarray(np.load(filename))
@@ -346,7 +476,7 @@ class NucleusDetectionDataset(Dataset):
         else:
             return Image.open(filename)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> dict:
         tile_data = self.tile_pool[self.idxs[idx]]
         slide_id = tile_data["slide_id"]
         tile_paths = tile_data["tile_paths"][0]
@@ -392,10 +522,14 @@ class NucleusDetectionDataset(Dataset):
         return sample
     
     def get_num_focal_planes(self):
+        """ Get the number of focal planes in the output of the dataset. """
         return len(self.z)
     
     def collate(self, batch):
-        # Custom collate function to handle varying properties of the sample dict rows
+        """ Custom collate function to handle varying properties of the sample dict rows. 
+        
+        Pass this function handle to torch dataloaders to ensure correct construction of batches. 
+        """
         res = {
             "slide_id": [sample["slide_id"] for sample in batch],
             "tile_paths": [sample["tile_paths"] for sample in batch],

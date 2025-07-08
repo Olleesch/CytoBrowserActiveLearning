@@ -5,6 +5,7 @@ import math
 import numpy as np
 from pathlib import Path
 from datetime import datetime, timezone
+from threading import Event
 
 import torch
 import albumentations
@@ -15,8 +16,15 @@ from active_learning_utils import ActiveLearningQuery, evaluate_net, plot_result
 from NucleusDetection import train_net, load_network
 
 
-def active_learning_experiment(experiment_id, callback_url, parameters, proceed_query, data):
-    """ 
+def active_learning_experiment(
+        experiment_id: int, 
+        callback_url: str, 
+        parameters: dict, 
+        proceed_query: Event, 
+        data: dict
+):
+    """ The active learning experimental pipeline.
+
     Pipeline: 
         1. Set up AL experiment. Load a trained model (on some annotated set/pre-trained), 
            set up datasets (labeled dataset, unlabeled dataset part of the training pool 
@@ -35,8 +43,25 @@ def active_learning_experiment(experiment_id, callback_url, parameters, proceed_
 
         ( 2.d. Repeat from step 1 if several models/AL methods are evaluated. )
         3. Create figures and tables with the results. 
+    
+    Args:
+        experiment_id: An identifier of the active learning process.
+        callback_url: The callback URL to send process updates back to the CytoBrowser server.
+        parameters: A dictionary containing experiment parameters containing
+                        informativenessFunction - The name of the informativeness method to use,
+                        samplingStrategy        - The name of the sampling strategy to use,
+                        annotationRounds        - The total number of annotation rounds,
+                        annotationBudget        - The total annotation budget (total number of 
+                                                  samples to annotate throughout the process)
+        proceed_query: An event object used to pause the pipeline until it is triggered (used 
+                       to wait for the oracle to annotate samples in step 2.b. of the pipeline).
+        data: A dictionary to transmit data to this process running the pipeline after after
+              oracle annotation. The dictionary is initially empty, but is later updated by
+              external processes while this function is running, providing the pipeline with 
+              new annotations in step 2.b.
     """
 
+    # Help function to update the status of the experiment in the active learning handler in the CytoBrowser backend
     def update_status(msg):
         try:
             requests.post(f"{callback_url}/api/activeLearning/", json=msg)
@@ -49,24 +74,29 @@ def active_learning_experiment(experiment_id, callback_url, parameters, proceed_
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     logging.info("Starting active learning pipeline")
 
+    # Make a dir for the results
     time_stamp = datetime.now().strftime("%y%m%d-%H%M%S")
     res_dir = Path(f"./active_learning_results/{time_stamp}/")
     res_dir.mkdir()
 
+    # Set the device
     device = torch.device("cuda:0")
     logging.info(f"Using device {device}\n")
 
+    # Get experiment parameters
     informativeness_function = parameters.get("informativenessFunction")
     sampling_strategy = parameters.get("samplingStrategy")
     T = int(parameters.get("annotationRounds"))
     B = int(parameters.get("annotationBudget"))
     
+    # Set default experiment parameters
     num_runs = 1
     retrain_model = False
     epoch_checkfreq = 50
     num_epochs = 500
     note = f"Large-scale experiment testing;"
 
+    # Set slides of the train, validation, and test pools
     slide_ids_val = ["040", "067"]
     slide_ids_test = ["001", "049", "061"]
     excluded = set(slide_ids_val + slide_ids_test)
@@ -75,6 +105,7 @@ def active_learning_experiment(experiment_id, callback_url, parameters, proceed_
         if f"{i:03d}" not in excluded
     ]
 
+    # Set directories from which to read image data and existing annotations
     slide_dir = "./../data/"
     annotation_dir = "./active_learning_annotations/"
 
@@ -188,6 +219,7 @@ def active_learning_experiment(experiment_id, callback_url, parameters, proceed_
         # Now, we can train the initial model on the initial labeled set. First split the labeled set into 
         # training and validation sets, then train the model. 
         logging.info(f"Loading initial model")
+        # Update the status of the process to 'train'.
         update_status({
             "type": "updateProcess",
             "id": experiment_id,
@@ -204,6 +236,7 @@ def active_learning_experiment(experiment_id, callback_url, parameters, proceed_
         logging.info(f"Initial model training finished\n")
 
         # Evaluate trained model on the test set. 
+        # Update the status of the process to 'eval'.
         update_status({
             "type": "updateProcess",
             "id": experiment_id,
@@ -259,15 +292,13 @@ def active_learning_experiment(experiment_id, callback_url, parameters, proceed_
                 sample_dict = unlabeled_set.tile_pool[idx]
                 sample_query = {
                     "name": sample_dict["slide_name"],
-                    "thumbnails": {
-                        "detail": f"data/{sample_dict["slide_name"]}_z0_files/15/{int(sample_dict["tile_coord_x"])}_{int(sample_dict["tile_coord_y"])}.jpg",
-                        "overview": f"data/{sample_dict["slide_name"]}_z0_files/15/{int(sample_dict["tile_coord_x"])}_{int(sample_dict["tile_coord_y"])}.jpg"
-                    },
+                    "thumbnail": f"data/{sample_dict["slide_name"]}_z0_files/15/{int(sample_dict["tile_coord_x"])}_{int(sample_dict["tile_coord_y"])}.jpg",
                     "zLevels": list(sample_dict["tile_paths"][0].keys()),
                     "tile_x": int(sample_dict["tile_coord_x"]),
                     "tile_y": int(sample_dict["tile_coord_y"])
                 }
                 query["samples"].append(sample_query)
+            # Update the status of the process to 'query' and pass along the queried samples.
             update_status({
                 "type": "updateProcess",
                 "id": experiment_id,
@@ -287,6 +318,7 @@ def active_learning_experiment(experiment_id, callback_url, parameters, proceed_
                 labeled_set = NucleusDetectionDataset(AL_train_tile_pool, labeled_pool_idxs, z=0, masks=True, nuclei_loc=False, transform=transform)
                 unlabeled_set = NucleusDetectionDataset(AL_train_tile_pool, unlabeled_pool_idxs, z=0, masks=False, nuclei_loc=False)
 
+            # Update the status of the process to 'train'.
             update_status({
                 "type": "updateProcess",
                 "id": experiment_id,
@@ -315,6 +347,7 @@ def active_learning_experiment(experiment_id, callback_url, parameters, proceed_
             logging.info(f"Model training finished\n")
 
             # Evaluate trained model on the test set. 
+            # Update the status of the process to 'eval'.
             update_status({
                 "type": "updateProcess",
                 "id": experiment_id,
@@ -339,6 +372,7 @@ def active_learning_experiment(experiment_id, callback_url, parameters, proceed_
                     }
             logging.info("Model evaluation finished\n")
         
+        # Update the status of the process to 'finalizing'.
         update_status({
             "type": "updateProcess",
             "id": experiment_id,
