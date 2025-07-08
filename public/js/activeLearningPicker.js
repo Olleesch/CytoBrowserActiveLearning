@@ -1,10 +1,53 @@
 /**
- * Module for handling the visuals and logic of the al picker.
+ * Module for handling the visuals and logic of the active learning picker.
  * @namespace activeLearningPicker
  */
+
+
 const activeLearningPicker = (function() {
     "use strict";
 
+    /**
+     * Data representation of an active learning process running on the server 
+     * that should be used when adding or updating information about it. 
+     * @typedef {Object} ActiveLearningProcess
+     * @property {number} id The id of the process
+     * @property {string} status The status of the process ("init", "train", 
+     * "eval", "query", "finalizing")
+     * @property {string} name The name of the process.
+     * @property {string} author The author of the process.
+     * @property {string} annotationRound The current annotation round of the 
+     * process. 
+     * @property {string} createdOn The time the process was created. 
+     * @property {ActiveLearningQuery} [query] The current annotation query if 
+     * the process is at the query stage of the active learning pipeline.
+     */
+
+    /**
+     * Data representation of an active learning query that should be used when 
+     * receiving queries from active learning queries running on the server. 
+     * @typedef {Object} ActiveLearningQuery
+     * @property {Array<ActiveLearningQueriedSample>} samples An array of queried
+     * samples. 
+     * @property {string} queriedOn The time the annotation query was sent to
+     * the server. 
+     */
+
+    /**
+     * Data representation of a queried sample that in active learning queries. 
+     * @typedef {Object} ActiveLearningQueriedSample
+     * @property {string} name The name of the image the sample is from. 
+     * @property {string} thumbnail Thumbnail to display in the queried sample 
+     * selection window (a string specifying the location of the image tile of 
+     * the queried sample).
+     * @property {Array<number>} zLevels An array of the z-offsets the sample includes. 
+     * @property {number} tile_x The tile x-coordinate of the queried sample. 
+     * @property {number} tile_y The tile y-coordinate of the queried sample. 
+     * @property {string} collab The collaboration id of the session prepared to annotate
+     * the queried sample. 
+     */
+
+    // The fields of the list of running active learning processes in the interface.
     const _tableFields = [
         {
             name: "Name",
@@ -34,7 +77,10 @@ const activeLearningPicker = (function() {
             name: "# Queried samples",
             title: "Number of queried sampels to annotate",
             key: "nQueried",
-            sortable: true
+            sortable: true,
+            selectFun: d => {
+                return d.query ? process.query.samples.length : "-";
+            }
         },
         {
             name: "Time of query",
@@ -46,10 +92,16 @@ const activeLearningPicker = (function() {
             }
         },
     ];
+
+    // To keep track of the elements of the list.
     let _ALProcessesList = null;
     let _currentSelection = null;
     let _availableProcesses = [];
 
+    /**
+     * Update the currently selected active learning process in the list when a new process is selected.
+     * @param {ActiveLearningProcess} selectedProcess The selected active learning process list element.
+     */
     function _selectActive(selectedProcess) {
         _ALProcessesList.unhighlightAllRows();
         _ALProcessesList.highlightRow(selectedProcess.id);
@@ -62,12 +114,19 @@ const activeLearningPicker = (function() {
         }
     }
 
+    /**
+     * Update the currently selected active learning process in the list when all processes are unselected.
+     */
     function _unselectActive() {
         _ALProcessesList.unhighlightAllRows();
         _currentSelection = null;
         $("#active-learning-open").prop("disabled", true);
     }
 
+    /**
+     * Try retaining the currently selected active learning process, otherwise unselect all processes.
+     * @param {Array<ActiveLearningProcess>} displayedProcesses A list of displayed active learning processes.
+     */
     function _tryRetainingCurrentSelection(displayedProcesses) {
         if (_currentSelection) {
             const selectionRemains = displayedProcesses.some(process => {
@@ -82,6 +141,9 @@ const activeLearningPicker = (function() {
         }
     }
 
+    /**
+     * Update the active learning list in the interface.
+     */
     function _updateActiveLearningList() {
         if (!_ALProcessesList) {
             throw new Error("Tried to refresh AL picker before initialization.");
@@ -91,6 +153,10 @@ const activeLearningPicker = (function() {
         _tryRetainingCurrentSelection(displayedProcesses);
     }
 
+    /**
+     * Handle logic of clicking an entry in the running active learning processes list.
+     * @param {ActiveLearningProcess} d The clicked active learning process.
+     */
     function _handleALClick(d) {
         if (!_currentSelection) {
             _selectActive(d);
@@ -103,6 +169,10 @@ const activeLearningPicker = (function() {
         }
     }
 
+    /**
+     * Handle logic of double-clicking an entry in the running active learning processes list.
+     * @param {ActiveLearningProcess} d The double-clicked active learning process.
+     */
     function _handleALDoubleClick(d) {
         _handleALClick(d);
         if (_currentSelection && d.status === "query") {
@@ -110,7 +180,12 @@ const activeLearningPicker = (function() {
         }
     }
 
-    function _requestSendAnnotations(id) {
+    /**
+     * Send a request to the active learning manager on the server.
+     * @param {Object} msg The dictionary with the request message.
+     * @returns {XMLHttpRequest} The request object used to send the request.
+     */
+    function _sendRequest(msg) {
         const req = new XMLHttpRequest();
         req.open("POST", window.location.api + "/activeLearning", true)
         req.setRequestHeader("Content-Type", "application/json");
@@ -118,13 +193,26 @@ const activeLearningPicker = (function() {
         req.setRequestHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0"); // HTTP 1.1
         req.setRequestHeader("Pragma", "no-cache"); // HTTP 1.0
         req.setRequestHeader("Expires", "0"); // Proxies
+        req.send(JSON.stringify(msg));
+        return req;
+    }
+
+    /**
+     * Request annotations from the oracle (by sending a message to the active learning
+     * manager on the server).
+     * @param {number} id The id of the process the request concerns.
+     */
+    function _requestSendAnnotations(id) {
         const msg = {
             type: "annotateQuery",
             id: id
         };
-        req.send(JSON.stringify(msg));
+        _sendRequest(msg);
     }
 
+    /**
+     * Open the query of an active learning process.
+     */
     function _openActiveLearningQuery() {
         _returnModal = false;
         const activeModal = $(".modal.show");
@@ -151,31 +239,26 @@ const activeLearningPicker = (function() {
         tmappUI.updateALQueryBrowser(_currentSelection.rawRef.query.samples);
     }
 
+    /**
+     * Get the status of all running active learning processes from the active learning 
+     * manager on the server.
+     * @returns {Promise} A promise that resolves to an array of active learning processes
+     * if the server request is successful. 
+     */
     function _retrieveActiveLearningInfo() {
         let resolveLoad, rejectLoad;
         const loadPromise = new Promise((resolve, reject) => {
             resolveLoad = resolve;
             rejectLoad = reject;
         });
-        const req = new XMLHttpRequest();
-        req.open("POST", window.location.api + "/activeLearning", true)
-        req.setRequestHeader("Content-Type", "application/json");
-        // Turn off caching of response
-        req.setRequestHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0"); // HTTP 1.1
-        req.setRequestHeader("Pragma", "no-cache"); // HTTP 1.0
-        req.setRequestHeader("Expires", "0"); // Proxies
         const msg = {
             type: "getProcesses"
         };
-        req.send(JSON.stringify(msg));
+        const req = _sendRequest(msg);
         req.onreadystatechange = function() {
             if (req.readyState === 4 && req.status === 200) {
                 const response = JSON.parse(req.responseText);
-                resolveLoad(response.response.map(process => {
-                    process.nQueried = process.query ? process.query.samples.length : "-";
-                    process.queriedOn = process.query ? process.query.time : "-";
-                    return process;
-                }));
+                resolveLoad(response.response);
             }
             else if (req.readyState === 4) {
                 rejectLoad();
@@ -184,6 +267,10 @@ const activeLearningPicker = (function() {
         return loadPromise;
     }
 
+    /**
+     * Refreshes the list of running active learning processes. 
+     * @returns {Promise} A Promise that resolves when the refresh is complete.
+     */
     function refresh() {
         return _retrieveActiveLearningInfo().then(data => {
             _availableProcesses = data;
@@ -193,7 +280,7 @@ const activeLearningPicker = (function() {
 
 
     /**
-     * Initialize the al picker. Should be called before any other
+     * Initialize the active learning picker. Should be called before any other
      * functions in the module are called.
      */
     function init() {
@@ -214,7 +301,6 @@ const activeLearningPicker = (function() {
     let _prevModal;
     async function open() {
         await refresh();
-
         _prevModal = $(".modal.show");
         _prevModal.modal("hide");
         $("#active-learning-close-button").show();
@@ -226,6 +312,13 @@ const activeLearningPicker = (function() {
         });
     }
 
+    /**
+     * Create a promise that resolves once the image has been loaded in the interface
+     * and the user has been connected to the collaboration specified by the queried
+     * sample. 
+     * @param {ActiveLearningQueriedSample} sample The dictionary of the queried sample. 
+     * @returns {Promise} The promise. 
+     */
     function openImagePromise(sample) {
         return new Promise((resolve, reject) => {
             tmapp.openImage(sample.name, () => {});
@@ -245,6 +338,12 @@ const activeLearningPicker = (function() {
         });
     }
 
+    /**
+     * Open the image and connect the user to the collaboration of the queried sample. First
+     * wait for the image to load and the user to connect to the collaboration, then add a 
+     * rectangular annotation region to indicate the queried tile in the image. 
+     * @param {ActiveLearningQueriedSample} sample The dictionary of the queried sample. 
+     */
     async function openQueriedSample(sample) {
         let _errorDisplayTimeout = null;
         _errorDisplayTimeout = setTimeout(() => {tmappUI.displayImageError("waitingapi");_errorDisplayTimeout=null;},1000);
@@ -286,24 +385,22 @@ const activeLearningPicker = (function() {
         }, "image");
     }
 
-    
+    /**
+     * Get the active learning setup from the active learning manager on the server (the 
+     * setup includes available active learning methods).
+     * @returns {Promise} A promise that resolves to a dictionary with the available active 
+     * learning methods if the server request is successful. 
+     */
     function _retrieveActiveLearningSetup() {
         let resolveLoad, rejectLoad;
         const loadPromise = new Promise((resolve, reject) => {
             resolveLoad = resolve;
             rejectLoad = reject;
         });
-        const req = new XMLHttpRequest();
-        req.open("POST", window.location.api + "/activeLearning", true)
-        req.setRequestHeader("Content-Type", "application/json");
-        // Turn off caching of response
-        req.setRequestHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0"); // HTTP 1.1
-        req.setRequestHeader("Pragma", "no-cache"); // HTTP 1.0
-        req.setRequestHeader("Expires", "0"); // Proxies
         const msg = {
             type: "getSetup"
         };
-        req.send(JSON.stringify(msg));
+        const req = _sendRequest(msg);
         req.onreadystatechange = function() {
             if (req.readyState === 4 && req.status === 200) {
                 const response = JSON.parse(req.responseText);
@@ -316,22 +413,25 @@ const activeLearningPicker = (function() {
         return loadPromise;
     }
 
+    /**
+     * Send a request to the active learning manager to start a new active learning process
+     * with the specified experiment parameters. 
+     * @param {Object} parameters The experiment parameters of the new active learning process. 
+     */
     function _requestNewActiveLearningProcess(parameters) {
-        const req = new XMLHttpRequest();
-        req.open("POST", window.location.api + "/activeLearning", true)
-        req.setRequestHeader("Content-Type", "application/json");
-        // Turn off caching of response
-        req.setRequestHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0"); // HTTP 1.1
-        req.setRequestHeader("Pragma", "no-cache"); // HTTP 1.0
-        req.setRequestHeader("Expires", "0"); // Proxies
         const msg = {
             type: "startProcess",
             parameters: parameters
         };
-        req.send(JSON.stringify(msg));
+        _sendRequest(msg);
     }
 
+    /**
+     * Open the active learning process configuration window from which a new process can be 
+     * launched. 
+     */
     async function openConfiguration() {
+        // Handle modals when closing the window.
         _returnModal = false;
         const activeModal = $(".modal.show");
         activeModal.modal("hide");
@@ -346,10 +446,12 @@ const activeLearningPicker = (function() {
             });
         });
 
+        // Reset fillable fields in the configuration window.
         $("#active-learning-configuration [name='name_ALConfig']").val("");
         $("#active-learning-configuration [name='annotation_rounds_ALConfig']").val("");
         $("#active-learning-configuration [name='budget_ALConfig']").val("");
 
+        // Help function to initialize method selection buttons.
         function _initSelectButton(button, options) {
             button.empty();
             options.forEach(option => {
@@ -360,15 +462,17 @@ const activeLearningPicker = (function() {
             });
         }
         
+        // Get available active learning methods from the server.
         let setup;
         await _retrieveActiveLearningSetup().then(data => setup = data);
 
-        // Set up informativeness function selection button
+        // Set up informativeness function and sampling strategy selection buttons.
         const selectInfFunButton = $("#informativeness_function_ALConfig");
         const selectSamStrButton = $("#sampling_strategy_ALConfig");
         _initSelectButton(selectInfFunButton, setup.informativenessFunctions)
         _initSelectButton(selectSamStrButton, setup.samplingStrategies)
 
+        // Help function to check if the entered string is valid.
         function _isValidField(field, mode) {
             if (field.trim() === "") {
                 return "Field must not be empty";
