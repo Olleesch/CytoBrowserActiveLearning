@@ -149,7 +149,6 @@ const collabPicker = (function() {
         collabReq.onreadystatechange = () => {
             if (collabReq.readyState === 4 && collabReq.status === 200) {
                 const available = JSON.parse(collabReq.responseText).available;
-                available.forEach((e) => e.nClasses|=defaultClassConfig.length);
                 resolveLoad(available);
             }
             else if (collabReq.readyState === 4) {
