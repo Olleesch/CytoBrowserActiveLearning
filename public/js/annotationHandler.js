@@ -747,6 +747,10 @@ const annotationHandler = (function (){
         _restartAnnotationCounts();
     }
 
+    function getAnnotationSetCounts() {
+        return _annotationSetCounts;
+    }
+
     // Return public members of the closure
     return {
         updateVisuals,
@@ -763,6 +767,7 @@ const annotationHandler = (function (){
         isEmptySet,
         hasPrediction,
         resetAnnotationCounts,
-        updateAnnotationCounts
+        updateAnnotationCounts,
+        getAnnotationSetCounts
     };
 })();
