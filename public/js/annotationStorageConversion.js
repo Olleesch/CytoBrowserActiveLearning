@@ -32,9 +32,16 @@ const annotationStorageConversion = (function() {
 
             // Find new annotation set name "Imported set [num]" based on existing sets
             let importedAnnotationSetName = "Imported set";
-
-            // TODO: Figure out what to do with existing annotations if we load a set the name of which
-            // already exists in the current collaboration. 
+            const existingAnnotationSetNames = annotationSetHandler.getAnnotationSetConfig().map(s => {
+                return s.name;
+            });
+            if (existingAnnotationSetNames.some(name => name === importedAnnotationSetName)) {
+                let nameCount = 1;
+                while (existingAnnotationSetNames.some(name => (`${name}-${nameCount}`) === importedAnnotationSetName)) {
+                    nameCount++;
+                }
+                importedAnnotationSetName = `${importedAnnotationSetName}-${nameCount}`;
+            }
             
             // Help function to load annotation set config and deal with previous storage versions. 
             const loadAnnotationSetConfig = () => {
@@ -94,7 +101,7 @@ const annotationStorageConversion = (function() {
                         delete a.z;
                     });
                 }
-                // TODO: Any optional fields we should configure/ensure exist if the version is 1.2?
+                // Q: Any optional fields we should configure/ensure exist if the version is 1.2?
                 return data.annotations;
             }
 
