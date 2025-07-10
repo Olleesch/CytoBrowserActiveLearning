@@ -911,10 +911,9 @@ const tmappUI = (function(){
         if (!annotation) {
             throw new Error("Invalid annotation id.");
         }
-
         _openContextMenu("Edit annotation", location, (menuBody, closeFun) => {
-            htmlHelper.buildAnnotationSettingsMenu(menuBody, annotation, closeFun, () => {
-                annotationHandler.update(id, annotation, "image");
+            htmlHelper.buildAnnotationSettingsMenu(menuBody, annotation, closeFun, (modifiedAnnotation) => {
+                annotationHandler.update(id, modifiedAnnotation, "image");
             });
         });
     }

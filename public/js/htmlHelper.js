@@ -150,8 +150,14 @@ const htmlHelper = (function() {
             select.append(option);
         });
         select.change(() => {
-            assignment.mclass = select.val();
-            updateFun();
+            // The clone is necessary since the saveFun calls annotationHandler.update(), which expects the updated
+            // annotation to not be a reference to an existing entry in the annotation data since it finds the
+            // corresponding id and processes the differences between the existing and updated annotation. In the
+            // cases of focus and comments below, this doesn't cause any issues, but in the case of the annotation 
+            // class, not using a clone temporarily messes up the class counts. Thus, we use a clone below. 
+            const modifiedAnnotation = JSON.parse(JSON.stringify(annotation));  // Q: Use _cloneAnnotation from annotationHandler instead?
+            modifiedAnnotation.assignments.find(a => a.annotationSet === activeAnnotationSetName).mclass = select.val();
+            updateFun(modifiedAnnotation);
         });
         return container;
     }
@@ -184,7 +190,7 @@ const htmlHelper = (function() {
         });
         select.change(() => {
             assignment.z = Number(select.val());
-            updateFun();
+            updateFun(annotation);
         });
         return container;
     }
@@ -302,10 +308,10 @@ const htmlHelper = (function() {
                 comments.splice(index, 1);
                 entry.closest("[tabindex]").focus();
                 entry.remove();
-                updateFun();
+                updateFun(commentable);
             });
             list.append(entry);
-            updateFun();
+            updateFun(commentable);
         };
         const list = container.find("ul");
         comments.forEach(container.appendComment);
@@ -614,30 +620,31 @@ const htmlHelper = (function() {
         return row;
     }
 
-    /**
-     * Fill a jquery selection with a comment section.
-     * @param {Object} container The selection that should contain the
-     * comment section.
-     * @param {Object} commentable The object that will store the
-     * comments. The comments will be added to an array in the `comments`
-     * field of the object, which will be created if no such field
-     * already exists.
-     * @param {Object} updateFun The function that should be run when
-     * pressing the save button in the menu.
-     */
-    function buildCommentSection(container, commentable, updateFun) {
-        const list = _commentList(commentable, updateFun);
-        const input = _commentInput(body => {
-            const comment = {
-                author: userInfo.getName(),
-                body: body
-            };
-            list.appendComment(comment);
-            commentable.comments.push(comment);
-            updateFun();
-        });
-        container.append(list, input);
-    }
+    // Seemingly not in use (not up to date)
+    // /**
+    //  * Fill a jquery selection with a comment section.
+    //  * @param {Object} container The selection that should contain the
+    //  * comment section.
+    //  * @param {Object} commentable The object that will store the
+    //  * comments. The comments will be added to an array in the `comments`
+    //  * field of the object, which will be created if no such field
+    //  * already exists.
+    //  * @param {Object} updateFun The function that should be run when
+    //  * pressing the save button in the menu.
+    //  */
+    // function buildCommentSection(container, commentable, updateFun) {
+    //     const list = _commentList(commentable, updateFun);
+    //     const input = _commentInput(body => {
+    //         const comment = {
+    //             author: userInfo.getName(),
+    //             body: body
+    //         };
+    //         list.appendComment(comment);
+    //         commentable.comments.push(comment);
+    //         updateFun();
+    //     });
+    //     container.append(list, input);
+    // }
 
     /**
      * Fill a jquery selection with a comment section.
@@ -685,7 +692,7 @@ const htmlHelper = (function() {
             };
             list.appendComment(comment);
             annotation.comments.push(comment);
-            updateFun();
+            updateFun(annotation);
         });
         const buttonRow = _annotationButtonRow(annotation.id, closeFun);
         container.append(id, author, classes, focus, list, input, buttonRow);
