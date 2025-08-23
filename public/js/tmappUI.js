@@ -241,6 +241,32 @@ const tmappUI = (function(){
     }
 
     function _initAnnotationSetButtons() {
+        function isValidName(name, mode) {
+            if (name === "") {
+                return "Annotation set name must not be empty";
+            }
+            if (!(/^[A-Za-z0-9_-]+$/.test(name))) {
+                return "Annotation set name must only contain letters (A-Z, a-z), \
+                    digits (0-9), hyphens (-), and underscores (_)";
+            }
+            if (mode === "rename") {
+                const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+                if (annotationSetHandler.getAnnotationSetConfig().some(annotationSet => {
+                    return annotationSet.name === name && annotationSet.name !== activeAnnotationSet.name;
+                })) {
+                    return "Annotation set name must not be the same as a previously existing annotation set name";
+                }
+            } else if (mode === "add") {
+                if (annotationSetHandler.getAnnotationSetConfig().some(annotationSet => {
+                    return annotationSet.name === name;
+                })) {
+                    return "Annotation set name must not be the same as a previously existing annotation set name";
+                }
+            } else {
+                throw new Error("Unrecognized mode in annotation set menu isValidName.");
+            }
+            return undefined;
+        }
         $("#add_annotation_set").click(() => {
             $("#annotation_set_menu .modal-title").text("Add annotation set");
             $("#annotation_set_menu [name='name']").val("");
@@ -248,10 +274,16 @@ const tmappUI = (function(){
             $("#annotation_set_menu_button").text("Add annotation set");
             $("#annotation_set_menu_button").off("click").click(function(event) {
                 const name = $("#annotation_set_menu [name='name']").val();
-                const description = $("#annotation_set_menu [name='description']").val();
-                const classConfig = [];
-                annotationSetHandler.addAnnotationSet(name, description, classConfig, true);
-                $("#annotation_set_menu").modal("hide");
+                const nameErrorMessage = isValidName(name, "add");
+                if (!nameErrorMessage) {
+                    const description = $("#annotation_set_menu [name='description']").val();
+                    const classConfig = [];
+                    annotationSetHandler.addAnnotationSet(name, description, classConfig, true);
+                    $("#annotation_set_menu").modal("hide");
+                }
+                else {
+                    $("#annotation_set_menu_name_error_message").text(nameErrorMessage).show();
+                }
             });
         });
         $("#rename_annotation_set").click(() => {
@@ -262,14 +294,20 @@ const tmappUI = (function(){
             $("#annotation_set_menu_button").text("Save annotation set");
             $("#annotation_set_menu_button").off("click").click(function(event) {
                 const name = $("#annotation_set_menu [name='name']").val();
-                const description = $("#annotation_set_menu [name='description']").val();
-                annotationSetHandler.renameAnnotationSet(activeAnnotationSet, name, description, true)
-                // annotationSetHandler.addAnnotationSet(name, description, classConfig, true);
-                $("#annotation_set_menu").modal("hide");
+                const nameErrorMessage = isValidName(name, "rename");
+                if (!nameErrorMessage) {
+                    const description = $("#annotation_set_menu [name='description']").val();
+                    annotationSetHandler.renameAnnotationSet(activeAnnotationSet, name, description, true)
+                    $("#annotation_set_menu").modal("hide");
+                }
+                else {
+                    $("#annotation_set_menu_name_error_message").text(nameErrorMessage).show();
+                }
             });
         });
         $("#annotation_set_menu").on("hide.bs.modal", function () {
             $("#annotation_set_menu_button").blur();
+            $("#annotation_set_menu_name_error_message").hide();
         });
         $("#remove_annotation_set").click(() => {
             annotationSetHandler.removeAnnotationSet(true);
@@ -567,7 +605,6 @@ const tmappUI = (function(){
         _initVisualizationSliders();
         _initKeyboardShortcuts();
         _initCollaborationMenu();
-        // _initAnnotationSetMenu();
     }
 
     /**
