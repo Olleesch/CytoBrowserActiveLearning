@@ -16,7 +16,7 @@ const annotationTool = (function() {
                         y: position.y
                     }],
                     z: position.z,
-                    mclass: _activeMclass
+                    mclass: {[annotationSetHandler.getActiveAnnotationSet().name]: _activeMclass}
                 };
                 annotationHandler.add(annotation, "viewport");
             },
@@ -44,7 +44,7 @@ const annotationTool = (function() {
             const annotation = {
                 points: points,
                 z: _zLevel,
-                mclass: _mclass
+                mclass: {[annotationSetHandler.getActiveAnnotationSet().name]: _mclass}
             };
             return annotation;
         }
@@ -138,7 +138,7 @@ const annotationTool = (function() {
             return {
                 points: points,
                 z: _zLevel,
-                mclass: _mclass
+                mclass: {[annotationSetHandler.getActiveAnnotationSet().name]: _mclass}
             };
         }
 
@@ -224,8 +224,7 @@ const annotationTool = (function() {
 
     let _activeTool,
         _activeMclass,
-        _lastPosition,
-        _activeAnnotationSet;
+        _lastPosition;
 
     function _callToolFunction(funName, position) {
         if (!_activeTool)
@@ -263,7 +262,7 @@ const annotationTool = (function() {
      * @param {string} mclass The currently active marker class.
      */
     function setMclass(mclass) {
-        if (classUtils.getIDFromName(mclass) >= 0) {
+        if (annotationSetHandler.getIDFromClassName(mclass) >= 0) {
             _activeMclass = mclass;
             _callToolFunction("update");
         }
@@ -271,18 +270,6 @@ const annotationTool = (function() {
             throw new Error("Undefined marker class.");
     }
 
-    /**
-     * Set the current marker annotation set being assigned with the tool.
-     * @param {string} annotationSet The currently active marker set.
-     */
-    function setAnnotationSet(annotationSet) {
-        if (annotationSetUtils.getIDFromName(annotationSet) >= 0) {
-            _activeAnnotationSet = annotationSet;
-            _callToolFunction("update");
-        }
-        else
-            throw new Error("Undefined marker annotation set.");
-    }
 
     /**
      * Perform a click in the viewport with the currently active tool.
@@ -356,7 +343,6 @@ const annotationTool = (function() {
     return {
         setTool,
         setMclass,
-        setAnnotationSet,
         click,
         dblClick,
         complete,

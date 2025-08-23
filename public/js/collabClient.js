@@ -34,8 +34,8 @@ const collabClient = (function(){
             case "annotationAction": //add/move annotations etc.
                 _handleAnnotationAction(msg);
                 break;
-            case "classConfigAction": //updated class system
-                _handleClassConfigAction(msg);
+            case "annotationSetConfigAction": //annotation set config actions
+                _handleAnnotationSetConfigAction(msg);
                 break;
             case "globalDataAction": //add/remove global comments
                 _handleGlobalDataAction(msg);
@@ -75,22 +75,23 @@ const collabClient = (function(){
                 annotationHandler.update(msg.id, msg.annotation, "image", false);
                 break;
             case "remove":
-                annotationHandler.remove(msg.ids, false);
+                annotationHandler.remove(msg.ids, msg.annotationSet, false);
                 break;
             case "clear":
-                annotationHandler.clear(false);
+                annotationHandler.clear(msg.annotationSet, false);
+                break;
+            case "renameMclassKey":
+                annotationHandler.renameMclassKey(msg.prevName, msg.newName, false);
                 break;
             default:
                 console.warn(`Unknown annotation action type: ${msg.actionType}`);
         }
     }
 
-    function _handleClassConfigAction(msg) {
+    function _handleAnnotationSetConfigAction(msg) {
         switch(msg.actionType) {
             case "update":
-                classUtils.setClassConfig(msg.classConfig);
-                tmappUI.updateClassSelectionButtons();
-                annotationHandler.updateClassConfig(msg.classConfig, false);
+                annotationSetHandler.update(msg.annotationSetConfig, false);
                 break;
             default:
                 console.warn(`Unknown class config action type: ${msg.actionType}`);
@@ -196,11 +197,8 @@ const collabClient = (function(){
         //metadataHandler.clear(); /* To allow SizeN to remain from load */
         globalDataHandler.clear();
         metadataHandler.updateMetadataValues(msg.metadata);
-        annotationHandler.clear(false);
-        
-        classUtils.setClassConfig(msg.classConfig);
-        tmappUI.updateClassSelectionButtons();
-        annotationHandler.updateClassConfig(msg.classConfig, false);
+        annotationHandler.clearAll();
+        annotationSetHandler.update(msg.annotationSetConfig, false);
 
         const c4 = performance.now();
         annotationHandler.add(msg.annotations, "image", false);
@@ -215,6 +213,7 @@ const collabClient = (function(){
         _members = msg.members;
         _localMember = _members.find(member => member.id === msg.requesterId);
         _userId= _localMember.id;
+        annotationSetHandler.setActiveAnnotationSet(annotationSetHandler.getAnnotationSetFromID(0).name);
 
         _memberUpdate();
         tmappUI.setCollabName(msg.name);
@@ -323,6 +322,8 @@ const collabClient = (function(){
         if (_followedMember) {
             if (_followedMember.updated) {
                 tmapp.moveTo(_followedMember.position);
+                annotationSetHandler.setActiveAnnotationSet(_followedMember.annotationSet);
+                $(`#annotation_set_${_followedMember.annotationSet}`).click();
                 _followedMember.updated = false;
             }
             if (_followedMember.removed) {
@@ -410,7 +411,7 @@ const collabClient = (function(){
                     _requestSummary();
                 }
                 else if (!askAboutInclude || annotationHandler.isEmpty() || confirm("All your placed annotations will be lost unless you have saved them. Do you want to continue anyway?")) {
-                    annotationHandler.clear(false);
+                    annotationHandler.clearAll(false);
                     _requestSummary();
                 }
                 else {
@@ -553,34 +554,55 @@ const collabClient = (function(){
     /**
      * Notify collaborators about annotation(s) being removed.
      * @param {number} ids The id of the annotation(s) being removed.
+     * @param {string} annotationSet The name of the annotation 
+     * set to remove the annotation from.
      */
-    function removeAnnotation(ids) {
+    function removeAnnotation(ids, annotationSet) {
         send({
             type: "annotationAction",
             actionType: "remove",
-            ids: ids
+            ids: ids,
+            annotationSet: annotationSet
         });
     }
 
     /**
-     * Notify collaborators of all annotations being cleared.
+     * Notify collaborators of all annotations being cleared from 
+     * an annotation set.
+     * @param {string} annotationSet The name of the annotation 
+     * set to clear annotations from.
      */
-    function clearAnnotations() {
+    function clearAnnotations(annotationSet) {
         send({
             type: "annotationAction",
-            actionType: "clear"
+            actionType: "clear",
+            annotationSet: annotationSet
         });
     }
 
     /**
-     * Notify collaborators about the classification system being updated.
-     * @param {Object} classConfig Data for the updated classification system.
+     * Notify collaborators of an annotation mclass key being renamed.
+     * @param {string} prevName The previous mclass key name.
+     * @param {string} newName The new mclass key name.
      */
-    function updateClassConfig(classConfig) {
+    function renameAnnotationMclassKey(prevName, newName) {
         send({
-            type: "classConfigAction",
+            type: "annotationAction",
+            actionType: "renameMclassKey",
+            prevName: prevName,
+            newName: newName
+        });
+    }
+
+    /**
+     * Notify collaborators of the annotation set config being updated.
+     * @param {Object} annotationSetConfig The new annotation set config.
+     */
+    function updateAnnotationSetConfig(annotationSetConfig) {
+        send({
+            type: "annotationSetConfigAction",
             actionType: "update",
-            classConfig: classConfig
+            annotationSetConfig: annotationSetConfig
         });
     }
 
@@ -728,6 +750,23 @@ const collabClient = (function(){
     })();
 
     /**
+     * Update the active annotation set of the local collaboration member in the
+     * OSD viewport.
+     * @param {string} annotationSet The new active annotation set.
+     */
+    function updateMemberActiveAnnotationSet(annotationSet) {
+        if (_localMember) {
+            _localMember.annotationSet = annotationSet;
+            send({
+                type: "memberEvent",
+                eventType: "update",
+                hardUpdate: false,
+                member: _localMember
+            })
+        }
+    }
+
+    /**
      * Begin following a specified collaborator's view.
      * @param {Object} member The specific member to follow.
      */
@@ -803,7 +842,8 @@ const collabClient = (function(){
         updateAnnotation,
         removeAnnotation,
         clearAnnotations,
-        updateClassConfig,
+        renameAnnotationMclassKey,
+        updateAnnotationSetConfig,
         addComment,
         removeComment,
         changeUsername,
@@ -811,6 +851,7 @@ const collabClient = (function(){
         changeCollabName,
         updatePosition,
         updateCursor,
+        updateMemberActiveAnnotationSet,
         followView,
         stopFollowing,
         getVersions,
