@@ -419,6 +419,17 @@ const htmlHelper = (function() {
         return button;
     }
 
+    function setSelectedAnnotationSetSelectionButton(selectedAnnotationSetName) {
+        annotationSetHandler.forEachAnnotationSet(annotationSet => {
+            const button = $(`#annotation_set_${annotationSet.name}`);
+            if (annotationSet.name === selectedAnnotationSetName) {
+                button.addClass("active");
+            } else {
+                button.removeClass("active");
+            }
+        });
+    }
+
     function _collaboratorListEntry(member, local, active, following) {
         const entry = $(`
             <a class="list-group-item list-group-item-action d-flex
@@ -677,6 +688,7 @@ const htmlHelper = (function() {
         buildAnnotationSettingsMenu,
         buildClassSelectionButtons,
         buildAnnotationSetSelectionButtons,
+        setSelectedAnnotationSetSelectionButton,
         buildCollaboratorList,
         buildImageBrowser,
 

@@ -25,9 +25,9 @@ const collabPicker = (function() {
             selectFun: d => dateUtils.formatReadableDate(d.updatedOn)
         },
         {
-            name: "# Classes",
-            title: "No. classes in the Class-config",
-            key: "nClasses",
+            name: "# Annotation sets",
+            title: "Number of annotation sets",
+            key: "nAnnotationSets",
             sortable: true
         },
         {
