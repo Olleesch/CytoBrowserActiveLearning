@@ -114,11 +114,15 @@ const tmappUI = (function(){
             {
                 name: "Class",
                 key: "mclassId",
-                selectFun: d => classUtils.getIDFromName(d.mclass),
+                selectFun: d => {
+                    return annotationSetHandler.getIDFromClassName(
+                        d.mclass[annotationSetHandler.getActiveAnnotationSet().name]
+                    );
+                },
                 minWidth: "5em",
                 displayFun: (elem, d) => {
-                    const color = classUtils.classColor(d.mclassId);
-                    const name = classUtils.getClassFromID(d.mclassId).name;
+                    const color = annotationSetHandler.classColor(d.mclassId);
+                    const name = annotationSetHandler.getClassFromID(d.mclassId).name;
                     const badge = $("<span></span>");
                     badge.text(name);
                     badge.addClass("badge text-white");
@@ -223,17 +227,53 @@ const tmappUI = (function(){
     }
 
     function _initClassSelectionButtons() {
-        const initialMclass = classUtils.getClassFromID(0);
+        const initialMclass = annotationSetHandler.getClassFromID(0);
         annotationTool.setMclass(initialMclass.name);
         const container = $("#class_buttons");
         htmlHelper.buildClassSelectionButtons(container, 0);
     }
 
-    function _initAnnotationSetSelectionButtons() {
-        const initialAnnotationSet = annotationSetUtils.getAnnotationSetFromID(0);
-        annotationTool.setAnnotationSet(initialAnnotationSet.name);
+    function _initAnnotationSetSelectionButtons(selectedIndex = 0) {
+        const initialAnnotationSet = annotationSetHandler.getAnnotationSetFromID(selectedIndex);
+        annotationSetHandler.setActiveAnnotationSet(initialAnnotationSet.name);
         const container = $("#annotation_set_buttons");
-        htmlHelper.buildAnnotationSetSelectionButtons(container, 0);
+        htmlHelper.buildAnnotationSetSelectionButtons(container, selectedIndex);
+    }
+
+    function _initAnnotationSetButtons() {
+        $("#add_annotation_set").click(() => {
+            $("#annotation_set_menu .modal-title").text("Add annotation set");
+            $("#annotation_set_menu [name='name']").val("");
+            $("#annotation_set_menu [name='description']").val("");
+            $("#annotation_set_menu_button").text("Add annotation set");
+            $("#annotation_set_menu_button").off("click").click(function(event) {
+                const name = $("#annotation_set_menu [name='name']").val();
+                const description = $("#annotation_set_menu [name='description']").val();
+                const classConfig = [];
+                annotationSetHandler.addAnnotationSet(name, description, classConfig, true);
+                $("#annotation_set_menu").modal("hide");
+            });
+        });
+        $("#rename_annotation_set").click(() => {
+            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+            $("#annotation_set_menu .modal-title").text("Rename annotation set");
+            $("#annotation_set_menu [name='name']").val(activeAnnotationSet.name);
+            $("#annotation_set_menu [name='description']").val(activeAnnotationSet.description);
+            $("#annotation_set_menu_button").text("Save annotation set");
+            $("#annotation_set_menu_button").off("click").click(function(event) {
+                const name = $("#annotation_set_menu [name='name']").val();
+                const description = $("#annotation_set_menu [name='description']").val();
+                annotationSetHandler.renameAnnotationSet(activeAnnotationSet, name, description, true)
+                // annotationSetHandler.addAnnotationSet(name, description, classConfig, true);
+                $("#annotation_set_menu").modal("hide");
+            });
+        });
+        $("#annotation_set_menu").on("hide.bs.modal", function () {
+            $("#annotation_set_menu_button").blur();
+        });
+        $("#remove_annotation_set").click(() => {
+            annotationSetHandler.removeAnnotationSet(true);
+        });
     }
 
     function _initToolSelectionButtons() {
@@ -451,9 +491,9 @@ const tmappUI = (function(){
                     // Handle digit keys being pressed for classes
                     const digits = Array.from({length: 10}, (v, k) => String((k+1) % 10));
                     const chars = digits.map(digit => digit.charCodeAt());
-                    chars.slice(0, classUtils.count()).forEach((char, index) => {
+                    chars.slice(0, annotationSetHandler.classCount()).forEach((char, index) => {
                         if (event.which === char || event.which === char+48) {
-                            $("#class_" + classUtils.getClassFromID(index).name).click();
+                            $("#class_" + annotationSetHandler.getClassFromID(index).name).click();
                             caught=true; //We did take it
                         }
                     });
@@ -516,6 +556,7 @@ const tmappUI = (function(){
         _initGlobalComments();
         _initClassSelectionButtons();
         _initAnnotationSetSelectionButtons();
+        _initAnnotationSetButtons();
         _initToolSelectionButtons();
         _initViewerEvents();
         _initContextMenu();
@@ -526,6 +567,7 @@ const tmappUI = (function(){
         _initVisualizationSliders();
         _initKeyboardShortcuts();
         _initCollaborationMenu();
+        // _initAnnotationSetMenu();
     }
 
     /**
@@ -536,8 +578,8 @@ const tmappUI = (function(){
         _initClassSelectionButtons();
     }
 
-    function updateAnnotationSetSelectionButtons() {
-        _initAnnotationSetSelectionButtons();
+    function updateAnnotationSetSelectionButtons(selectedIndex) {
+        _initAnnotationSetSelectionButtons(selectedIndex);
     }
 
     /**

@@ -49,7 +49,7 @@ class Collaboration {
         this.hasUnsavedChanges = false;
         this.loadState(false);
         this.log(`Initializing collaboration.`, console.info);
-        this.classConfig = [];
+        this.annotationSetConfig = [];
     }
 
     close() {
@@ -149,9 +149,9 @@ class Collaboration {
                     this.handleAnnotationAction(sender, member, msg);
                 });
                 break;
-            case "classConfigAction":
+            case "annotationSetConfigAction":
                 this.ongoingLoad.then(() => {
-                    this.handleClassConfigAction(sender, member, msg);
+                    this.handleAnnotationSetConfigAction(sender, member, msg);
                 });
                 break;
             case "globalDataAction":
@@ -224,8 +224,40 @@ class Collaboration {
                 }
                 break;
             case "clear":
-                this.annotations = [];
-                this.forwardMessage(sender, msg);
+                {
+                    const annotationSetName = msg.annotationSet;
+                    const ids = this.annotations.filter(annotation => annotationSetName in annotation.mclass)
+                        .map(annotation => annotation.id);
+                    ids.forEach(id => {
+                        const deletedIndex = this.annotations.findIndex(annotation => annotation.id === id);
+                        if (deletedIndex < 0) {
+                            this.log(`${member.name} tried to remove nonexisting annotation with ID ${id}`, console.warn);
+                        }
+                        // Check if the annotation contains classes in multiple annotation sets
+                        // If the annotation is only included in one annotation set, remove the entire annotation
+                        else if (Object.keys(this.annotations[deletedIndex].mclass).length === 1) {
+                            // Remove the annotation from the data
+                            this.annotations.splice(deletedIndex, 1)[0];
+                        } 
+                        // If the annotation contains classes in multiple sets, only remove the class entry 
+                        // for the annotation set in question, keep the rest of it
+                        else {
+                            delete this.annotations[deletedIndex].mclass[annotationSetName];
+                        }
+                    });
+                    this.forwardMessage(sender, msg);
+                }
+                break;
+            case "renameMclassKey":
+                {
+                    this.annotations.forEach(annotation => {
+                        if (msg.prevName in annotation.mclass) {
+                            annotation.mclass[msg.newName] = annotation.mclass[msg.prevName];
+                            delete annotation.mclass[msg.prevName];
+                        }
+                    });
+                    this.forwardMessage(sender, msg);
+                }
                 break;
             default:
                 this.log(`${member.name} tried to handle unknown annotation action: ${msg.actionType}`, console.warn);
@@ -235,7 +267,7 @@ class Collaboration {
         this.trySavingState();
     }
 
-    handleClassConfigAction(sender, member, msg) {
+    handleAnnotationSetConfigAction(sender, member, msg) {
         if (!member.ready) {
             // Members who aren't ready shouldn't do anything with annotations
             return;
@@ -243,13 +275,15 @@ class Collaboration {
         switch (msg.actionType) {
             case "update":
                 {
-                    Object.assign(this.classConfig, msg.classConfig);
+                    // Q: Best way of doing this?
+                    this.annotationSetConfig = [];
+                    Object.assign(this.annotationSetConfig, msg.annotationSetConfig);
                     this.forwardMessage(sender, msg);
                 }
                 break;
-            }
-            this.flagUnsavedChanges();
-            this.trySavingState();
+        }
+        this.flagUnsavedChanges();
+        this.trySavingState();
     }
 
     handleGlobalDataAction(sender, member, msg) {
@@ -361,7 +395,7 @@ class Collaboration {
             image: this.image,
             members: Array.from(this.members.values()),
             annotations: this.annotations,
-            classConfig: this.classConfig,
+            annotationSetConfig: this.annotationSetConfig,
             comments: this.comments,
             metadata: metadata.getMetadataForImage(this.image)
         }
@@ -390,13 +424,13 @@ class Collaboration {
             return autosave.loadAnnotations(this.id, this.image);
         }).then(data => {
             data || this.log('WARNING: loadAnnotations returned zero data', console.warn);
-            if (data.version === "1.0" || data.version === "1.1") {
+            if (data.version === "1.0" || data.version === "1.1" || data.version === "1.2") {
                 if (data.name) {
                     this.name = data.name;
                 }
                 this.annotations = data.annotations;
             }
-            if (data.version === "1.1") {
+            if (data.version === "1.1" || data.version === "1.2") {
                 this.author = data.author;
                 this.createdOn = data.createdOn;
                 this.updatedOn = data.updatedOn;
@@ -405,11 +439,14 @@ class Collaboration {
                     const commentIds = this.comments.map(comment => comment.id);
                     this.nextCommentId = Math.max(...commentIds) + 1;
                 }
-                if (data.classConfig === undefined) { //Ensure backwards compatibility
-                    data.classConfig = [];
-                }
-                this.classConfig = data.classConfig;
             }
+            if (data.version === "1.2") {
+                if (data.annotationSetConfig === undefined) { //Ensure backwards compatibility?
+                    data.annotationSetConfig = [];
+                }
+                this.annotationSetConfig = data.annotationSetConfig;
+            }
+            //Q: Backwards compatibility before annotation sets?
         }).catch(() => {
             this.log(`Couldn't load preexisting annotations for ${this.image}.`, console.info);
             this.annotations = [];
@@ -427,7 +464,7 @@ class Collaboration {
         if (this.hasUnsavedChanges) {
             const updateTime = getCurrentTimeAsString();
             const data = { //Format specification (less canonicalized, order is important)
-                version: "1.1",
+                version: "1.2",
                 id: this.id,
                 name: this.name,
                 image: this.image,
@@ -436,7 +473,7 @@ class Collaboration {
                 updatedOn: updateTime,
                 nAnnotations: this.annotations.length,
                 nComments: this.comments.length,
-                classConfig: this.classConfig,
+                annotationSetConfig: this.annotationSetConfig,
                 annotations: this.annotations,
                 comments: this.comments
             };
@@ -476,6 +513,7 @@ class Collaboration {
         });
     }
 
+    // Q: Needs to be updated? 
     isDuplicateAnnotation(annotation) {
         return this.annotations.some(existingAnnotation =>
             existingAnnotation.z === annotation.z
