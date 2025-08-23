@@ -93,6 +93,12 @@ const collabClient = (function(){
             case "update":
                 annotationSetHandler.update(msg.annotationSetConfig, false);
                 break;
+            case "lock":
+                annotationSetHandler.lockAnnotationSet(msg.annotationSetName);
+                break;
+            case "unlock":
+                annotationSetHandler.unlockAnnotationSet(msg.annotationSetName);
+                break;
             default:
                 console.warn(`Unknown class config action type: ${msg.actionType}`);
         }
@@ -214,6 +220,8 @@ const collabClient = (function(){
         _localMember = _members.find(member => member.id === msg.requesterId);
         _userId= _localMember.id;
         annotationSetHandler.setActiveAnnotationSet(annotationSetHandler.getAnnotationSetFromID(0).name);
+
+        msg.lockedAnnotationSets.forEach(a => annotationSetHandler.lockAnnotationSet(a));
 
         _memberUpdate();
         tmappUI.setCollabName(msg.name);
