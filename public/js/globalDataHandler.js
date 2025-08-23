@@ -10,6 +10,9 @@ const globalDataHandler = (function() {
        if (x < 1000) {
            return x;
        }
+       else if (x < 100_000) {
+           return (x / 1000).toFixed(1) + "k";
+       }
        else if (x < 1_000_000) {
            return Math.floor(x / 1000) + "k";
        }
