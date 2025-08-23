@@ -7,19 +7,9 @@ const classUtils = (function(){
     "use strict";
 
     /**
-     * Information for a specific class from the class configuration, including
-     * information about its visual representation in the user interface.
-     * @typedef {Object} MClass
-     * @property {string} name The abbreviated name of the class.
-     * @property {string} description The extended description of the
-     * class name.
-     * @property {string} color The color used to represent the class.
-     */
-    let _classes = defaultClassConfig;
-
-    /**
      * Get a sorted array containing the name of each class in a given class system.
-     * @returns {Array<string>}
+     * @param {Object} class_system the input class system
+     * @returns {Array<string>} the sorted class system
      */
     function getSortedNames(class_system) {
         let classesNames = [];
@@ -29,7 +19,7 @@ const classUtils = (function(){
 
     /**
      * Check whether a class system corresponds to the default system.
-     * @param {Object} class_system
+     * @param {Object} class_system the input class system
      * @returns {Boolean} indicates whether the argument class_system is the default system.
      */
     function isDefaultClassSystem(class_system) {
@@ -55,78 +45,9 @@ const classUtils = (function(){
         return (sameClassLenghts && sameClassNames);
     }
 
-    /**
-     * Get the current class system.
-     * @returns {Object}
-     */
-    function getClassConfig() {
-        return _classes;
-    }
-
-    /**
-     * Set the classification system based on a new configuration.
-     * @param {Object} classConfig 
-     */
-    function setClassConfig(updatedClassConfig) {
-        if (updatedClassConfig !== undefined && updatedClassConfig.length >= 1) {
-            _classes = updatedClassConfig;
-        }
-        else {
-            _classes = defaultClassConfig;
-        }
-        layerHandler.getLayer("marker").updateMarkerTextures().then();
-    }
-
-    /**
-     * Get the color assigned for a given class.
-     * @param {number|string} idOrName Either the id of the given class
-     * or its name.
-     * @returns {string} An RGB hex representation of the color.
-     */
-    function classColor(idOrName) {
-        let id = idOrName;
-        if (typeof(id) === "string") {
-            id = classUtils.getIDFromName(idOrName);
-        }
-        return _classes[id].color;
-    }
-
-    /**
-     * Get a glass based on its id.
-     * @param {number} id The id of the sought class.
-     * @returns {MClass} The class with the corresponding id.
-     */
-    function getClassFromID(id) {
-        return _classes[id];
-    }
-
-    /**
-     * Get the id of a class based on its name.
-     * @param {string} name The name of the class.
-     * @returns {number} The id of the class.
-     */
-    function getIDFromName(name) {
-        return _classes.findIndex((entry) => name == entry.name);
-    }
-
-    /**
-     * Execute a function with each class as an argument.
-     * @param {Function} f The function to be executed with the classes.
-     */
-    function forEachClass(f) {
-        _classes.forEach(f);
-    }
-
     return {
-        count: () => _classes.length,
         getSortedNames,
         isDefaultClassSystem,
         compareTwoClassSystems,
-        getClassConfig,
-        setClassConfig,
-        classColor,
-        getClassFromID,
-        getIDFromName,
-        forEachClass
     }
 })();
