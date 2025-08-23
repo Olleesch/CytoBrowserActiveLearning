@@ -193,10 +193,14 @@ class Collaboration {
         switch (msg.actionType) {
             case "add":
                 {
-                    msg.annotations.forEach(newAnnotation => {
-                        this.annotations.push(newAnnotation);
-                        this.annotationMap.set(newAnnotation.id, newAnnotation);
-                    });
+                    let newAnnotations;
+                    if (!Array.isArray(msg.annotation)) {
+                        newAnnotations = [msg.annotation];
+                    }
+                    else {
+                        newAnnotations = msg.annotation;
+                    }
+                    this.addAnnotations(member, newAnnotations);
                     this.forwardMessage(sender, msg);
                 }
                 break;
@@ -214,42 +218,28 @@ class Collaboration {
                 break;
             case "remove":
                 {
-                    msg.ids.forEach(id => {
-                        const annotation = this.annotationMap.get(id);
-                        if (annotation) {
-                            this.annotationMap.delete(id);
-                            const index = this.annotations.indexOf(annotation);
-                            if (index >= 0) {
-                                this.annotations.splice(index, 1);
-                            }
-                        }
-                        else {
-                            this.log(`${member.name} tried to remove nonexisting annotation with ID ${id}`, console.warn);
-                        }
-                    });
+                    let ids;
+                    if (!Array.isArray(msg.id)) {
+                        ids = [msg.id];
+                    }
+                    else {
+                        ids = msg.id;
+                    }
+                    const annotationSetName = msg.annotationSet;
+                    this.removeAnnotations(member, ids, annotationSetName);
                     this.forwardMessage(sender, msg);
                 }
                 break;
             case "clear":
                 {
                     const annotationSetName = msg.annotationSet;
-                    for (const [id, annotation] in this.annotationMap) {
+                    const ids = [];
+                    for (const [id, annotation] of this.annotationMap) {
                         if (annotationSetName in annotation.mclass) {
-                            // If the annotation contains classes in only one set, remove the entire annotation
-                            if (Object.keys(annotation.mclass).length === 1) {
-                                this.annotationMap.delete(id);
-                                const index = this.annotations.indexOf(annotation);
-                                if (index >= 0) {
-                                    this.annotations.splice(index, 1);
-                                }
-                            }
-                            // If the annotation contains classes in multiple sets, only remove the class entry 
-                            // for the annotation set in question, keep the rest of it
-                            else {
-                                delete annotation.mclass[annotationSetName];
-                            }
+                            ids.push(id);
                         }
                     }
+                    this.removeAnnotations(member, ids, annotationSetName);
                     this.forwardMessage(sender, msg);
                 }
                 break;
@@ -270,6 +260,62 @@ class Collaboration {
         }
         this.flagUnsavedChanges();
         this.trySavingState();
+    }
+
+    addAnnotations(member, newAnnotations) {
+        // We assume an annotation is of correct format, this should have been checked before by the sender. 
+        // Specifically we skip checks for: annotation containing a class, annotation is in correct image, 
+        // annotation is inside image borders, annotation mclass entries have valid annotation sets and classes.
+        // We keep checks for: annotation already exists at the same point in the same annotation set (then ignore).
+        newAnnotations.forEach(newAnnotation => {
+            const overlappingAnnotation = this.findDuplicatePoints(newAnnotation);
+            // Check every assigned class for the new annotation
+            if (overlappingAnnotation) {
+                for (const [annotationSetName, newClass] of Object.entries(newAnnotation.mclass)) {
+                    // Check if the overlapping annotation has a class in the annotation set of the new annotation
+                    if (annotationSetName in overlappingAnnotation.mclass) {
+                        this.log(`${member.name} tried to add an annotation to a point that already has \
+                            an annotation in the annotation set, ignoring.`, console.info);
+                    }
+                    // If the overlapping annotation does not have a class in the annotation set of the new annotation, add it
+                    else {
+                        overlappingAnnotation.mclass[annotationSetName] = newClass;
+                    }
+                }
+            }
+            // If there does not already exist an annotation at the same point, we add the entire annotation
+            else {
+                this.annotationMap.set(newAnnotation.id, newAnnotation);
+                this.annotations.push(newAnnotation);
+            }
+        });
+    }
+
+    removeAnnotations(member, ids, annotationSetName) {
+        ids.forEach(id => {
+            // Check if the annotation exists first (annotation with ID exists and 
+            // has an annotation in the annotation set)
+            const removedAnnotation = this.annotationMap.get(id);
+            if (!removedAnnotation || !(annotationSetName in removedAnnotation.mclass)) {
+                this.log(`${member.name} tried to remove nonexisting annotation with ID ${id} in \
+                    annotation set ${annotationSetName}`, console.warn);
+                return;
+            }
+            // Check if the annotation contains classes in multiple annotation sets
+            // If the annotation is only included in one annotation set, remove the entire annotation
+            if (Object.keys(removedAnnotation.mclass).length === 1) {
+                this.annotationMap.delete(id);
+                const index = this.annotations.indexOf(removedAnnotation);
+                if (index >= 0) {
+                    this.annotations.splice(index, 1);
+                }
+            } 
+            // If the annotation contains classes in multiple sets, only remove the class entry 
+            // for the annotation set in question, keep the rest of it
+            else {
+                delete removedAnnotation.mclass[annotationSetName];
+            }
+        });
     }
 
     handleAnnotationSetConfigAction(sender, member, msg) {
@@ -510,6 +556,32 @@ class Collaboration {
             this.saveState();
             this.autosaveTimeout = null;
         }, autosaveTimeout); //Autosave timeout in ms
+    }
+
+    pointsAreDuplicate(pointsA, pointsB) {
+        if (pointsA.length !== pointsB.length)
+            return false;
+
+        return pointsA.every((pointA, index) => {
+            const pointB = pointsB[index];
+            return pointA.x === pointB.x && pointA.y === pointB.y;
+        });
+    }
+    
+    // Find annotations with identical points
+    findDuplicatePoints(annotation) {
+        return this.annotations.find(existingAnnotation => {
+            return this.pointsAreDuplicate(annotation.points, existingAnnotation.points)
+        });
+    }
+
+    // Q: Needs to be updated? 
+    isDuplicateAnnotation(annotation) {
+        return this.annotations.some(existingAnnotation =>
+            existingAnnotation.z === annotation.z
+            && existingAnnotation.mclass === annotation.mclass
+            && this.pointsAreDuplicate(annotation.points, existingAnnotation.points)
+        );
     }
 
     log(msg, f = console.log) {

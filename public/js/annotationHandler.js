@@ -294,6 +294,7 @@ const annotationHandler = (function (){
      * told to add the annotation.
      */
     function add(annotations, coordSystem="web", transmit = true) {
+        console.log(JSON.stringify(annotationSetHandler.getAnnotationSetConfig(), null, 2));
         // let once=false;  //Q: Why once?
         if (!Array.isArray(annotations)) {
             annotations = [annotations];
@@ -327,6 +328,7 @@ const annotationHandler = (function (){
             
             // Check every assigned class for the new annotation
             for (const [annotationSetName, newClass] of Object.entries(addedAnnotation.mclass)) {
+                console.log(annotationSetName);
                 // Get classes from annotationSetConfig
                 let classes = Object.values(annotationSetHandler.getAnnotationSetConfig().find(annotationSet => {
                     return annotationSet.name === annotationSetName;
@@ -406,6 +408,9 @@ const annotationHandler = (function (){
                 if (addedAnnotation.prediction === undefined)
                     addedAnnotation.prediction = _generatePrediction();
 
+                // Store a data representation of the annotation
+                _addAnnotation(addedAnnotation);
+
                 // Update class/annotation set counts (iterate through each annotation set of the added annotation classes)
                 Object.entries(addedAnnotation.mclass).forEach(([annotationSetName, newClass]) => {
                     if (addedAnnotation.points.length === 1) {
@@ -420,8 +425,6 @@ const annotationHandler = (function (){
                 updateAnnotationCounts();
             }
 
-            // Store a data representation of the annotation
-            _addAnnotation(addedAnnotation);
             addedAnntotations.push(addedAnnotation);
 
             //Q: What does this even do?
@@ -490,6 +493,7 @@ const annotationHandler = (function (){
         // So, we check that the keys of the classes are the same before and after update
         if (JSON.stringify(Object.keys(annotation.mclass).sort()) !== JSON.stringify(Object.keys(updatedAnnotation.mclass).sort())) {
             console.warn("Cannot at the moment move an annotation from one annotation set to another.");
+            return;
         }
 
         // Update class/annotation counts
@@ -584,13 +588,13 @@ const annotationHandler = (function (){
         ids.forEach(id => {
             // Check if the annotation exists first (annotation with ID exists and 
             // has an annotation in the annotation set)
-            if (!_annotationMap.has(id) || !(annotationSetName in _annotationMap.get(id))) {
+            if (!_annotationMap.has(id) || !(annotationSetName in _annotationMap.get(id).mclass)) {
                 throw new Error("Tried to remove an annotation that doesn't exist");
             }
 
             // Get the class of the removed annotation (only to update annotation counts)
             const removedAnnotation = _annotationMap.get(id);
-            const removedClass = annotations[deletedIndex].mclass[annotationSetName];
+            const removedClass = removedAnnotation.mclass[annotationSetName];
             
             // Check if the annotation contains classes in multiple annotation sets
             // If the annotation is only included in one annotation set, remove the entire annotation
