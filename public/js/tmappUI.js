@@ -382,6 +382,30 @@ const tmappUI = (function(){
                 }
             });
         });
+        $("#copy_annotation_set").click(function(event) {
+            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+            // No action if the currently selected annotation set is locked
+            if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSet.name)) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            $("#annotation_set_menu .modal-title").text("Copy annotation set");
+            $("#annotation_set_menu [name='name']").val("");
+            $("#annotation_set_menu [name='description']").val("");
+            $("#annotation_set_menu_button").text("Copy annotation set");
+            $("#annotation_set_menu_button").off("click").click(function(event) {
+                const name = $("#annotation_set_menu [name='name']").val();
+                const nameErrorMessage = _isValidAnnotationSetName(name, "add");
+                if (!nameErrorMessage) {
+                    annotationSetHandler.copyAnnotationSet(name, activeAnnotationSet, true);
+                    $("#annotation_set_menu").modal("hide");
+                }
+                else {
+                    $("#annotation_set_menu_name_error_message").text(nameErrorMessage).show();
+                }
+            });
+        });
         $("#annotation_set_menu").on("hide.bs.modal", function () {
             $("#annotation_set_menu_button").blur();
             $("#annotation_set_menu_name_error_message").hide();
