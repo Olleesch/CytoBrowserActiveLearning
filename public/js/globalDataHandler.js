@@ -46,8 +46,8 @@ const globalDataHandler = (function() {
     * No change when objects are not visible (e.g. in FullScreen mode)
     */
    function updateAnnotationCounts(nMarkers, nRegions, classCounts) {
-       $("#global_data_nmarkers").text(nMarkers);
-       $("#global_data_nregions").text(nRegions);
+       $("#global_data_nmarkers").text(Object.values(nMarkers).reduce((a, b) => a + b, 0));
+       $("#global_data_nregions").text(Object.values(nRegions).reduce((a, b) => a + b, 0));
        annotationSetHandler.forEachClass(c => {
            const id = `#class_counter_${c.name}`;
            $(id).text(_shortenInt(classCounts[c.name]));
@@ -58,8 +58,11 @@ const globalDataHandler = (function() {
     * Update all displayed information about the number of annotations per annotation set.
     * @param {Object} annotationSetCounts The number of annotation for each annotation set.
     */
-   function updateAnnotationSetCounts(annotationSetCounts) {
+   function updateAnnotationSetCounts(annotationSetCounts, nMarkers, nRegions, classCounts) {
        annotationSetHandler.forEachAnnotationSet(s => {
+           $(`#${s.name}_nmarkers`).text(nMarkers[s.name]);
+           $(`#${s.name}_nregions`).text(nRegions[s.name]);
+           $(`#${s.name}_nclasses`).text(Object.keys(classCounts[s.name]).length);
            const id = `#annotation_set_counter_${s.name}`;
            $(id).text(_shortenInt(annotationSetCounts[s.name]));
        });
