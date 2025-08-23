@@ -87,15 +87,15 @@ const annotationHandler = (function (){
         // Count each annotation for each annotation
         _annotations.forEach(annotation => {
             const isMarker = annotation.points.length === 1;
-            Object.entries(annotation.assignments).forEach(([s, a]) => {
+            annotation.assignments.forEach(a => {
                 if (isMarker) {
-                    _nMarkers[s]++;
+                    _nMarkers[a.annotationSet]++;
                 }
                 else {
-                    _nRegions[s]++;
+                    _nRegions[a.annotationSet]++;
                 }
-                _annotationSetCounts[s]++;
-                _classCounts[s][a.mclass]++;
+                _annotationSetCounts[a.annotationSet]++;
+                _classCounts[a.annotationSet][a.mclass]++;
             });
         });
 
@@ -162,7 +162,7 @@ const annotationHandler = (function (){
                     y: point.y
                 };
             }),
-            assignments: Object.fromEntries(Object.entries(annotation.assignments)),    // Q: Do this manually instead?
+            assignments: JSON.parse(JSON.stringify(annotation.assignments)),    // Q: Do this manually instead?
             comments: annotation.comments && annotation.comments.map(comment => {
                 return {
                     author: comment.author,
@@ -276,7 +276,7 @@ const annotationHandler = (function (){
         annotations.forEach(annotation => {
             const addedAnnotation = _cloneAnnotation(annotation);
             
-            if (Object.keys(addedAnnotation.assignments).length === 0) {
+            if (addedAnnotation.assignments.length === 0) {
                 console.warn("Cannot add annotation that does not belong to any annotation set (has no class).");
                 return;
             }
@@ -296,10 +296,10 @@ const annotationHandler = (function (){
             const overlappingAnnotation = _findDuplicatePoints(addedAnnotation);
             
             // Check every assigned class for the new annotation
-            for (const [annotationSetName, newAssignment] of Object.entries(addedAnnotation.assignments)) {
+            for (const newAssignment of addedAnnotation.assignments) {
                 // Get classes from annotationSetConfig
                 let classes = Object.values(annotationSetHandler.getAnnotationSetConfig().find(annotationSet => {
-                    return annotationSet.name === annotationSetName;
+                    return annotationSet.name === newAssignment.annotationSet;
                 }).classConfig.map(mclass => mclass.name));
                 
                 // If annotationSetConfig contains empty classConfig, we get the classes from the default config
@@ -328,30 +328,30 @@ const annotationHandler = (function (){
 
                 if (overlappingAnnotation) {
                     // Check if the overlapping annotation has a class in the annotation set of the new annotation
-                    if (annotationSetName in overlappingAnnotation.assignments) {
+                    if (newAssignment.annotationSet in (overlappingAnnotation.assignments.map(a => a.annotationSet))) {
                         console.warn(`Adding annotation(s) with identical properties as existing one in set \
-                            ${annotationSetName}, ignoring.`);
+                            ${newAssignment.annotationSet}, ignoring.`);
                         // changed from update to ignore, since on fast updates we could run into partial updates
                         // update(replacedAnnotation.id, addedAnnotation, coordSystem, false, false);
                         // The choice to ignore a conflicting addition was there previously /Olle
                     }
                     // If the overlapping annotation does not have a class in the annotation set of the new annotation, add it
                     else {
-                        overlappingAnnotation.assignments[annotationSetName] = Object.fromEntries(Object.entries(newAssignment));
+                        overlappingAnnotation.assignments.push(JSON.parse(JSON.stringify(newAssignment)));
 
                         // Update class/annotation set counts 
                         if (addedAnnotation.points.length === 1) {
-                            _nMarkers[annotationSetName]++;
+                            _nMarkers[newAssignment.annotationSet]++;
                         }
                         else {
-                            _nRegions[annotationSetName]++;
+                            _nRegions[newAssignment.annotationSet]++;
                         }
-                        _annotationSetCounts[annotationSetName]++;
-                        _classCounts[annotationSetName][newAssignment.mclass]++;
+                        _annotationSetCounts[newAssignment.annotationSet]++;
+                        _classCounts[newAssignment.annotationSet][newAssignment.mclass]++;
                         updateAnnotationCounts();
 
                         // Update hasPrediction value
-                        _hasPrediction[annotationSetName] = _hasPrediction[annotationSetName] || newAssignment.prediction != null;
+                        _hasPrediction[newAssignment.annotationSet] = _hasPrediction[newAssignment.annotationSet] || newAssignment.prediction != null;
                     }
                 }
             }
@@ -387,19 +387,19 @@ const annotationHandler = (function (){
                 // Store a data representation of the annotation
                 _addAnnotation(addedAnnotation);
 
-                Object.entries(addedAnnotation.assignments).forEach(([annotationSetName, newAssignment]) => {
+                addedAnnotation.assignments.forEach(newAssignment => {
                     // Update class/annotation set counts (iterate through each annotation set of the added annotation classes)
                     if (addedAnnotation.points.length === 1) {
-                        _nMarkers[annotationSetName]++;
+                        _nMarkers[newAssignment.annotationSet]++;
                     }
                     else {
-                        _nRegions[annotationSetName]++;
+                        _nRegions[newAssignment.annotationSet]++;
                     }
-                    _annotationSetCounts[annotationSetName]++;
-                    _classCounts[annotationSetName][newAssignment.mclass]++;
+                    _annotationSetCounts[newAssignment.annotationSet]++;
+                    _classCounts[newAssignment.annotationSet][newAssignment.mclass]++;
 
                     // Update hasPrediction value
-                    _hasPrediction[annotationSetName] = _hasPrediction[annotationSetName] || newAssignment.prediction != null;
+                    _hasPrediction[newAssignment.annotationSet] = _hasPrediction[newAssignment.annotationSet] || newAssignment.prediction != null;
                 });
                 updateAnnotationCounts();
             }
@@ -423,8 +423,6 @@ const annotationHandler = (function (){
      */
     function update(id, annotation, coordSystem="web", transmit = true, redraw = true) {
         timingLog && console.time('updateAnnotation');
-
-        const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
 
         // Get the annotation to update
         const updatedAnnotation = getAnnotationById(id);
@@ -465,7 +463,8 @@ const annotationHandler = (function (){
 
         // At the moment, moving an annotation from one set to another in update() is not allowed. 
         // So, we check that the keys of the assignments are the same before and after update
-        if (JSON.stringify(Object.keys(annotation.assignments).sort()) !== JSON.stringify(Object.keys(updatedAnnotation.assignments).sort())) {
+        if (JSON.stringify(annotation.assignments.map(a => a.annotationSet).sort()) !== 
+            JSON.stringify(updatedAnnotation.assignments.map(a => a.annotationSet).sort())) {
             console.warn("Moving an annotation from one annotation set to another in the update function is currently not allowed.");
             return;
         }
@@ -473,12 +472,12 @@ const annotationHandler = (function (){
         // Update class/annotation counts and hasPrediction
         // Q: Right now the annotation count is updated even if the annotation classes haven't changed, 
         // this is ok because it just adds then subtracts right?
-        Object.entries(annotation.assignments).forEach(([annotationSetName, assignment]) => {
-            _classCounts[annotationSetName][assignment.mclass]++;
-            _hasPrediction[annotationSetName] = _hasPrediction[annotationSetName] || (assignment.prediction != null)
+        annotation.assignments.forEach(assignment => {
+            _classCounts[assignment.annotationSet][assignment.mclass]++;
+            _hasPrediction[assignment.annotationSet] = _hasPrediction[assignment.annotationSet] || (assignment.prediction != null)
         });
-        Object.entries(updatedAnnotation.assignments).forEach(([annotationSetName, assignment]) => {
-            _classCounts[annotationSetName][assignment.mclass]--;
+        updatedAnnotation.assignments.forEach(assignment => {
+            _classCounts[assignment.annotationSet][assignment.mclass]--;
         });
         updateAnnotationCounts();
 
@@ -525,14 +524,15 @@ const annotationHandler = (function (){
     function setBookmarked(id, annotationSetName, state) {
         const annotation = getAnnotationById(id);
         if (annotation) {
+            const assignment = annotation.assignments.find(a => a.annotationSet === annotationSetName);
             if (state === undefined) {
-                annotation.assignments[annotationSetName].bookmarked = !annotation.assignments[annotationSetName].bookmarked;
+                assignment.bookmarked = !assignment.bookmarked;
             }
             else {
-                annotation.assignments[annotationSetName].bookmarked = state;
+                assignment.bookmarked = state;
             }
             update(id, annotation, "image");
-            return annotation.assignments[annotationSetName].bookmarked;
+            return assignment.bookmarked;
         }
         else {
             throw new Error("Tried to bookmark an annotation that doesn't exist.");
@@ -558,16 +558,16 @@ const annotationHandler = (function (){
 
             // Check if the annotation exists first (annotation with ID exists and 
             // has an annotation in the annotation set)
-            if (deletedIndex === -1 || !(annotationSetName in annotations[deletedIndex].assignments)) {
+            if (deletedIndex === -1 || !(annotations[deletedIndex].assignments.some(a => a.annotationSet === annotationSetName))) {
                 throw new Error("Tried to remove an annotation that doesn't exist");
             }
 
             // Get the class of the removed annotation (only to update annotation counts)
-            const removedAssignment = annotations[deletedIndex].assignments[annotationSetName];
+            const removedAssignment = annotations[deletedIndex].assignments.find(a => a.annotationSet === annotationSetName);
             
             // Check if the annotation contains classes in multiple annotation sets
             // If the annotation is only included in one annotation set, remove the entire annotation
-            if (Object.keys(annotations[deletedIndex].assignments).length === 1) {
+            if (annotations[deletedIndex].assignments.length === 1) {
                 // Remove the annotation from the data
                 removedAnnotation = annotations.splice(deletedIndex, 1)[0];
                 // Remove from gridd
@@ -578,7 +578,7 @@ const annotationHandler = (function (){
             else {
                 // Remove the entry of the annotation set in question from mclass
                 removedAnnotation = annotations[deletedIndex];
-                delete annotations[deletedIndex].assignments[annotationSetName];
+                annotations[deletedIndex].assignments.filter(a => a.annotationSet !== annotationSetName);
             }
             
             // Update the class/annotation counts
@@ -611,7 +611,7 @@ const annotationHandler = (function (){
         const annotations = _annotations;
 
         // Get ids of annotations in the annotation set in question
-        const ids = annotations.filter(annotation => annotationSetName in annotation.assignments)
+        const ids = annotations.filter(annotation => annotation.assignments.some(a => a.annotationSet === annotationSetName))
             .map(annotation => annotation.id);
 
         // Remove the annotation from the annotation set for all annotation ids found
@@ -655,9 +655,9 @@ const annotationHandler = (function (){
         
         // Update key in each annotation
         _annotations.forEach(annotation => {
-            if (prevName in annotation.assignments) {
-                annotation.assignments[newName] = Object.fromEntries(Object.entries(annotation.assignments[prevName]));
-                delete annotation.assignments[prevName];
+            if (annotation.assignments.some(a => a.annotationSet === prevName)) {
+                const assignment = annotation.assignments.find(a => a.annotationSet === prevName);
+                assignment.annotationSet = newName;
             }
         });
         
@@ -709,7 +709,7 @@ const annotationHandler = (function (){
      * @returns {boolean} Whether or not the annotation set is empty.
      */
     function isEmptySet(annotationSetName) {
-        return _annotations.some(annotation => annotationSetName in annotation.assignments);
+        return _annotations.some(annotation => annotation.assignments.some(a => a.annotationSet === annotationSetName));
     }
 
     /**
