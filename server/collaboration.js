@@ -235,7 +235,7 @@ class Collaboration {
                     const annotationSetName = msg.annotationSet;
                     const ids = [];
                     for (const [id, annotation] of this.annotationMap) {
-                        if (annotationSetName in annotation.mclass) {
+                        if (annotationSetName in annotation.assignments) {
                             ids.push(id);
                         }
                     }
@@ -243,12 +243,12 @@ class Collaboration {
                     this.forwardMessage(sender, msg);
                 }
                 break;
-            case "renameMclassKey":
+            case "renameAssignmentKey":
                 {
                     this.annotations.forEach(annotation => {
-                        if (msg.prevName in annotation.mclass) {
-                            annotation.mclass[msg.newName] = annotation.mclass[msg.prevName];
-                            delete annotation.mclass[msg.prevName];
+                        if (msg.prevName in annotation.assignments) {
+                            annotation.assignments[msg.newName] = Object.fromEntries(Object.entries(annotation.assignments[msg.prevName]));
+                            delete annotation.assignments[msg.prevName];
                         }
                     });
                     this.forwardMessage(sender, msg);
@@ -271,15 +271,15 @@ class Collaboration {
             const overlappingAnnotation = this.findDuplicatePoints(newAnnotation);
             // Check every assigned class for the new annotation
             if (overlappingAnnotation) {
-                for (const [annotationSetName, newClass] of Object.entries(newAnnotation.mclass)) {
+                for (const [annotationSetName, newAssignment] of Object.entries(newAnnotation.assignments)) {
                     // Check if the overlapping annotation has a class in the annotation set of the new annotation
-                    if (annotationSetName in overlappingAnnotation.mclass) {
+                    if (annotationSetName in overlappingAnnotation.assignments) {
                         this.log(`${member.name} tried to add an annotation to a point that already has \
                             an annotation in the annotation set, ignoring.`, console.info);
                     }
                     // If the overlapping annotation does not have a class in the annotation set of the new annotation, add it
                     else {
-                        overlappingAnnotation.mclass[annotationSetName] = newClass;
+                        overlappingAnnotation.assignments[annotationSetName] = Object.fromEntries(Object.entries(newAssignment));
                     }
                 }
             }
@@ -296,14 +296,14 @@ class Collaboration {
             // Check if the annotation exists first (annotation with ID exists and 
             // has an annotation in the annotation set)
             const removedAnnotation = this.annotationMap.get(id);
-            if (!removedAnnotation || !(annotationSetName in removedAnnotation.mclass)) {
+            if (!removedAnnotation || !(annotationSetName in removedAnnotation.assignments)) {
                 this.log(`${member.name} tried to remove nonexisting annotation with ID ${id} in \
                     annotation set ${annotationSetName}`, console.warn);
                 return;
             }
             // Check if the annotation contains classes in multiple annotation sets
             // If the annotation is only included in one annotation set, remove the entire annotation
-            if (Object.keys(removedAnnotation.mclass).length === 1) {
+            if (Object.keys(removedAnnotation.assignments).length === 1) {
                 this.annotationMap.delete(id);
                 const index = this.annotations.indexOf(removedAnnotation);
                 if (index >= 0) {
@@ -313,7 +313,7 @@ class Collaboration {
             // If the annotation contains classes in multiple sets, only remove the class entry 
             // for the annotation set in question, keep the rest of it
             else {
-                delete removedAnnotation.mclass[annotationSetName];
+                delete removedAnnotation.assignments[annotationSetName];
             }
         });
     }
@@ -573,15 +573,6 @@ class Collaboration {
         return this.annotations.find(existingAnnotation => {
             return this.pointsAreDuplicate(annotation.points, existingAnnotation.points)
         });
-    }
-
-    // Q: Needs to be updated? 
-    isDuplicateAnnotation(annotation) {
-        return this.annotations.some(existingAnnotation =>
-            existingAnnotation.z === annotation.z
-            && existingAnnotation.mclass === annotation.mclass
-            && this.pointsAreDuplicate(annotation.points, existingAnnotation.points)
-        );
     }
 
     log(msg, f = console.log) {

@@ -15,8 +15,12 @@ const annotationTool = (function() {
                         x: position.x,
                         y: position.y
                     }],
-                    z: position.z,
-                    mclass: {[annotationSetHandler.getActiveAnnotationSet().name]: _activeMclass}
+                    assignments: {
+                        [annotationSetHandler.getActiveAnnotationSet().name]: {
+                            z: position.z,
+                            mclass: _activeMclass
+                        }
+                    }
                 };
                 annotationHandler.add(annotation, "viewport");
             },
@@ -43,8 +47,12 @@ const annotationTool = (function() {
             ];
             const annotation = {
                 points: points,
-                z: _zLevel,
-                mclass: {[annotationSetHandler.getActiveAnnotationSet().name]: _mclass}
+                assignments: {
+                    [annotationSetHandler.getActiveAnnotationSet().name]: {
+                        z: _zLevel,
+                        mclass: _mclass
+                    }
+                }
             };
             return annotation;
         }
@@ -137,8 +145,12 @@ const annotationTool = (function() {
         function _getAnnotation(points) {
             return {
                 points: points,
-                z: _zLevel,
-                mclass: {[annotationSetHandler.getActiveAnnotationSet().name]: _mclass}
+                assignments: {
+                    [annotationSetHandler.getActiveAnnotationSet().name]: {
+                        z: _zLevel,
+                        mclass: _mclass
+                    }
+                }
             };
         }
 
