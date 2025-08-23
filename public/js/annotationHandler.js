@@ -290,6 +290,7 @@ const annotationHandler = (function (){
      * told to add the annotation.
      */
     function add(annotations, coordSystem="web", transmit = true) {
+        console.log(JSON.stringify(annotationSetHandler.getAnnotationSetConfig(), null, 2));
         // let once=false;  //Q: Why once?
         if (!Array.isArray(annotations)) {
             annotations = [annotations];
@@ -322,6 +323,7 @@ const annotationHandler = (function (){
             
             // Check every assigned class for the new annotation
             for (const [annotationSetName, newClass] of Object.entries(addedAnnotation.mclass)) {
+                console.log(annotationSetName);
                 // Get classes from annotationSetConfig
                 let classes = Object.values(annotationSetHandler.getAnnotationSetConfig().find(annotationSet => {
                     return annotationSet.name === annotationSetName;
@@ -482,6 +484,7 @@ const annotationHandler = (function (){
         // So, we check that the keys of the classes are the same before and after update
         if (JSON.stringify(Object.keys(annotation.mclass).sort()) !== JSON.stringify(Object.keys(updatedAnnotation.mclass).sort())) {
             console.warn("Cannot at the moment move an annotation from one annotation set to another.");
+            return;
         }
 
         // Update class/annotation counts
