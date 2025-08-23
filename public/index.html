@@ -208,6 +208,23 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Collapse for annotation set-specific data -->
+                        <button type="button" class="btn btn-block btn-primary collapsed" data-toggle="collapse" data-target="#annotationset_collapse">
+                            <div class="d-flex flex-row w-100">
+                                <div class="w-100 position-relative">
+                                    Annotation Set Data
+                                </div>
+                                <i class="collapse_rotate_90 fa fa-chevron-down pull-right pt-1"></i>
+                            </div>
+                        </button>
+                        <div class="m-0 my-1 my-lg-2">
+                            <div class="collapse card" id="annotationset_collapse">
+                                <table class="table table-striped table-borderless">
+                                    <tbody id="annotationset_collapse_table">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                     <hr class="py-0 my-0" />
                     <!-- Functionality buttons -->
