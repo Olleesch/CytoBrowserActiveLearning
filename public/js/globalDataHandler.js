@@ -32,7 +32,7 @@ const globalDataHandler = (function() {
    }
 
    /**
-    * Update all displayed information about the number of annotations.
+    * Update all displayed information about the number of annotations of the active annotation set.
     * @param {number} nMarkers The number of markers.
     * @param {number} nRegions The number of regions.
     * @param {Object} classCounts The number of annotations for each class.
@@ -45,9 +45,20 @@ const globalDataHandler = (function() {
    function updateAnnotationCounts(nMarkers, nRegions, classCounts) {
        $("#global_data_nmarkers").text(nMarkers);
        $("#global_data_nregions").text(nRegions);
-       classUtils.forEachClass(c => {
+       annotationSetHandler.forEachClass(c => {
            const id = `#class_counter_${c.name}`;
            $(id).text(_shortenInt(classCounts[c.name]));
+       });
+   }
+
+   /**
+    * Update all displayed information about the number of annotations per annotation set.
+    * @param {Object} annotationSetCounts The number of annotation for each annotation set.
+    */
+   function updateAnnotationSetCounts(annotationSetCounts) {
+       annotationSetHandler.forEachAnnotationSet(s => {
+           const id = `#annotation_set_counter_${s.name}`;
+           $(id).text(_shortenInt(annotationSetCounts[s.name]));
        });
    }
 
@@ -122,6 +133,7 @@ const globalDataHandler = (function() {
 
    return {
        updateAnnotationCounts: updateAnnotationCounts,
+       updateAnnotationSetCounts: updateAnnotationSetCounts,
        sendCommentToServer: sendCommentToServer,
        sendCommentRemovalToServer: sendCommentRemovalToServer,
        handleCommentFromServer: handleCommentFromServer,
