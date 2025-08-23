@@ -50,6 +50,7 @@ class Collaboration {
         this.loadState(false);
         this.log(`Initializing collaboration.`, console.info);
         this.annotationSetConfig = [];
+        this.lockedAnnotationSets = [];
     }
 
     close() {
@@ -323,6 +324,22 @@ class Collaboration {
                     this.forwardMessage(sender, msg);
                 }
                 break;
+            case "lock":
+                {
+                    if (!this.lockedAnnotationSets.includes(msg.annotationSetName)) {
+                        this.lockedAnnotationSets.push(msg.annotationSetName);
+                    }
+                }
+                this.forwardMessage(sender, msg);
+                break;
+            case "unlock":
+                {
+                    if (this.lockedAnnotationSets.includes(msg.annotationSetName)) {
+                        this.lockedAnnotationSets = this.lockedAnnotationSets.filter(a => a !== msg.annotationSetName);
+                    }
+                }
+                this.forwardMessage(sender, msg);
+                break;
         }
         this.flagUnsavedChanges();
         this.trySavingState();
@@ -438,6 +455,7 @@ class Collaboration {
             members: Array.from(this.members.values()),
             annotations: this.annotations,
             annotationSetConfig: this.annotationSetConfig,
+            lockedAnnotationSets: this.lockedAnnotationSets,
             comments: this.comments,
             metadata: metadata.getMetadataForImage(this.image)
         }
