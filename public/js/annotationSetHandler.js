@@ -253,7 +253,7 @@ const annotationSetHandler = (function(){
         // that this has to happen before we update the annotation set config to ensure correct
         // counting and interface updates.
         if (prevName !== newName) {
-            annotationHandler.renameMclassKey(prevName, newName, transmit);
+            annotationHandler.renameAssignmentKey(prevName, newName, transmit);
         }
 
         // Update the annotation set config.
