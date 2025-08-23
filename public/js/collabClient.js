@@ -325,8 +325,9 @@ const collabClient = (function(){
         if (_followedMember) {
             if (_followedMember.updated) {
                 tmapp.moveTo(_followedMember.position, true); //immediate move
-                annotationSetHandler.setActiveAnnotationSet(_followedMember.annotationSet);
-                $(`#annotation_set_${_followedMember.annotationSet}`).click();
+                if (_followedMember.annotationSet !== annotationSetHandler.getActiveAnnotationSet().name) {
+                    $(`#annotation_set_${_followedMember.annotationSet}`).click();
+                }
                 _followedMember.updated = false;
             }
             if (_followedMember.removed) {
