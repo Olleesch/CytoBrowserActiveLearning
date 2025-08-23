@@ -96,7 +96,7 @@ const tmappUI = (function(){
                 name: "invalid",
                 key: "invalid",
                 minWidth: "0em",
-                selectFun: d => !(activeAnnotationSetName in d.assignments),
+                selectFun: d => !(d.assignments.some(a => a.annotationSet === activeAnnotationSetName)),
                 sortable: true,
                 displayStyle: () => "none"
             },
@@ -118,7 +118,7 @@ const tmappUI = (function(){
                 name: "z",
                 key: "z",
                 minWidth: "2em",
-                selectFun: d => d.assignments[activeAnnotationSetName].z,
+                selectFun: d => d.assignments.find(a => a.annotationSet === activeAnnotationSetName).z,
                 sortable: true
             },
             {
@@ -126,7 +126,7 @@ const tmappUI = (function(){
                 key: "mclassId",
                 selectFun: d => {
                     return annotationSetHandler.getIDFromClassName(
-                        d.assignments[activeAnnotationSetName].mclass
+                        d.assignments.find(a => a.annotationSet === activeAnnotationSetName).mclass
                     );
                 },
                 minWidth: "5em",
@@ -145,7 +145,7 @@ const tmappUI = (function(){
                 name: "Pred.",
                 key: "prediction",
                 title: "Class prediction score",
-                selectFun: d => d.assignments[activeAnnotationSetName].prediction,
+                selectFun: d => d.assignments.find(a => a.annotationSet === activeAnnotationSetName).prediction,
                 minWidth: "0em",
                 displayFun: (elem, d) => {
                     $(elem).html((d.prediction == null) ? "&nbsp;" : 
@@ -160,7 +160,7 @@ const tmappUI = (function(){
                 name: "B",
                 key: "bookmarked",
                 title: "Annotation has been bookmarked",
-                selectFun: d => d.assignments[activeAnnotationSetName].bookmarked,
+                selectFun: d => d.assignments.find(a => a.annotationSet === activeAnnotationSetName).bookmarked,
                 minWidth: "2em",
                 displayFun: (elem, d) => {
                     $(elem).html(d.bookmarked ? "&check;" : "-");

@@ -235,7 +235,7 @@ class Collaboration {
                     const annotationSetName = msg.annotationSet;
                     const ids = [];
                     for (const [id, annotation] of this.annotationMap) {
-                        if (annotationSetName in annotation.assignments) {
+                        if (annotation.assignments.some(a => a.annotationSet === annotationSetName)) {
                             ids.push(id);
                         }
                     }
@@ -246,9 +246,9 @@ class Collaboration {
             case "renameAssignmentKey":
                 {
                     this.annotations.forEach(annotation => {
-                        if (msg.prevName in annotation.assignments) {
-                            annotation.assignments[msg.newName] = Object.fromEntries(Object.entries(annotation.assignments[msg.prevName]));
-                            delete annotation.assignments[msg.prevName];
+                        if (annotation.assignments.some(a => a.annotationSet === msg.prevName)) {
+                            const assignment = annotation.assignments.find(a => a.annotationSet === msg.prevName);
+                            assignment.annotationSet = msg.newName;
                         }
                     });
                     this.forwardMessage(sender, msg);
@@ -271,15 +271,15 @@ class Collaboration {
             const overlappingAnnotation = this.findDuplicatePoints(newAnnotation);
             // Check every assigned class for the new annotation
             if (overlappingAnnotation) {
-                for (const [annotationSetName, newAssignment] of Object.entries(newAnnotation.assignments)) {
+                for (const newAssignment of newAnnotation.assignments) {
                     // Check if the overlapping annotation has a class in the annotation set of the new annotation
-                    if (annotationSetName in overlappingAnnotation.assignments) {
+                    if (overlappingAnnotation.assignments.some(a => a.annotationSet === newAssignment.annotationSet)) {
                         this.log(`${member.name} tried to add an annotation to a point that already has \
                             an annotation in the annotation set, ignoring.`, console.info);
                     }
                     // If the overlapping annotation does not have a class in the annotation set of the new annotation, add it
                     else {
-                        overlappingAnnotation.assignments[annotationSetName] = Object.fromEntries(Object.entries(newAssignment));
+                        overlappingAnnotation.assignments.push(JSON.parse(JSON.stringify(newAssignment)));
                     }
                 }
             }
@@ -296,14 +296,14 @@ class Collaboration {
             // Check if the annotation exists first (annotation with ID exists and 
             // has an annotation in the annotation set)
             const removedAnnotation = this.annotationMap.get(id);
-            if (!removedAnnotation || !(annotationSetName in removedAnnotation.assignments)) {
+            if (!removedAnnotation || !(removedAnnotation.assignments.some(a => a.annotationSet === annotationSetName))) {
                 this.log(`${member.name} tried to remove nonexisting annotation with ID ${id} in \
                     annotation set ${annotationSetName}`, console.warn);
                 return;
             }
             // Check if the annotation contains classes in multiple annotation sets
             // If the annotation is only included in one annotation set, remove the entire annotation
-            if (Object.keys(removedAnnotation.assignments).length === 1) {
+            if (removedAnnotation.assignments.length === 1) {
                 this.annotationMap.delete(id);
                 const index = this.annotations.indexOf(removedAnnotation);
                 if (index >= 0) {
@@ -313,7 +313,7 @@ class Collaboration {
             // If the annotation contains classes in multiple sets, only remove the class entry 
             // for the annotation set in question, keep the rest of it
             else {
-                delete removedAnnotation.assignments[annotationSetName];
+                removedAnnotation.assignments.filter(a => a.annotationSet !== annotationSetName);
             }
         });
     }
@@ -520,7 +520,7 @@ class Collaboration {
             const updateTime = getCurrentTimeAsString();
             let nAnnotations = 0;
             this.annotations.forEach(annotation => {
-                nAnnotations += Object.keys(annotation.assignments).length;
+                nAnnotations += annotation.assignments.length;
             })
             const data = { //Format specification (less canonicalized, order is important)
                 version: "1.2",
