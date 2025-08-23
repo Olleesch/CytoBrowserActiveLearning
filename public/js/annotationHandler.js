@@ -290,7 +290,6 @@ const annotationHandler = (function (){
      * told to add the annotation.
      */
     function add(annotations, coordSystem="web", transmit = true) {
-        console.log(JSON.stringify(annotationSetHandler.getAnnotationSetConfig(), null, 2));
         // let once=false;  //Q: Why once?
         if (!Array.isArray(annotations)) {
             annotations = [annotations];
@@ -323,7 +322,6 @@ const annotationHandler = (function (){
             
             // Check every assigned class for the new annotation
             for (const [annotationSetName, newClass] of Object.entries(addedAnnotation.mclass)) {
-                console.log(annotationSetName);
                 // Get classes from annotationSetConfig
                 let classes = Object.values(annotationSetHandler.getAnnotationSetConfig().find(annotationSet => {
                     return annotationSet.name === annotationSetName;
