@@ -240,33 +240,34 @@ const tmappUI = (function(){
         htmlHelper.buildAnnotationSetSelectionButtons(container, selectedIndex);
     }
 
-    function _initAnnotationSetButtons() {
-        function isValidName(name, mode) {
-            if (name === "") {
-                return "Annotation set name must not be empty";
-            }
-            if (!(/^[A-Za-z0-9_-]+$/.test(name))) {
-                return "Annotation set name must only contain letters (A-Z, a-z), \
-                    digits (0-9), hyphens (-), and underscores (_)";
-            }
-            if (mode === "rename") {
-                const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
-                if (annotationSetHandler.getAnnotationSetConfig().some(annotationSet => {
-                    return annotationSet.name === name && annotationSet.name !== activeAnnotationSet.name;
-                })) {
-                    return "Annotation set name must not be the same as a previously existing annotation set name";
-                }
-            } else if (mode === "add") {
-                if (annotationSetHandler.getAnnotationSetConfig().some(annotationSet => {
-                    return annotationSet.name === name;
-                })) {
-                    return "Annotation set name must not be the same as a previously existing annotation set name";
-                }
-            } else {
-                throw new Error("Unrecognized mode in annotation set menu isValidName.");
-            }
-            return undefined;
+    function _isValidAnnotationSetName(name, mode) {
+        if (name === "") {
+            return "Annotation set name must not be empty";
         }
+        if (!(/^[A-Za-z0-9_-]+$/.test(name))) {
+            return "Annotation set name must only contain letters (A-Z, a-z), \
+                digits (0-9), hyphens (-), and underscores (_)";
+        }
+        if (mode === "rename") {
+            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+            if (annotationSetHandler.getAnnotationSetConfig().some(annotationSet => {
+                return annotationSet.name === name && annotationSet.name !== activeAnnotationSet.name;
+            })) {
+                return "Annotation set name must not be the same as a previously existing annotation set name";
+            }
+        } else if (mode === "add") {
+            if (annotationSetHandler.getAnnotationSetConfig().some(annotationSet => {
+                return annotationSet.name === name;
+            })) {
+                return "Annotation set name must not be the same as a previously existing annotation set name";
+            }
+        } else {
+            throw new Error("Unrecognized mode in annotation set menu isValidName.");
+        }
+        return undefined;
+    }
+
+    function _initAnnotationSetButtons() {
         $("#add_annotation_set").click(() => {
             $("#annotation_set_menu .modal-title").text("Add annotation set");
             $("#annotation_set_menu [name='name']").val("");
@@ -274,7 +275,7 @@ const tmappUI = (function(){
             $("#annotation_set_menu_button").text("Add annotation set");
             $("#annotation_set_menu_button").off("click").click(function(event) {
                 const name = $("#annotation_set_menu [name='name']").val();
-                const nameErrorMessage = isValidName(name, "add");
+                const nameErrorMessage = _isValidAnnotationSetName(name, "add");
                 if (!nameErrorMessage) {
                     const description = $("#annotation_set_menu [name='description']").val();
                     const classConfig = [];
@@ -294,7 +295,7 @@ const tmappUI = (function(){
             $("#annotation_set_menu_button").text("Save annotation set");
             $("#annotation_set_menu_button").off("click").click(function(event) {
                 const name = $("#annotation_set_menu [name='name']").val();
-                const nameErrorMessage = isValidName(name, "rename");
+                const nameErrorMessage = _isValidAnnotationSetName(name, "rename");
                 if (!nameErrorMessage) {
                     const description = $("#annotation_set_menu [name='description']").val();
                     annotationSetHandler.renameAnnotationSet(activeAnnotationSet, name, description, true)
