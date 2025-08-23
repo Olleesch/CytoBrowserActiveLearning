@@ -6,6 +6,10 @@
 const annotationSetHandler = (function(){
     "use strict";
 
+    function getCurrentTimeAsString() {
+        return new Date().toISOString();
+    }
+
     // ==== Class config functions ====
 
     /**
@@ -82,7 +86,7 @@ const annotationSetHandler = (function(){
     }
 
 
-    // ==== Annotation config functions ====
+    // ==== Annotation set config functions ====
 
     /**
      * Information for a specific set from the set configuration, including
@@ -116,6 +120,8 @@ const annotationSetHandler = (function(){
             // Q: Better way?
             _annotationSetConfig = [];
             Object.assign(_annotationSetConfig, defaultAnnotationSetConfig);
+            _annotationSetConfig[0].author = userInfo.getName();
+            _annotationSetConfig[0].createdOn = getCurrentTimeAsString();
         }
 
         // If the active annotation set is not in the new annotation set config, 
@@ -126,6 +132,7 @@ const annotationSetHandler = (function(){
 
         // Update interface and counts
         tmappUI.updateAnnotationSetSelectionButtons(getIDFromAnnotationSetName(_activeAnnotationSet.name));
+        tmappUI.updateAnnotationSetData();
         annotationHandler.resetAnnotationCounts();
         annotationHandler.updateVisuals();
     }
@@ -153,6 +160,7 @@ const annotationSetHandler = (function(){
             collabClient.updateMemberActiveAnnotationSet(_activeAnnotationSet.name);
             annotationHandler.resetAnnotationCounts();
             annotationHandler.updateVisuals();
+            htmlHelper.setSelectedAnnotationSetSelectionButton(_activeAnnotationSet.name);
             console.log(`Switched active annotation set to ${_activeAnnotationSet.name}`);
         }
         else {
@@ -196,6 +204,8 @@ const annotationSetHandler = (function(){
     // let _activeAnnotationSet;
     // let _activeClassConfig;
     // setActiveAnnotationSet(defaultAnnotationSetConfig[0].name);
+    // _annotationSetConfig.author = userInfo.getName();
+    // _annotationSetConfig.createdOn = getCurrentTimeAsString();
 
     /**
      * Add a new annotation set to the annotation set config.
@@ -216,7 +226,9 @@ const annotationSetHandler = (function(){
         _annotationSetConfig.push({
             name: name,
             description: description,
-            classConfig: classConfig
+            classConfig: classConfig,
+            author: userInfo.getName(),
+            createdOn: getCurrentTimeAsString()
         });
         update(_annotationSetConfig, transmit);
     }
