@@ -156,11 +156,18 @@ const annotationSetHandler = (function(){
             // Update the active annotation set and class config.
             _activeAnnotationSet = activeAnnotationSet;
             setActiveClassConfig();
+            // Update annotation list
             tmappUI.updateAnnotationList();
+            // Update member to record active annotation set
             collabClient.updateMemberActiveAnnotationSet(_activeAnnotationSet.name);
+            // Update annotation visuals and counts
             annotationHandler.resetAnnotationCounts();
             annotationHandler.updateVisuals();
+            // Set the active annotation set as selected by the annotation set buttons (this is only required to display
+            // the correct selection after things like reconnect, when the state is alive but the buttons are reset)
             htmlHelper.setSelectedAnnotationSetSelectionButton(_activeAnnotationSet.name);
+            // If the new active set is locked, indicate that rename and remove options are disabled
+            htmlHelper.updateLockedAnnotationSetButtonDisplays();
             console.log(`Switched active annotation set to ${_activeAnnotationSet.name}`);
         }
         else {
@@ -201,11 +208,31 @@ const annotationSetHandler = (function(){
     let _annotationSetConfig = defaultAnnotationSetConfig;
     let _activeAnnotationSet = defaultAnnotationSetConfig[0];
     let _activeClassConfig = defaultClassConfig;
-    // let _activeAnnotationSet;
-    // let _activeClassConfig;
-    // setActiveAnnotationSet(defaultAnnotationSetConfig[0].name);
-    // _annotationSetConfig.author = userInfo.getName();
-    // _annotationSetConfig.createdOn = getCurrentTimeAsString();
+    let _lockedAnnotationSets = [];
+
+    function isLockedAnnotationSet(annotationSetName) {
+        return _lockedAnnotationSets.includes(annotationSetName);
+    }
+
+    function lockAnnotationSet(annotationSetName) {
+        if (!isLockedAnnotationSet(annotationSetName)) {
+            _lockedAnnotationSets.push(annotationSetName);
+            $(`#annotation_set_${getIDFromAnnotationSetName(annotationSetName)} .spinner-border`).removeClass("d-none");
+            htmlHelper.updateLockedAnnotationSetButtonDisplays();
+        } else {
+            console.log(`Tried to lock already locked annotation set ${annotationSetName}, ignoring`);
+        }
+    }
+
+    function unlockAnnotationSet(annotationSetName) {
+        if (isLockedAnnotationSet(annotationSetName)) {
+            _lockedAnnotationSets = _lockedAnnotationSets.filter(a => a !== annotationSetName);
+            $(`#annotation_set_${getIDFromAnnotationSetName(annotationSetName)} .spinner-border`).addClass("d-none");
+            htmlHelper.updateLockedAnnotationSetButtonDisplays();
+        } else {
+            console.log(`Tried to unlock already unlocked annotation set ${annotationSetName}, ignoring`);
+        }
+    }
 
     /**
      * Add a new annotation set to the annotation set config.
@@ -244,6 +271,11 @@ const annotationSetHandler = (function(){
     function renameAnnotationSet(prevAnnotationSet, newName, newDescription, transmit = true) {
         const prevName = prevAnnotationSet.name;
         const prevDescription = prevAnnotationSet.description;
+
+        if (isLockedAnnotationSet(prevName)) {
+            console.warn("Cannot rename a locked annotation set, skipping");
+            return;
+        }
 
         if (prevName === newName && prevDescription === newDescription) {
             console.log("No updated annotation set information detected, skipping.");
@@ -286,6 +318,10 @@ const annotationSetHandler = (function(){
         const choices = [{
             label: "Yes",
             click: () => {
+                if (isLockedAnnotationSet(_activeAnnotationSet.name)) {
+                    console.warn("Cannot remove a locked annotation set, skipping");
+                    return;
+                }
                 // Clear all annotations in the annotation set.
                 annotationHandler.clear(_activeAnnotationSet.name, transmit);
                 // Update annotation set config.
@@ -328,6 +364,10 @@ const annotationSetHandler = (function(){
         getAnnotationSetFromID,
         getIDFromAnnotationSetName,
         forEachAnnotationSet,
+
+        isLockedAnnotationSet,
+        lockAnnotationSet,
+        unlockAnnotationSet,
         
         addAnnotationSet,
         renameAnnotationSet,

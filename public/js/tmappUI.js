@@ -350,8 +350,14 @@ const tmappUI = (function(){
                 }
             });
         });
-        $("#rename_annotation_set").click(() => {
+        $("#rename_annotation_set").click(function(event) {
             const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+            // No action if the currently selected annotation set is locked
+            if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSet.name)) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
             $("#annotation_set_menu .modal-title").text("Rename annotation set");
             $("#annotation_set_menu [name='name']").val(activeAnnotationSet.name);
             $("#annotation_set_menu [name='description']").val(activeAnnotationSet.description);
@@ -374,6 +380,11 @@ const tmappUI = (function(){
             $("#annotation_set_menu_name_error_message").hide();
         });
         $("#remove_annotation_set").click(() => {
+            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+            // No action if the currently selected annotation set is locked
+            if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSet.name)) {
+                return;
+            }
             annotationSetHandler.removeAnnotationSet(true);
         });
     }
