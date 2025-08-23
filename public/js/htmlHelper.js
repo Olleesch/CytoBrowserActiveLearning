@@ -84,7 +84,7 @@ const htmlHelper = (function() {
             `);
         function setBookmarkPath() {
             const annotation = annotationHandler.getAnnotationById(id);
-            const isBookmarked = annotation.assignments[activeAnnotationSetName].bookmarked;
+            const isBookmarked = annotation.assignments.find(a => a.annotationSet === activeAnnotationSetName).bookmarked;
             const path = bookmarkCol.find("svg path");
             if (isBookmarked) {
                 path.attr("d", "M 6 2 V 21 L 12 15 L 18 21 V 2 z");
@@ -139,8 +139,9 @@ const htmlHelper = (function() {
         // we be able to change the class in different annotation sets in
         // one place?
         const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
+        const assignment = annotation.assignments.find(a => a.annotationSet === activeAnnotationSetName);
         annotationSetHandler.forEachClass(mclass => {
-            const selected = annotation.assignments[activeAnnotationSetName].mclass === mclass.name;
+            const selected = assignment.mclass === mclass.name;
             const option = $(`
                 <option ${selected ? "selected='selected'" : ""}>
                 </option>
@@ -150,14 +151,13 @@ const htmlHelper = (function() {
             select.append(option);
         });
         select.change(() => {
-            annotation.assignments[activeAnnotationSetName].mclass = select.val();
+            assignment.mclass = select.val();
             updateFun();
         });
         return container;
     }
 
     function _annotationFocus(annotation, updateFun) {
-        const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         const container = $(`
             <div class="form-group row">
                 <label class="col-4 col-form-label">
@@ -170,9 +170,11 @@ const htmlHelper = (function() {
             </div>
         `);
         const select = container.find("select");
+        const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
+        const assignment = annotation.assignments.find(a => a.annotationSet === activeAnnotationSetName);
         const zLevels = tmapp.getZLevels(); //of _viewer
         zLevels.forEach(z => {
-            const selected = annotation.assignments[activeAnnotationSetName].z === z;
+            const selected = assignment.z === z;
             const option = $(`
                 <option ${selected ? "selected='selected'" : ""}>
                 </option>
@@ -182,7 +184,7 @@ const htmlHelper = (function() {
             select.append(option);
         });
         select.change(() => {
-            annotation.assignments[activeAnnotationSetName].z = Number(select.val());
+            assignment.z = Number(select.val());
             updateFun();
         });
         return container;
@@ -592,7 +594,7 @@ const htmlHelper = (function() {
         const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         const updateFun = saveFun;
         const id = _annotationValueRow("Id", annotation.id);
-        const author = _annotationValueRow("Created by", annotation.assignments[activeAnnotationSetName].author);
+        const author = _annotationValueRow("Created by", annotation.assignments.find(a => a.annotationSet === activeAnnotationSetName).author);
         const classes = _annotationMclassOptions(annotation, updateFun);
         const focus = _annotationFocus(annotation, updateFun);
         const list = _commentList(annotation, updateFun);
