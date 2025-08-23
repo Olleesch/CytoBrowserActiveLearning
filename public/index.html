@@ -303,13 +303,31 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Annotation set buttons -->
                     <div class="card-block">
-                        <div class="row">
-                            <!-- Annotation set buttons -->
+                        <div class="row pb-2">
                             <div class="col">
                                 <h6 class="card-subtitle mb-1 text-muted">Annotation sets</h6>
                                 <div id="annotation_set_buttons" class="btn-group btn-group-toggle d-flex" data-toggle="buttons" role="group" onkeydown="noArrows()">
                                 </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-3">
+                                <button id="add_annotation_set" type="button" class="btn btn-block btn-primary" data-toggle="modal" data-target="#annotation_set_menu">
+                                    Add set
+                                </button>
+                            </div>
+                            <div class="col-3">
+                                <button id="load_annotation_set" class="btn btn-primary btn-block" type="button">Load Set</button>
+                            </div>
+                            <div class="col-3">
+                                <button id="rename_annotation_set" type="button" class="btn btn-block btn-primary" data-toggle="modal" data-target="#annotation_set_menu">
+                                    Rename set
+                                </button>
+                            </div>
+                            <div class="col-3">
+                                <button id="remove_annotation_set" class="btn btn-primary btn-block" type="button">Remove Set</button>
                             </div>
                         </div>
                     </div>
@@ -829,6 +847,41 @@
     </div>
     <!-- End of context menu -->
 
+    <!-- Annotation set menu -->
+    <div class="modal fade" id="annotation_set_menu" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Annotation set menu</h5>
+            <button type="button" class="close" data-dismiss="modal">
+              <span>&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+              <div class="form-row pb-4">
+                  <label class="col-3 col-form-label">Name</label>
+                  <div class="col-9">
+                      <input type="text" name="name" class="form-control" placeholder="Annotation set name">
+                  </div>
+              </div>
+              <div class="form-row pb-4">
+                  <label class="col-3 col-form-label">Description</label>
+                  <div class="col-9">
+                      <input type="text" name="description" class="form-control" placeholder="Annotation set description">
+                  </div>
+              </div>
+              <div class="form-row pb-2">
+                  <div class="col-12">
+                      <button id="annotation_set_menu_button" type="button" class="btn btn-block btn-primary">
+                          Save annotation set
+                      </button>
+                  </div>
+              </div>
+          </div>
+        </div>
+      </div>
+    </div> <!-- End of annotation set menu -->
+
 </body>
 
 <script src="js/bootstrap/bootstrap.bundle.min.js" ></script>
@@ -849,12 +902,12 @@
 <script src="defaultAnnotationSetConfig.js"></script>
 <script src="defaultClassConfig.js"></script>
 <script src="js/misc/clientVersion.js"></script>
-<script src="js/utils/annotationSetUtils.js"></script>
 <script src="js/utils/classUtils.js"></script>
 <script src="js/utils/dateUtils.js"></script>
 <script src="js/utils/timeUtils.js"></script>
 <script src="js/utils/mathUtils.js"></script>
 <script src="js/utils/htmlUtils.js"></script>
+<script src="js/annotationSetHandler.js"></script>
 <script src="js/versionRevert.js"></script>
 <script src="js/collabClient.js"></script>
 <script src="js/collabPicker.js"></script>

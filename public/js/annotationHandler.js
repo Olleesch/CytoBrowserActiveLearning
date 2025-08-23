@@ -21,7 +21,7 @@ const annotationHandler = (function (){
      * point in the annotation; a single point if marker, multiple
      * if region.
      * @property {number} z Z value when the annotation was placed.
-     * @property {string} mclass Class name of the annotation.
+     * @property {Array<Object>} mclass Dict with class names of the annotation.
      * @property {Object} centroid The centroid of the annotated point
      * or region.
      * @property {Object} diameter The diameter of the annotation
@@ -45,11 +45,12 @@ const annotationHandler = (function (){
      * @typedef {string} CoordSystem
      */
     const _annotationMap = new Map();
-    let _nMarkers = 0;
-    let _nRegions = 0;
+    let _nMarkers = {};
+    let _nRegions = {};
+    let _annotationSetCounts = {};
     let _classCounts = {};
     let _hasPrediction = false;
-    classUtils.forEachClass(c => _classCounts[c.name] = 0);
+    // annotationSetHandler.forEachClass(c => _classCounts[c.name] = 0);
 
     // True if any predictions exist
     function _checkPrediction() {
@@ -61,17 +62,57 @@ const annotationHandler = (function (){
         return false;
     }
 
-    // Updates visuals
+
+    // Updates visuals with new annotation counts
     function updateAnnotationCounts() {
-        globalDataHandler.updateAnnotationCounts(_nMarkers, _nRegions, _classCounts);
+        // We only want to include annotations in the currently active annotation set
+        const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet().name;
+        globalDataHandler.updateAnnotationCounts(
+            _nMarkers[activeAnnotationSet], 
+            _nRegions[activeAnnotationSet], 
+            _classCounts[activeAnnotationSet]
+        );
+        globalDataHandler.updateAnnotationSetCounts(_annotationSetCounts);
     }
 
+    // Restart annotation counts
     function _restartAnnotationCounts() {
-        _nMarkers = 0;
-        _nRegions = 0;
+        _nMarkers = {};
+        _nRegions = {};
+        _annotationSetCounts = {};
         _classCounts = {};
-        classUtils.forEachClass(c => _classCounts[c.name] = 0);
-        globalDataHandler.updateAnnotationCounts(_nMarkers, _nRegions, _classCounts);
+
+        // Set all counts to 0
+        annotationSetHandler.forEachAnnotationSet(s => {
+            _nMarkers[s.name] = 0;
+            _nRegions[s.name] = 0;
+            _annotationSetCounts[s.name] = 0;
+            _classCounts[s.name] = {};
+            if (s.classConfig.length === 0) {
+                defaultClassConfig.forEach(c => _classCounts[s.name][c.name] = 0);
+            }
+            else {
+                s.classConfig.forEach(c => _classCounts[s.name][c.name] = 0);
+            }
+        })
+
+        // Count each annotation for each annotation
+        for (const annotation of _annotationMap.values()) {
+            const isMarker = annotation.points.length === 1;
+            Object.entries(annotation.mclass).forEach(([s, c]) => {
+                if (isMarker) {
+                    _nMarkers[s]++;
+                }
+                else {
+                    _nRegions[s]++;
+                }
+                _annotationSetCounts[s]++;
+                _classCounts[s][c]++;
+            });
+        }
+
+        // Update visuals with new annotation counts
+        updateAnnotationCounts();
     }
 
     // Low-res array of arrays
@@ -133,7 +174,7 @@ const annotationHandler = (function (){
                 };
             }),
             z: annotation.z,
-            mclass: annotation.mclass,
+            mclass: Object.fromEntries(Object.entries(annotation.mclass)),
             
             comments: annotation.comments && annotation.comments.map(comment => {
                 return {
@@ -172,17 +213,21 @@ const annotationHandler = (function (){
         });
     }
 
-    // true if annotation with same geometry already stored
-    function _findDuplicateAnnotation(annotation) {
-        return _getGridAnnotations(annotation).find(existingAnnotation =>
-            existingAnnotation.z === annotation.z
-            && existingAnnotation.mclass === annotation.mclass
-            && _pointsAreDuplicate(annotation.points, existingAnnotation.points)
-        );
-    }
+    // Not currently used
+    // // true if annotation with same geometry already stored
+    // function _findDuplicateAnnotation(annotation) {
+    //     return _getGridAnnotations(annotation).find(existingAnnotation =>
+    //         existingAnnotation.z === annotation.z
+    //         && existingAnnotation.mclass === annotation.mclass   // This would need to updated to check entire mclass dict
+    //         && _pointsAreDuplicate(annotation.points, existingAnnotation.points)
+    //     );
+    // }
 
-    function _updateVisuals() {
-        annotationVisuals.update(Array.from(_annotationMap.values()));
+    // Find annotations with identical points
+    function _findDuplicatePoints(annotation) {
+        return _getGridAnnotations(annotation).find(existingAnnotation => {
+            return _pointsAreDuplicate(annotation.points, existingAnnotation.points)
+        });
     }
 
     /**
@@ -236,15 +281,20 @@ const annotationHandler = (function (){
         return null
     }
 
+    // Update visuals with new annotations
+    function updateVisuals() {
+        annotationVisuals.update(Array.from(_annotationMap.values()));
+    }
+
     /**
-     * Add a single annotation to the data.
+     * Add annotations to the data.
      * @param {Annotation|Array<Annotation>} annotations A data representation of the annotation.
      * @param {CoordSystem} [coordSystem="web"] Coordinate system used by the annotation.
      * @param {boolean} [transmit=true] Any collaborators should also be
      * told to add the annotation.
      */
     function add(annotations, coordSystem="web", transmit = true) {
-        let once=false;
+        // let once=false;  //Q: Why once?
         if (!Array.isArray(annotations)) {
             annotations = [annotations];
         }
@@ -252,11 +302,14 @@ const annotationHandler = (function (){
         console.log(`Adding ${annotations.length} annotations...`);
         timingLog && console.time('addAnnotation');
 
-        let classes = classUtils.getSortedNames(classUtils.getClassConfig());
-        
         const addedAnntotations = [];
         annotations.forEach(annotation => {
             const addedAnnotation = _cloneAnnotation(annotation);
+            
+            if (Object.keys(addedAnnotation.mclass).length === 0) {
+                console.warn("Cannot add annotation that does not contain a class.");
+                return;
+            }
             
             // Store the coordinates in all systems and set the image coordinates
             const coords = addedAnnotation.points.map(point =>
@@ -269,67 +322,109 @@ const annotationHandler = (function (){
                 return;
             }
 
-            if (!(classes.includes(addedAnnotation.mclass))) {
-                console.warn(`Cannot add an annotation with unrecognised/incompatible class '${addedAnnotation.mclass}'.`);
-                return;
-            }
+            // Check if there exists an annotation at the same point
+            const overlappingAnnotation = _findDuplicatePoints(addedAnnotation);
+            
+            // Check every assigned class for the new annotation
+            for (const [annotationSetName, newClass] of Object.entries(addedAnnotation.mclass)) {
+                // Get classes from annotationSetConfig
+                let classes = Object.values(annotationSetHandler.getAnnotationSetConfig().find(annotationSet => {
+                    return annotationSet.name === annotationSetName;
+                }).classConfig.map(mclass => mclass.name));
+                
+                // If annotationSetConfig contains empty classConfig, we get the classes from the default config
+                if (classes.length === 0) {
+                    classes = defaultClassConfig.map(mclass => mclass.name);
+                }
+                
+                // Make sure the new class is included in the classConfig for that annotation set
+                if (!(classes.includes(newClass))) {
+                    console.warn(`Cannot add an annotation with unrecognised/incompatible class '${addedAnnotation.mclass}'.`);
+                    return;
+                }
 
-            // Check if an identical annotation already exists, remove old one if it does
-            let replacedAnnotation = _findDuplicateAnnotation(addedAnnotation);
-            if (replacedAnnotation) {
-                // old node does not like ||=
-                once || (console.warn("Adding annotation(s) with identical properties as existing one, ignoring."), once=true);
-                // changed from update to ignore, since on fast updates we could run into partial updates
-                //update(replacedAnnotation.id, addedAnnotation, coordSystem, false, false);
-                return;
-            }
+                if (overlappingAnnotation) {
+                    // Check if the overlapping annotation has a class in the annotation set of the new annotation
+                    if (annotationSetName in overlappingAnnotation.mclass) {
+                        console.warn(`Adding annotation(s) with identical properties as existing one in set \
+                            ${annotationSetName}, ignoring.`);
+                        // changed from update to ignore, since on fast updates we could run into partial updates
+                        // update(replacedAnnotation.id, addedAnnotation, coordSystem, false, false);
+                        // The choice to ignore a conflicting addition was there previously /Olle
+                    }
+                    // If the overlapping annotation does not have a class in the annotation set of the new annotation, add it
+                    else {
+                        overlappingAnnotation.mclass[annotationSetName] = addedAnnotation.mclass[annotationSetName];
 
-            // Make sure the annotation has an id
-            if (addedAnnotation.id === undefined) {
-                addedAnnotation.id = _generateId();
-            }
-            else {
-                // If the id has been specified, check if it's not taken
-                const existingAnnotation = getAnnotationById(addedAnnotation.id);
-                if (existingAnnotation !== undefined) {
-                    console.info("Tried to assign an already-used id, reassigning.");
-                    addedAnnotation.originalId === undefined && (addedAnnotation.originalId = addedAnnotation.id);
-                    addedAnnotation.id = _generateId();
+                        // Update class/annotation set counts 
+                        if (addedAnnotation.points.length === 1) {
+                            _nMarkers[annotationSetName]++;
+                        }
+                        else {
+                            _nRegions[annotationSetName]++;
+                        }
+                        _annotationSetCounts[annotationSetName]++;
+                        _classCounts[annotationSetName][newClass]++;
+                        updateAnnotationCounts();
+                    }
                 }
             }
 
-            // Set the bookmark field of the annotation
-            if (addedAnnotation.bookmarked === undefined)
-                addedAnnotation.bookmarked = false;
+            // If there does not already exist an annotation at the same point, we add the entire annotation
+            if (!overlappingAnnotation) {
+                // Make sure the annotation has an id
+                if (addedAnnotation.id === undefined) {
+                    addedAnnotation.id = _generateId();
+                }
+                else {
+                    // If the id has been specified, check if it's not taken
+                    const existingAnnotation = getAnnotationById(addedAnnotation.id);
+                    if (existingAnnotation !== undefined) {
+                        console.info("Tried to assign an already-used id, reassigning.");
+                        addedAnnotation.originalId === undefined && (addedAnnotation.originalId = addedAnnotation.id);
+                        addedAnnotation.id = _generateId();
+                    }
+                }
 
-            // Set the centroid of the annotation
-            if (!addedAnnotation.centroid)
-                addedAnnotation.centroid = mathUtils.getCentroid(addedAnnotation.points);
+                // Set the bookmark field of the annotation
+                if (addedAnnotation.bookmarked === undefined)
+                    addedAnnotation.bookmarked = false;
 
-            // Set the diameter of the annotation
-            if (!addedAnnotation.diameter)
-                addedAnnotation.diameter = mathUtils.getDiameter(addedAnnotation.points);
+                // Set the centroid of the annotation
+                if (!addedAnnotation.centroid)
+                    addedAnnotation.centroid = mathUtils.getCentroid(addedAnnotation.points);
 
-            // Set the author of the annotation
-            if (!addedAnnotation.author)
-                addedAnnotation.author = userInfo.getName();
-            
-            // Set the prediction score
-            if (addedAnnotation.prediction === undefined)
-                addedAnnotation.prediction = _generatePrediction();
+                // Set the diameter of the annotation
+                if (!addedAnnotation.diameter)
+                    addedAnnotation.diameter = mathUtils.getDiameter(addedAnnotation.points);
+
+                // Set the author of the annotation
+                if (!addedAnnotation.author)
+                    addedAnnotation.author = userInfo.getName();
+                
+                // Set the prediction score
+                if (addedAnnotation.prediction === undefined)
+                    addedAnnotation.prediction = _generatePrediction();
+
+                // Update class/annotation set counts (iterate through each annotation set of the added annotation classes)
+                Object.entries(addedAnnotation.mclass).forEach(([annotationSetName, newClass]) => {
+                    if (addedAnnotation.points.length === 1) {
+                        _nMarkers[annotationSetName]++;
+                    }
+                    else {
+                        _nRegions[annotationSetName]++;
+                    }
+                    _annotationSetCounts[annotationSetName]++;
+                    _classCounts[annotationSetName][newClass]++;
+                });
+                updateAnnotationCounts();
+            }
 
             // Store a data representation of the annotation
             _addAnnotation(addedAnnotation);
             addedAnntotations.push(addedAnnotation);
 
-            // Update the annotation count
-            if (addedAnnotation.points.length === 1) {
-                _nMarkers++;
-            }
-            else {
-                _nRegions++;
-            }
-            _classCounts[addedAnnotation.mclass]++;
+            //Q: What does this even do?
             _hasPrediction = _hasPrediction || (addedAnnotation.prediction!=null); //old Node dislikes ||=
         });
 
@@ -337,12 +432,10 @@ const annotationHandler = (function (){
         if (addedAnntotations.length > 0) {
             transmit && collabClient.addAnnotation(addedAnntotations);
         }
-
-        updateAnnotationCounts();
         timingLog && console.timeEnd('addAnnotation');
 
         // Add a graphical representation of the annotation
-        _updateVisuals();
+        updateVisuals();
     }
 
     /**
@@ -355,7 +448,10 @@ const annotationHandler = (function (){
      */
     function update(id, annotation, coordSystem="web", transmit = true, redraw = true) {
         timingLog && console.time('updateAnnotation update()');
+
+        // Get the annotation to update
         const updatedAnnotation = getAnnotationById(id);
+
         // Check if the annotation being updated exists first
         if (updatedAnnotation === undefined) {
             throw new Error("Tried to update an annotation that doesn't exist.");
@@ -370,7 +466,6 @@ const annotationHandler = (function (){
                 annotation.id = id;
             }
         }
-
 
         // Make sure the data is stored in the image coordinate system
         const coords = updatedAnnotation.points.map(point =>
@@ -391,12 +486,22 @@ const annotationHandler = (function (){
             return;
         }
 
-        // Update annotation count
-        if (annotation.mclass !== undefined && annotation.mclass !== updatedAnnotation.mclass) {
-            _classCounts[updatedAnnotation.mclass]--;
-            _classCounts[annotation.mclass]++;
-            updateAnnotationCounts();
+        // At the moment, moving an annotation from one set to another in update() is not allowed. 
+        // So, we check that the keys of the classes are the same before and after update
+        if (JSON.stringify(Object.keys(annotation.mclass).sort()) !== JSON.stringify(Object.keys(updatedAnnotation.mclass).sort())) {
+            console.warn("Cannot at the moment move an annotation from one annotation set to another.");
         }
+
+        // Update class/annotation counts
+        // Q: Right now the annotation count is updated even if the annotation classes haven't changed, 
+        // this is ok because it just adds then subtracts right?
+        Object.entries(updatedAnnotation.mclass).forEach(([annotationSetName, newClass]) => {
+            _classCounts[annotationSetName][newClass]--;
+        });
+        Object.entries(annotation.mclass).forEach(([annotationSetName, newClass]) => {
+            _classCounts[annotationSetName][newClass]++;
+        });
+        updateAnnotationCounts();
 
         // Update _hasPrediction
         if (annotation.prediction!=null) {
@@ -419,7 +524,6 @@ const annotationHandler = (function (){
         // Set the diameter of the annotation
         updatedAnnotation.diameter = mathUtils.getDiameter(updatedAnnotation.points);
 
-
         // Store the annotation in data
         if (newGridIndex !== oldGridIndex) {
             // console.log(`Moving from idx ${oldGridIndex} to ${newGridIndex}`);
@@ -432,13 +536,11 @@ const annotationHandler = (function (){
             _addGridAnnotation(_annotationMap.get(id));
         }
 
-
         // Send the update to collaborators
         transmit && collabClient.updateAnnotation(id, updatedAnnotation);
 
-
         // Update the annotation in the graphics
-        redraw && _updateVisuals();
+        redraw && updateVisuals();
         timingLog && console.timeEnd('updateAnnotation update()');
     }
 
@@ -470,60 +572,127 @@ const annotationHandler = (function (){
     /**
      * Remove an, or a list of, annotation(s) from the data.
      * @param {number|Array<number>} ids The id(s) of the annotation to be removed.
+     * @param {string} annotationSetName The name of the annotation set to remove the annotation from.
      * @param {boolean} [transmit=true] Any collaborators should also be
      * told to remove the annotation.
      */
-    function remove(ids, transmit = true) {
+    function remove(ids, annotationSetName, transmit = true) {
         if (!Array.isArray(ids)) {
             ids = [ids];
         }
         // console.log('rmv: ',ids);
         ids.forEach(id => {
-            if (!_annotationMap.has(id)) {
+            // Check if the annotation exists first (annotation with ID exists and 
+            // has an annotation in the annotation set)
+            if (!_annotationMap.has(id) || !(annotationSetName in _annotationMap.get(id))) {
                 throw new Error("Tried to remove an annotation that doesn't exist");
             }
+
+            // Get the class of the removed annotation (only to update annotation counts)
             const removedAnnotation = _annotationMap.get(id);
-            _annotationMap.delete(id);
-
-            // Remove from gridded
-            _removeGridAnnotation(removedAnnotation);
-
-            // Update the annotation count
+            const removedClass = annotations[deletedIndex].mclass[annotationSetName];
+            
+            // Check if the annotation contains classes in multiple annotation sets
+            // If the annotation is only included in one annotation set, remove the entire annotation
+            if (Object.keys(removedAnnotation.mclass).length === 1) {
+                // Remove the annotation from the data
+                _annotationMap.delete(id);
+                // Remove from gridd
+                _removeGridAnnotation(removedAnnotation);
+            } 
+            // If the annotation contains classes in multiple sets, only remove the class entry 
+            // for the annotation set in question, keep the rest of it
+            else {
+                // Remove the entry of the annotation set in question from mclass
+                delete removedAnnotation.mclass[annotationSetName];
+            }
+            
+            // Update the class/annotation counts
             if (removedAnnotation.points.length === 1) {
-                _nMarkers--;
+                _nMarkers[annotationSetName]--;
             }
             else {
-                _nRegions--;
+                _nRegions[annotationSetName]--;
             }
-            _classCounts[removedAnnotation.mclass]--;
+            _annotationSetCounts[annotationSetName]--;
+            _classCounts[annotationSetName][removedClass]--;
+            updateAnnotationCounts();
 
             regionEditor.stopEditingRegionIfBeingEdited(id);
         });
 
         // Send the update to collaborators
-        transmit && collabClient.removeAnnotation(ids);
+        transmit && collabClient.removeAnnotation(ids, annotationSetName);
 
         _hasPrediction = _checkPrediction();
-        updateAnnotationCounts();
-
         // Remove the annotation from the graphics
-        _updateVisuals();
+        updateVisuals();
     }
 
     /**
-     * Remove all annotations from the data.
+     * Remove all annotations from an annotation set.
+     * @param {string} annotationSetName The name of the annotation set to clear.
      * @param {boolean} [transmit=true] Any collaborators should also
      * be told to clear their annotations.
      */
-    function clear(transmit = true) {
-        const ids = Array.from(_annotationMap.keys());
-        remove(ids, false);
+    function clear(annotationSetName, transmit = true) {
+        const ids = [];
+        for (const [id, annotation] of _annotationMap) {
+            if (annotationSetName in annotation.mclass) {
+                ids.push(id);
+            }
+        }
+
+        // Remove the annotation from the annotation set for all annotation ids found
+        remove(ids, annotationSetName, false);
 
         // Send the update to collaborators
-        transmit && collabClient.clearAnnotations();
+        transmit && collabClient.clearAnnotations(annotationSetName);
 
-        // Clear the overlay
+        // // Clear the overlay
+        // annotationVisuals.clear();
+    }
+
+    /**
+     * Remove all annotations from the data. 
+     */
+    function clearAll() {
+        _annotationMap.clear();
+        _annotationGrid.length = 0;
+        _restartAnnotationCounts();
         annotationVisuals.clear();
+    }
+
+    /**
+     * Rename a specific mclass key (annotation set name).
+     * @param {string} prevName The previous class key name.
+     * @param {string} newName The new class key name.
+     * @param {boolean} [transmit=true] Any collaborators should also
+     * be told to rename the class key.
+     */
+    function renameMclassKey(prevName, newName, transmit = true) {
+        // Update key in counts (Right now this first step is completely unnecessary 
+        // as the annoation counts are reset after regardless, but in the future this
+        // should be fixed)
+        _nMarkers[newName] = _nMarkers[prevName];
+        delete _nMarkers[prevName];
+        _nRegions[newName] = _nRegions[prevName];
+        delete _nRegions[prevName];
+        _annotationSetCounts[newName] = _annotationSetCounts[prevName];
+        delete _annotationSetCounts[prevName];
+        _classCounts[newName] = _classCounts[prevName];
+        delete _classCounts[prevName];
+        
+        // Update key in each annotation
+        for (const annotation of _annotationMap.values()) {
+            if (prevName in annotation.mclass) {
+                annotation.mclass[newName] = annotation.mclass[prevName];
+                delete annotation.mclass[prevName];
+            }
+        }
+        
+        // Notify collaborators
+        transmit && collabClient.renameAnnotationMclassKey(prevName, newName);
     }
 
     /**
@@ -565,33 +734,49 @@ const annotationHandler = (function (){
     }
 
     /**
+     * Check whether or not the an annotation set is empty.
+     * @param {string} annotationSetName The name of the annotation set to check.
+     * @returns {boolean} Whether or not the annotation set is empty.
+     */
+    function isEmptySet(annotationSetName) {
+        for (const annotation of _annotationMap.values()) {
+            if (annotationSetName in annotation.mclass) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Called for each row, so should be fast
      */
     function hasPrediction() {
         return _hasPrediction;
     }
 
-    function updateClassConfig(classConfig, transmit = true) {
-        // Call private function to restart annotation counts.
+    /**
+     * Restart the annotation counts
+     */
+    function resetAnnotationCounts() {
         _restartAnnotationCounts();
-        // Update the pre-rendered marker textures in the marker overlay
-        layerHandler.getLayer("marker").updateMarkerTextures().then();
-        // Send the update to collaborators
-        transmit && collabClient.updateClassConfig(classConfig);
     }
 
     // Return public members of the closure
     return {
+        updateVisuals,
         add,
         update,
         setBookmarked,
         remove,
         clear,
+        clearAll,
+        renameMclassKey,
         forEachAnnotation,
         getAnnotationById,
         isEmpty,
+        isEmptySet,
         hasPrediction,
-        updateClassConfig,
+        resetAnnotationCounts,
         updateAnnotationCounts
     };
 })();
