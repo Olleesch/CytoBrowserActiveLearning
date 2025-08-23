@@ -123,24 +123,26 @@ class SortableList {
             adjustedDatum[this._idKey] = datum[this._idKey];
             adjustedDatum.changed || old[this._idKey] === adjustedDatum[this._idKey] || (adjustedDatum.changed=true);
             adjustedDatum.rawRef=datum; //reference to the original raw data
-            this._fields.forEach(field => {
+            // this._fields.forEach(field => {
+            for (const field of this._fields) {
                 if (field.selectFun) {
                     const selectValue = field.selectFun(datum)
                     adjustedDatum[field.key] = selectValue;
                     // If selectFun return invalid value, set the instance to invalid so we can exclude it from the display.
-                    // Currently used to exclude annotations not in the active annotation set from the list.
-                    if (selectValue < 0 && field.key === "mclassId") {
-                        adjustedDatum.invalid = true;
+                    // Currently used to exclude annotations not in the active annotation set from the list. This can likely 
+                    // be done in a much better way in the future
+                    if (field.key === "invalid" && selectValue) {
+                        break;
                     }
                 }
                 else {
                     adjustedDatum[field.key] = datum[field.key];
                 }
                 adjustedDatum.changed || old[field.key] === adjustedDatum[field.key] || (adjustedDatum.changed=true); //||=
-            });
+            }
             adjustedDatum.changed && updates++;
             return adjustedDatum;
-        }).filter(data => !data.invalid);
+        }).filter(data => !(data.invalid));
         timingLog && console.timeEnd("setListData");
         //console.log(`Made ${updates} updates in list`);
     }

@@ -80,8 +80,8 @@ const collabClient = (function(){
             case "clear":
                 annotationHandler.clear(msg.annotationSet, false);
                 break;
-            case "renameMclassKey":
-                annotationHandler.renameMclassKey(msg.prevName, msg.newName, false);
+            case "renameAssignmentKey":
+                annotationHandler.renameAssignmentKey(msg.prevName, msg.newName, false);
                 break;
             default:
                 console.warn(`Unknown annotation action type: ${msg.actionType}`);
@@ -597,10 +597,10 @@ const collabClient = (function(){
      * @param {string} prevName The previous mclass key name.
      * @param {string} newName The new mclass key name.
      */
-    function renameAnnotationMclassKey(prevName, newName) {
+    function renameAnnotationAssignmentKey(prevName, newName) {
         send({
             type: "annotationAction",
-            actionType: "renameMclassKey",
+            actionType: "renameAssignmentKey",
             prevName: prevName,
             newName: newName
         });
@@ -854,7 +854,7 @@ const collabClient = (function(){
         updateAnnotation,
         removeAnnotation,
         clearAnnotations,
-        renameAnnotationMclassKey,
+        renameAnnotationAssignmentKey,
         updateAnnotationSetConfig,
         addComment,
         removeComment,

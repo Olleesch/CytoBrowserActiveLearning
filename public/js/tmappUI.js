@@ -90,7 +90,16 @@ const tmappUI = (function(){
     }
 
     function _initAnnotationList() {
+        const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         const list = new SortableList("#annotation-list", "#rtoolbar", "id", [
+            {
+                name: "invalid",
+                key: "invalid",
+                minWidth: "0em",
+                selectFun: d => !(activeAnnotationSetName in d.assignments),
+                sortable: true,
+                displayStyle: () => "none"
+            },
             {
                 name: "x",
                 key: "x",
@@ -108,8 +117,8 @@ const tmappUI = (function(){
             {
                 name: "z",
                 key: "z",
-                minWidth: "3em",
-                selectFun: d => d.z,
+                minWidth: "2em",
+                selectFun: d => d.assignments[activeAnnotationSetName].z,
                 sortable: true
             },
             {
@@ -117,7 +126,7 @@ const tmappUI = (function(){
                 key: "mclassId",
                 selectFun: d => {
                     return annotationSetHandler.getIDFromClassName(
-                        d.mclass[annotationSetHandler.getActiveAnnotationSet().name]
+                        d.assignments[activeAnnotationSetName].mclass
                     );
                 },
                 minWidth: "5em",
@@ -136,17 +145,22 @@ const tmappUI = (function(){
                 name: "Pred.",
                 key: "prediction",
                 title: "Class prediction score",
+                selectFun: d => d.assignments[activeAnnotationSetName].prediction,
                 minWidth: "0em",
                 displayFun: (elem, d) => {
-                    $(elem).html((d.prediction == null) ? "&nbsp;" : d.prediction.toFixed(4));
+                    $(elem).html((d.prediction == null) ? "&nbsp;" : 
+                        d.prediction.toFixed(4));
                 },
                 sortable: true,
-                displayStyle: () => annotationHandler.hasPrediction()?"":"none"
+                displayStyle: () => {
+                    return annotationHandler.hasPrediction(activeAnnotationSetName)?"":"none";
+                }
             },
             {
                 name: "B",
                 key: "bookmarked",
                 title: "Annotation has been bookmarked",
+                selectFun: d => d.assignments[activeAnnotationSetName].bookmarked,
                 minWidth: "2em",
                 displayFun: (elem, d) => {
                     $(elem).html(d.bookmarked ? "&check;" : "-");
@@ -248,6 +262,11 @@ const tmappUI = (function(){
         if (!(/^[A-Za-z0-9_-]+$/.test(name))) {
             return "Annotation set name must only contain letters (A-Z, a-z), \
                 digits (0-9), hyphens (-), and underscores (_)";
+        }
+        if (name.toLowerCase() in ["points", "id", "x", "y", "originalauthor", "assignments", 
+            "z", "mclass", "author", "bookmarked", "prediction", "originalid", "comments"]) {
+            return "Annotation set name must not be the same as an internal key name of the \
+                annotation storage format to avoid confusion."
         }
         if (mode === "rename") {
             const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();

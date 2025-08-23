@@ -57,6 +57,7 @@ const htmlHelper = (function() {
 
 
     function _annotationButtonRow(id, closeFun) {
+        const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         const row = $(`
                 <div class="row mt-4">
                 </div>
@@ -83,7 +84,7 @@ const htmlHelper = (function() {
             `);
         function setBookmarkPath() {
             const annotation = annotationHandler.getAnnotationById(id);
-            const isBookmarked = annotation.bookmarked;
+            const isBookmarked = annotation.assignments[activeAnnotationSetName].bookmarked;
             const path = bookmarkCol.find("svg path");
             if (isBookmarked) {
                 path.attr("d", "M 6 2 V 21 L 12 15 L 18 21 V 2 z");
@@ -95,10 +96,10 @@ const htmlHelper = (function() {
         setBookmarkPath();
         delCol.find("a").click(() => {
             closeFun();
-            annotationHandler.remove(id, annotationSetHandler.getActiveAnnotationSet().name);
+            annotationHandler.remove(id, activeAnnotationSetName);
         });
         bookmarkCol.find("a").click(() => {
-            annotationHandler.setBookmarked(id);
+            annotationHandler.setBookmarked(id, activeAnnotationSetName);
             setBookmarkPath();
         });
         row.append(delCol, bookmarkCol);
@@ -139,7 +140,7 @@ const htmlHelper = (function() {
         // one place?
         const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         annotationSetHandler.forEachClass(mclass => {
-            const selected = annotation.mclass[activeAnnotationSetName] === mclass.name;
+            const selected = annotation.assignments[activeAnnotationSetName].mclass === mclass.name;
             const option = $(`
                 <option ${selected ? "selected='selected'" : ""}>
                 </option>
@@ -149,13 +150,14 @@ const htmlHelper = (function() {
             select.append(option);
         });
         select.change(() => {
-            annotation.mclass[activeAnnotationSetName] = select.val();
+            annotation.assignments[activeAnnotationSetName].mclass = select.val();
             updateFun();
         });
         return container;
     }
 
     function _annotationFocus(annotation, updateFun) {
+        const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         const container = $(`
             <div class="form-group row">
                 <label class="col-4 col-form-label">
@@ -170,7 +172,7 @@ const htmlHelper = (function() {
         const select = container.find("select");
         const zLevels = tmapp.getZLevels(); //of _viewer
         zLevels.forEach(z => {
-            const selected = annotation.z === z;
+            const selected = annotation.assignments[activeAnnotationSetName].z === z;
             const option = $(`
                 <option ${selected ? "selected='selected'" : ""}>
                 </option>
@@ -180,7 +182,7 @@ const htmlHelper = (function() {
             select.append(option);
         });
         select.change(() => {
-            annotation.z = Number(select.val());
+            annotation.assignments[activeAnnotationSetName].z = Number(select.val());
             updateFun();
         });
         return container;
@@ -582,9 +584,10 @@ const htmlHelper = (function() {
      * pressing the save button in the menu.
      */
     function buildAnnotationSettingsMenu(container, annotation, closeFun, saveFun) {
+        const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         const updateFun = saveFun;
         const id = _annotationValueRow("Id", annotation.id);
-        const author = _annotationValueRow("Created by", annotation.author);
+        const author = _annotationValueRow("Created by", annotation.assignments[activeAnnotationSetName].author);
         const classes = _annotationMclassOptions(annotation, updateFun);
         const focus = _annotationFocus(annotation, updateFun);
         const list = _commentList(annotation, updateFun);
