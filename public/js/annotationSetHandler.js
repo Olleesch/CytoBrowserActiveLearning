@@ -370,6 +370,38 @@ const annotationSetHandler = (function(){
         }
     }
 
+    function copyAnnotationSet(newName, copiedAnnotationSet, transmit = true) {
+        // Check if annotation set is locked
+        if (isLockedAnnotationSet(copiedAnnotationSet.name)) {
+            console.warn("Cannot copy a locked annotation set, skipping");
+            return;
+        }
+        // Check if new annotation set name already exists.
+        if (_annotationSetConfig.some(s => newName === s.name)) {
+            console.warn("Cannot add an annotation set with the same name as a previously existing set.");
+            return;
+        }
+        // Add a copy of the annotation set to config and update.
+        _annotationSetConfig.push({
+            name: newName,
+            description: copiedAnnotationSet.description,
+            classConfig: JSON.parse(JSON.stringify(copiedAnnotationSet.classConfig)),
+            author: copiedAnnotationSet.author,
+            createdOn: copiedAnnotationSet.createdOn
+        });
+        update(_annotationSetConfig, transmit);
+        // Add copies of the annotations to the target annotation set. 
+        const annotations = [];
+        annotationHandler.forEachAnnotation(a => {
+            if (a.assignments.some(assignment => assignment.annotationSet === copiedAnnotationSet.name)) {
+                a.assignments = a.assignments.filter(assignment => assignment.annotationSet === copiedAnnotationSet.name);
+                a.assignments[0].annotationSet = newName;
+                annotations.push(a);
+            }
+        });
+        annotationHandler.add(annotations, "image", true);
+    }
+
     /**
      * Update the annotation set config.
      * @param {Array<AnnotationSet>} annotationSetConfig The new annotation set config.
@@ -408,6 +440,7 @@ const annotationSetHandler = (function(){
         addAnnotationSet,
         renameAnnotationSet,
         removeAnnotationSet,
+        copyAnnotationSet,
         update
     }
 })();
