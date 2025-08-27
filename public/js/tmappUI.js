@@ -92,14 +92,6 @@ const tmappUI = (function(){
         const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         const list = new SortableList("#annotation-list", "#rtoolbar", "id", [
             {
-                name: "invalid",
-                key: "invalid",
-                minWidth: "0em",
-                selectFun: d => !(d.assignments.some(a => a.annotationSet === activeAnnotationSetName)),
-                sortable: true,
-                displayStyle: () => "none"
-            },
-            {
                 name: "x",
                 key: "x",
                 minWidth: "5em",

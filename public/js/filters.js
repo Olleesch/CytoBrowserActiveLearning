@@ -363,17 +363,42 @@ const filters = (function () {
      * @return {Object} The processed object.
      */
     function preprocessAnnotationBeforeFiltering(annotation) {
+        // Get global annotation properties and properties from the active annotation set to base filter on.
+        const comments = annotation.comments ? annotation.comments.length : 0;
+        const region = annotation.points.length > 1;
+        const marker = annotation.points.length === 1;
+        const x = annotation.centroid.x;
+        const y = annotation.centroid.y;
+        let mclass, author, bookmarked, z, prediction;
+
+        const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet().name;
+        const assignment = annotation.assignments.find(a => a.annotationSet === activeAnnotationSet);
+        if (assignment) {
+            mclass = assignment.mclass;
+            author = assignment.author;
+            bookmarked = assignment.bookmarked;
+            z = assignment.z;
+            prediction = assignment.prediction;
+        }
+        else {
+            mclass = null;
+            author = null;
+            bookmarked = null;
+            z = null;
+            prediction = null;
+        }
+
         return {
-            class: annotation.mclass,
-            author: annotation.author,
-            comments: annotation.comments ? annotation.comments.length : 0,
-            bookmarked: annotation.bookmarked,
-            region: annotation.points.length > 1,
-            marker: annotation.points.length === 1,
-            x: annotation.centroid.x,
-            y: annotation.centroid.y,
-            z: annotation.z,
-            prediction: annotation.prediction,
+            class: mclass,
+            author: author,
+            comments: comments,
+            bookmarked: bookmarked,
+            region: region,
+            marker: marker,
+            x: x,
+            y: y,
+            z: z,
+            prediction: prediction,
         };
     }
 
