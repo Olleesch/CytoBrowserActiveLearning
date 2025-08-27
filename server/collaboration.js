@@ -46,7 +46,7 @@ class Collaboration {
         this.nextColor = generateColor();
         this.image = image;
         this.annotationSetConfig = [];
-        this.lockedAnnotationSets = [];
+        this.lockedAnnotationSets = [];     // To keep track of which annotation sets are locked
         this.ongoingLoad = new Promise(r => r()); // Dummy promise just in case
         this.hasUnsavedChanges = false;
         this.loadState(false);
@@ -239,8 +239,9 @@ class Collaboration {
                     this.forwardMessage(sender, msg);
                 }
                 break;
-            case "renameAssignmentKey":
+            case "renameAssignment":
                 {
+                    // If an annotation set is renamed, go through all annotations and change the assignment name accordingly
                     this.annotations.forEach(annotation => {
                         if (annotation.assignments.some(a => a.annotationSet === msg.prevName)) {
                             const assignment = annotation.assignments.find(a => a.annotationSet === msg.prevName);
@@ -318,7 +319,6 @@ class Collaboration {
         switch (msg.actionType) {
             case "update":
                 {
-                    // Q: Best way of doing this?
                     this.annotationSetConfig = [];
                     Object.assign(this.annotationSetConfig, msg.annotationSetConfig);
                     this.forwardMessage(sender, msg);
@@ -327,7 +327,7 @@ class Collaboration {
             case "lock":
                 {
                     if (!this.lockedAnnotationSets.includes(msg.annotationSetName)) {
-                        this.lockedAnnotationSets.push(msg.annotationSetName);
+                        this.lockedAnnotationSets.push(msg.annotationSetName);  // Mark the annotation set as locked
                     }
                 }
                 this.forwardMessage(sender, msg);
@@ -523,6 +523,10 @@ class Collaboration {
                 this.annotations = data.annotations;
             }
             // classConfig new in data version 1.1, replaced by annotationSetConfig in data version 1.2
+            if (data.version === "1.0") {
+                data.annotationSetConfig = [];
+                this.annotationSetConfig = data.annotationSetConfig;
+            }
             if (data.version === "1.1") {
                 // Ensure backwards compatability by converting classConfig to annotationSetConfig introduced in version 1.2
                 if (data.classConfig === undefined) {

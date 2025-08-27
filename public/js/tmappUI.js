@@ -704,17 +704,25 @@ const tmappUI = (function(){
     }
 
     /**
-     * Updates the class selection buttons to reflect changes in the classification system.
-     * @param {Object} classConfig
+     * Updates the class selection buttons to reflect changes in the 
+     * active class configuration.
      */
     function updateClassSelectionButtons() {
         _initClassSelectionButtons();
     }
 
+    /**
+     * Updates the annotation set selection buttons to reflect changes 
+     * in the annotation set configuration.
+     */
     function updateAnnotationSetSelectionButtons(selectedIndex) {
         _initAnnotationSetSelectionButtons(selectedIndex);
     }
 
+    /**
+     * Update the displayed annotation set data (marker counts, class counts, 
+     * etc).
+     */
     function updateAnnotationSetData() {
         _initAnnotationSetData();
     }

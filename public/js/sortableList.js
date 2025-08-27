@@ -128,8 +128,8 @@ class SortableList {
                     const selectValue = field.selectFun(datum)
                     adjustedDatum[field.key] = selectValue;
                     // If selectFun return invalid value, set the instance to invalid so we can exclude it from the display.
-                    // Currently used to exclude annotations not in the active annotation set from the list. This can likely 
-                    // be done in a much better way in the future
+                    // Currently used to exclude annotations not in the active annotation set from the list. 
+                    // TODO: This can possibly be done in a better way.
                     if (field.key === "invalid" && selectValue) {
                         break;
                     }
