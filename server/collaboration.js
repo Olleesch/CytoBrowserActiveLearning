@@ -274,7 +274,11 @@ class Collaboration {
             if (overlappingAnnotation) {
                 for (const newAssignment of newAnnotation.assignments) {
                     // Check if the overlapping annotation has a class in the annotation set of the new annotation
+<<<<<<< HEAD
                     if (overlappingAnnotation.assignments.some(a => a.annotationSet === newAssignment.annotationSet)) {
+=======
+                    if (overlappingAnnotation.assignments.map(a => a.annotationSet).includes(newAssignment.annotationSet)) {
+>>>>>>> ff82983 (Bugfix: The check for identical properties when adding an annotation broke when restructuring the format in commit 52ad68c)
                         this.log(`${member.name} tried to add an annotation to a point that already has \
                             an annotation in the annotation set, ignoring.`, console.info);
                     }
