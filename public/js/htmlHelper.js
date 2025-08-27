@@ -55,7 +55,6 @@ const htmlHelper = (function() {
         viewer.setControlsEnabled(); //Show controls, similar as for panning using keyboard
     }
 
-
     function _annotationButtonRow(id, closeFun) {
         const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         const row = $(`
@@ -446,25 +445,27 @@ const htmlHelper = (function() {
 
     function updateLockedAnnotationSetButtonDisplays() {
         const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
-        const disableColor = "#ea918f";
+        // const disableColor = "#ea918f";
         if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSetName)) {
-            $("#rename_annotation_set").css({
-                "background-color": disableColor,
-                "border-color": disableColor
-            });
-            $("#remove_annotation_set").css({
-                "background-color": disableColor,
-                "border-color": disableColor
-            });
+            // $("#rename_annotation_set").css({
+            //     "background-color": disableColor,
+            //     "border-color": disableColor
+            // });
+            // $("#remove_annotation_set").css({
+            //     "background-color": disableColor,
+            //     "border-color": disableColor
+            // });
+            $("#rename_annotation_set").prop("disabled", true);
         } else {
-            $("#rename_annotation_set").css({
-                "background-color": "",
-                "border-color": ""
-            });
-            $("#remove_annotation_set").css({
-                "background-color": "",
-                "border-color": ""
-            });
+            // $("#rename_annotation_set").css({
+            //     "background-color": "",
+            //     "border-color": ""
+            // });
+            // $("#remove_annotation_set").css({
+            //     "background-color": "",
+            //     "border-color": ""
+            // });
+            $("#rename_annotation_set").prop("disabled", false);
         }
         // Personally think it's enough to have the spinning circle animation, but the commented out code below
         // would also display the annotation set as disabled among the annotation set selection buttons:

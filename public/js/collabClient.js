@@ -80,8 +80,8 @@ const collabClient = (function(){
             case "clear":
                 annotationHandler.clear(msg.annotationSet, false);
                 break;
-            case "renameAssignmentKey":
-                annotationHandler.renameAssignmentKey(msg.prevName, msg.newName, false);
+            case "renameAssignment":
+                annotationHandler.renameAssignment(msg.prevName, msg.newName, false);
                 break;
             default:
                 console.warn(`Unknown annotation action type: ${msg.actionType}`);
@@ -334,6 +334,7 @@ const collabClient = (function(){
             if (_followedMember.updated) {
                 tmapp.moveTo(_followedMember.position, true); //immediate move
                 if (_followedMember.annotationSet !== annotationSetHandler.getActiveAnnotationSet().name) {
+                    // TODO: Better handling?
                     $(`#annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(_followedMember.annotationSet)}`).click();
                 }
                 _followedMember.updated = false;
@@ -605,10 +606,10 @@ const collabClient = (function(){
      * @param {string} prevName The previous mclass key name.
      * @param {string} newName The new mclass key name.
      */
-    function renameAnnotationAssignmentKey(prevName, newName) {
+    function renameAnnotationAssignmentName(prevName, newName) {
         send({
             type: "annotationAction",
-            actionType: "renameAssignmentKey",
+            actionType: "renameAssignment",
             prevName: prevName,
             newName: newName
         });
@@ -862,7 +863,7 @@ const collabClient = (function(){
         updateAnnotation,
         removeAnnotation,
         clearAnnotations,
-        renameAnnotationAssignmentKey,
+        renameAnnotationAssignmentName,
         updateAnnotationSetConfig,
         addComment,
         removeComment,
