@@ -328,7 +328,7 @@ const annotationHandler = (function (){
 
                 if (overlappingAnnotation) {
                     // Check if the overlapping annotation has a class in the annotation set of the new annotation
-                    if (newAssignment.annotationSet in (overlappingAnnotation.assignments.map(a => a.annotationSet))) {
+                    if (overlappingAnnotation.assignments.map(a => a.annotationSet).includes(newAssignment.annotationSet)) {
                         console.warn(`Adding annotation(s) with identical properties as existing one in set \
                             ${newAssignment.annotationSet}, ignoring.`);
                         // changed from update to ignore, since on fast updates we could run into partial updates
