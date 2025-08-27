@@ -445,8 +445,12 @@ const htmlHelper = (function() {
         const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSetName)) {
             $("#rename_annotation_set").prop("disabled", true);
+            $("#remove_annotation_set").prop("disabled", true);
+            $("#copy_annotation_set").prop("disabled", true);
         } else {
+            $("#rename_annotation_set").prop("disabled", false);
             $("#remove_annotation_set").prop("disabled", false);
+            $("#copy_annotation_set").prop("disabled", false);
         }
         annotationSetHandler.forEachAnnotationSet(a => {
             if (annotationSetHandler.isLockedAnnotationSet(a.name)) {
