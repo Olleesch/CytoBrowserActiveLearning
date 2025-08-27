@@ -24,7 +24,10 @@ const annotationVisuals = (function() {
 
         const annotations = _unfilteredAnnotations.filter(annotation => {
             const filterableAnnotation = filters.preprocessAnnotationBeforeFiltering(annotation);
-            return _filter.evaluate(filterableAnnotation);
+            return (_filter.evaluate(filterableAnnotation) && 
+                    annotation.assignments.find(a => a.annotationSet === annotationSetHandler.getActiveAnnotationSet().name));
+            // Q: Now added filter to include only annotations in the current annotation set. If we want filtering between
+            // annotation sets, this logic may need to change. 
         });
 
         //Draw annotations and update list asynchronously
@@ -72,7 +75,8 @@ const annotationVisuals = (function() {
         }
 
         if (!_filterIsTrivial && _lastQueryWasValid) {
-            tmappUI.setFilterInfo(_unfilteredAnnotations.length, annotations.length);
+            const totalAnnotationCount = annotationHandler.getAnnotationSetCounts()[annotationSetHandler.getActiveAnnotationSet().name];
+            tmappUI.setFilterInfo(totalAnnotationCount, annotations.length);
         }
 
         timingLog && console.timeEnd('visFiltUpd'); //Async early return
