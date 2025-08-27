@@ -35,7 +35,8 @@ const annotationStorageConversion = (function() {
 
             // TODO: Figure out what to do with existing annotations if we load a set the name of which
             // already exists in the current collaboration. 
-
+            
+            // Help function to load annotation set config and deal with previous storage versions. 
             const loadAnnotationSetConfig = () => {
                 if (data.version === "1.0" || data.version === "1.1") {
                     data.annotationSetConfig = [
@@ -43,29 +44,37 @@ const annotationStorageConversion = (function() {
                             name: importedAnnotationSetName,
                             description: "Imported annotation set from older data version",
                             classConfig: data.classConfig ?? [],
-                            author: data.author ?? "Unknown",
+                            author: data.author ?? "Unknown",   // Q: Current user if missing? Or better to state unknown?
                             createdOn: data.createdOn ?? dateUtils.getCurrentTimeAsString()
                         }
                     ];
                 }
+                else if (data.version === "1.2") {
+                    data.annotationSetConfig.forEach(annotationSet => {
+                        if (!annotationSet.author) annotationSet.author = "Unknown"; // Q: Current user if missing? Or better to state unknown?
+                        if (!annotationSet.createdOn) annotationSet.createdOn = dateUtils.getCurrentTimeAsString();
+                    });
+                }
                 return data.annotationSetConfig;
             }
-
+            
+            // Help function to add the imported annotation sets to the existing annotation set config. 
             const addAnnotationSetConfig = () => {
                 const newAnnotationSetConfig = loadAnnotationSetConfig();
                 const annotationSetConfig = annotationSetHandler.getAnnotationSetConfig();
-                console.log(JSON.stringify(newAnnotationSetConfig, null, 2));
                 // Add new annotation sets to end of existing annotation set config and send to collaborators
                 annotationSetConfig.push(...newAnnotationSetConfig);
                 annotationSetHandler.update(annotationSetConfig, true);
             }
 
+            // Help function to replace the entire current annotation set config with the imported one. 
             const replaceAnnotationSetConfig = () => {
                 const newAnnotationSetConfig = loadAnnotationSetConfig();
                 // Replace existing annotation set config with new annotation set config and send to collaborators
                 annotationSetHandler.update(newAnnotationSetConfig, true);
             }
 
+            // Help function to load imported annotations and deal with previous storage versions. 
             const loadAnnotations = () => {
                 if (data.version === "1.0" || data.version === "1.1") {
                     data.annotations.forEach(a => {
@@ -85,9 +94,11 @@ const annotationStorageConversion = (function() {
                         delete a.z;
                     });
                 }
+                // TODO: Any optional fields we should configure/ensure exist if the version is 1.2?
                 return data.annotations;
             }
 
+            // Help function to add new annotations to the existing annotation data. 
             const addAnnotations = () => {
                 const newAnnotations = loadAnnotations();
                 annotationHandler.add(newAnnotations, "image", true);
@@ -98,8 +109,8 @@ const annotationStorageConversion = (function() {
                 }
             }
 
-            // Change to a collab on the right image if we're on the wrong one
             if (!ignoreMismatch && data.image !== tmapp.getImageName()) {
+                // Warn the user if the imported data specifies another image than the current image
                 tmappUI.choice("Warning: Selected data is for another image", 
                     `<p>This image: <b><tt>${escapeHtml(tmapp.getImageName())}</tt></b>` +
                     `<br>Data from: <b><tt>${escapeHtml(data.image)}</tt></b>` +
@@ -112,6 +123,7 @@ const annotationStorageConversion = (function() {
                     }
                 ]);
             } else {
+                // Ask the user if the imported data should be added to the existing data or replace the existing data. 
                 tmappUI.choice("What should be done with the current annotations?", null, [
                     {
                         label: "Add loaded annotation sets to existing ones",
@@ -139,6 +151,7 @@ const annotationStorageConversion = (function() {
 
     /**
      * Convert the currently placed annotations to an annotation storage object.
+     * @param {string} version The storage version.
      * @returns {Object} The annotation storage representation of the annotations.
      */
     function getAnnotationStorageData(version) {
