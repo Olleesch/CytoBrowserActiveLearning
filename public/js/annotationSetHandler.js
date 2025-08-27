@@ -133,6 +133,7 @@ const annotationSetHandler = (function(){
         // Update interface and counts
         tmappUI.updateAnnotationSetSelectionButtons(getIDFromAnnotationSetName(_activeAnnotationSet.name));
         tmappUI.updateAnnotationSetData();
+        htmlHelper.updateLockedAnnotationSetButtonDisplays();
         annotationHandler.resetAnnotationCounts();
         annotationHandler.updateVisuals();
     }
