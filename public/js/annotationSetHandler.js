@@ -6,10 +6,6 @@
 const annotationSetHandler = (function(){
     "use strict";
 
-    function getCurrentTimeAsString() {
-        return new Date().toISOString();
-    }
-
     // ==== Class config functions ====
 
     /**
@@ -120,7 +116,7 @@ const annotationSetHandler = (function(){
             _annotationSetConfig = [];
             Object.assign(_annotationSetConfig, defaultAnnotationSetConfig);
             _annotationSetConfig[0].author = userInfo.getName();
-            _annotationSetConfig[0].createdOn = getCurrentTimeAsString();
+            _annotationSetConfig[0].createdOn = dateUtils.getCurrentTimeAsString();
         }
 
         // If the active annotation set is not in the new annotation set config, 
@@ -253,7 +249,7 @@ const annotationSetHandler = (function(){
             description: description,
             classConfig: classConfig,
             author: userInfo.getName(),
-            createdOn: getCurrentTimeAsString()
+            createdOn: dateUtils.getCurrentTimeAsString()
         });
         update(_annotationSetConfig, transmit);
     }
@@ -364,7 +360,6 @@ const annotationSetHandler = (function(){
     return {
         count: () => _annotationSetConfig.length,
         classCount: () => _activeClassConfig.length,
-        getCurrentTimeAsString,
 
         getActiveClassConfig,
         setActiveClassConfig,
