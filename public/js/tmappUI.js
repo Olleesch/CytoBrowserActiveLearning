@@ -323,50 +323,14 @@ const tmappUI = (function(){
     }
 
     function _initAnnotationSetButtons() {
-        $("#add_annotation_set").click(() => {
-            $("#annotation_set_menu .modal-title").text("Add annotation set");
-            $("#annotation_set_menu [name='name']").val("");
-            $("#annotation_set_menu [name='description']").val("");
-            $("#annotation_set_menu_button").text("Add annotation set");
-            $("#annotation_set_menu_button").off("click").click(function(event) {
-                const name = $("#annotation_set_menu [name='name']").val();
-                const nameErrorMessage = _isValidAnnotationSetName(name, "add");
-                if (!nameErrorMessage) {
-                    const description = $("#annotation_set_menu [name='description']").val();
-                    const classConfig = [];
-                    annotationSetHandler.addAnnotationSet(name, description, classConfig, true);
-                    $("#annotation_set_menu").modal("hide");
-                }
-                else {
-                    $("#annotation_set_menu_name_error_message").text(nameErrorMessage).show();
-                }
-            });
-        });
-        $("#rename_annotation_set").click(function(event) {
-            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
-            // No action if the currently selected annotation set is locked
-            if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSet.name)) {
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-            $("#annotation_set_menu .modal-title").text("Rename annotation set");
-            $("#annotation_set_menu [name='name']").val(activeAnnotationSet.name);
-            $("#annotation_set_menu [name='description']").val(activeAnnotationSet.description);
-            $("#annotation_set_menu_button").text("Save annotation set");
-            $("#annotation_set_menu_button").off("click").click(function(event) {
-                const name = $("#annotation_set_menu [name='name']").val();
-                const nameErrorMessage = _isValidAnnotationSetName(name, "rename");
-                if (!nameErrorMessage) {
-                    const description = $("#annotation_set_menu [name='description']").val();
-                    annotationSetHandler.renameAnnotationSet(activeAnnotationSet, name, description, true)
-                    $("#annotation_set_menu").modal("hide");
-                }
-                else {
-                    $("#annotation_set_menu_name_error_message").text(nameErrorMessage).show();
-                }
-            });
-        });
+        // Build add annotation set menu
+        const addSetContainer = $("#add_annotation_set_menu");
+        htmlHelper.buildAddAnnotationSetMenu(addSetContainer);
+
+        // Build modify annotation set menu
+        const modifySetContainer = $("#modify_annotation_set_menu");
+        htmlHelper.buildModifyAnnotationSetMenu(modifySetContainer);
+
         $("#copy_annotation_set").click(function(event) {
             const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
             // No action if the currently selected annotation set is locked
