@@ -444,11 +444,11 @@ const htmlHelper = (function() {
     function updateLockedAnnotationSetButtonDisplays() {
         const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
         if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSetName)) {
-            $("#rename_annotation_set").prop("disabled", true);
+            $("#modify_annotation_set").prop("disabled", true);
             $("#remove_annotation_set").prop("disabled", true);
             $("#copy_annotation_set").prop("disabled", true);
         } else {
-            $("#rename_annotation_set").prop("disabled", false);
+            $("#modify_annotation_set").prop("disabled", false);
             $("#remove_annotation_set").prop("disabled", false);
             $("#copy_annotation_set").prop("disabled", false);
         }
@@ -563,6 +563,350 @@ const htmlHelper = (function() {
         return row;
     }
 
+    function _annotationSetNameRow() {
+        const nameRow = $(`
+            <div class="form-row pb-4">
+                <label class="col-3 col-form-label">Name</label>
+                <div class="col-9">
+                    <input type="text" name="name" class="form-control" placeholder="Annotation set name">
+                    <div name="name_error_message" style="color: red; font-size: 14px; display: none;"></div>
+                </div>
+            </div>
+        `);
+        const nameField = nameRow.find("input[name='name']");
+        const nameErrorLabel = nameRow.find("div[name='name_error_message']");
+        return [nameRow, nameField, nameErrorLabel];
+    }
+    
+    function _annotationSetDescriptionRow() {
+        const descriptionRow = $(`
+            <div class="form-row pb-4">
+                <label class="col-3 col-form-label">Description</label>
+                <div class="col-9">
+                    <textarea name="description" class="form-control" placeholder="Annotation set description" rows="4"></textarea>
+                </div>
+            </div>
+        `);
+        const descriptionField = descriptionRow.find("textarea[name='description']");
+        return [descriptionRow, descriptionField];
+    }
+
+    function _annotationSetClassConfigSelectRow(classData) {
+        const classConfigRow = $(`
+            <div class="form-row pb-5">
+                <label class="col-3 col-form-label">Class config</label>
+                <div class="col-9">
+                    <select class="form-control"></select>
+                    <div name="class_config_info" class="pt-2" style="font-size: 12px; font-style: italic; display: none;"></div>
+                </div>
+            </div>
+        `);
+        const classConfigSelect = classConfigRow.find("select");
+        const classConfigInfoLabel = classConfigRow.find("[name='class_config_info']");
+        // TODO: This should maybe be handled better than hard-coding the pre-made class configs. 
+        // An idea is to make "defaultClassConfig.js" into a list of pre-made configs. In the rest of the app, 
+        // we could use defaultClassConfigs[0] or something similar, here we could access different ones. 
+        const defaultOption = $(`
+            <option selected value="default">
+                Bethesda system (default)
+            </option>
+        `);
+        classConfigSelect.append(defaultOption);
+        const abnormalityOption = $(`
+            <option value="abnormality">
+                Cell abnormality
+            </option>
+        `);
+        classConfigSelect.append(abnormalityOption);
+        const customOption = $(`
+            <option value="custom">
+                Custom configuration
+            </option>
+        `);
+        classConfigSelect.append(customOption);
+        classConfigSelect.change(() => {
+            switch (classConfigSelect.val()) {
+                case "default":
+                    classData.classConfig = JSON.parse(JSON.stringify(defaultClassConfig));
+                    break;
+                case "abnormality":
+                    classData.classConfig = [
+                        {
+                            name: "Normal",
+                            description: "Normal-appearing nucleus",
+                            color: "#346d2e"
+                        },
+                        {
+                            name: "Abnormal",
+                            description: "Abnormal-appearing nucleus",
+                            color: "#f03c3c"
+                        }
+                    ];
+                    break;
+                case "custom":
+                    classData.classConfig = [
+                        {
+                            name: "",
+                            description: "",
+                            color: "#346d2e"
+                        }
+                    ];
+                    break;
+                default:
+                    console.warn("The class configuration selected in the annotation set menu is not a valid option.");
+            }
+            _createClassConfigButtonRow(classData, false);
+        });
+        return [classConfigRow, classConfigSelect, classConfigInfoLabel];
+    }
+
+    function _annotationSetClassControlsHeader(){
+        const classControlsHeader = $(`
+            <div class="form-row">
+                <div class="col-12 pb-1">
+                    <h5>Class controls</h5>
+                </div>
+            </div>
+            <hr class="mb-1 mt-0">
+            <div class="form-row pb-0">
+                <div class="col-12 text-center">
+                    <h6 class="col-form-label">Current class configuration</h6>
+                </div>
+            </div>
+        `);
+        return classControlsHeader;
+    }
+
+    function _annotationSetClassConfigButtonRow() {
+        const classConfigButtonRow = $(`
+            <div class="d-flex flex-wrap align-items-center" name="class_buttons_row"></div>
+        `);
+        new Sortable(classConfigButtonRow.get(0), {
+            animation: 150,
+            draggable: "button:not(.add-class-btn)",
+            filter: ".add-class-btn"
+        });
+        return classConfigButtonRow;
+    }
+
+    function _annotationSetClassControlFields(classData) {
+        const classControlFieldsWrapper = $(`
+            <div>
+                <div name="class_config_error_message" style="color: red; font-size: 14px; display: none;"></div>
+            </div>
+            <div class="form-row pt-3 pb-2">
+                <div class="col-5 d-flex flex-column">
+                    <label class="col-form-label">Name</label>
+                    <input type="text" name="class_name" class="form-control mb-0" placeholder="Class name">
+                    <label class="col-form-label">Color</label>
+                    <button type="button" class="btn btn-block btn-secondary" name="class_color" style="width:100%; height:100%; background-color:#346d2e;"></button>
+                    <input type="color" name="hidden_class_color" style="height:1px;opacity:0;" value="#346d2e">
+                </div>
+                <div class="col-7">
+                    <label class="col-form-label">Description</label>
+                    <textarea name="class_description" class="form-control" placeholder="Class description" rows="4"></textarea>
+                </div>
+            </div>
+        `);
+        const classErrorLabel = classControlFieldsWrapper.find("div[name='class_config_error_message']");
+        const classNameField = classControlFieldsWrapper.find("input[name='class_name']");
+        const classColorButton = classControlFieldsWrapper.find("button[name='class_color']");
+        const hiddenClassColorField = classControlFieldsWrapper.find("input[name='hidden_class_color']");
+        const classDescriptionField = classControlFieldsWrapper.find("textarea[name='class_description']");
+
+        classColorButton.on("click", () => hiddenClassColorField.click());
+
+        classNameField.on("input", function() {
+            const selected = classData.classConfigButtonRow.find(".class-btn.border-dark");
+            if (selected.length) {
+                selected.text($(this).val());
+                selected.data("mclass").name = $(this).val();
+            }
+        });
+        hiddenClassColorField.on("input", function() {
+            const color = $(this).val();
+            classColorButton.css("background-color", color);
+            const selected = classData.classConfigButtonRow.find(".class-btn.border-dark");
+            if (selected.length) {
+                selected.css("background-color", color);
+                selected.css("color", _getTextColorForBackground(color));
+                selected.data("mclass").color = color;
+            }
+            classColorButton.css("background-color", color);
+        });
+        classDescriptionField.on("input", function() {
+            const selected = classData.classConfigButtonRow.find(".class-btn.border-dark");
+            if (selected.length) {
+                selected.data("mclass").description = $(this).val();
+            }
+        });
+        return [classControlFieldsWrapper, classErrorLabel, classNameField];
+    }
+
+    function _annotationSetSaveButton(buttonText, saveFun) {
+        const saveButtonWrapper = $(`
+            <hr class="mb-3">
+            <div class="form-row pb-2">
+                <div class="col-12">
+                    <button name="save_button" type="button" class="btn btn-block btn-primary">
+                        ${buttonText}
+                    </button>
+                </div>
+            </div>
+        `);
+        const saveButton = saveButtonWrapper.find("button[name='save_button']");
+
+        saveButton.off("click").click(saveFun);
+
+        return saveButtonWrapper;
+    }
+
+    function _isValidAnnotationSetName(name, mode) {
+        if (name === "") {
+            return "Annotation set name must not be empty";
+        }
+        if (["points", "id", "x", "y", "originalauthor", "assignments", "z", "mclass", "author", 
+             "bookmarked", "prediction", "originalid", "comments"].includes(name.toLowerCase())) {
+            return "Annotation set name must not be the same as an internal key name of the \
+                annotation storage format to avoid confusion."
+        }
+        if (mode === "rename") {
+            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+            if (annotationSetHandler.getAnnotationSetConfig().some(annotationSet => {
+                return annotationSet.name === name && annotationSet.name !== activeAnnotationSet.name;
+            })) {
+                return "Annotation set name must not be the same as a previously existing annotation set name";
+            }
+        } else if (mode === "add") {
+            if (annotationSetHandler.getAnnotationSetConfig().some(annotationSet => {
+                return annotationSet.name === name;
+            })) {
+                return "Annotation set name must not be the same as a previously existing annotation set name";
+            }
+        } else {
+            throw new Error("Unrecognized mode in annotation set menu isValidName.");
+        }
+        return undefined;
+    }
+
+    function _isValidClassConfig(classConfig) {
+        const seenNames = new Set();
+        // const seenColors = new Set();
+        if (classConfig.length === 0) {
+            return "Class config may not be empty! Try adding some classes with the '+' button to the far right above.";
+        }
+        for (const mclass of classConfig) {
+            if (mclass.name === "") {
+                return "Class name must not be empty for any class! Check each class above and make sure they all have a name.";
+            }
+            if (!(/^[A-Za-z0-9_-]+$/.test(mclass.name))) {
+                return "Class names must only contain letters (A-Z, a-z), digits (0-9), hyphens (-), and underscores (_)! \
+                        check all classes above and make sure they all have a valid name.";
+            }
+            if (seenNames.has(mclass.name)) return "Class config may not contain two classes with the same name";
+            seenNames.add(mclass.name);
+            // if (seenColors.has(mclass.color)) return "Class config may not contain two classes with the same color";
+            // seenColors.add(mclass.color);
+        }
+        return undefined;
+    }
+
+    function _getTextColorForBackground(hexColor) {
+        const bigint = parseInt(hexColor.slice(1), 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        const rgb = [r, g, b];
+        const brightness = (rgb[0]*299 + rgb[1]*587 + rgb[2]*114)/1000;
+        return brightness > 186 ? "#000000" : "#ffffff";
+    }
+
+    function _createClassConfigButtonRow(classData, createAddButton=false) {
+
+        const classNameField = classData.classControlFieldsWrapper.find("[name='class_name']");
+        const classColorButton = classData.classControlFieldsWrapper.find("[name='class_color']");
+        const hiddenClassColorField = classData.classControlFieldsWrapper.find("[name='hidden_class_color']");
+        const classDescriptionField = classData.classControlFieldsWrapper.find("[name='class_description']");
+
+        function _createClassButton(mclass) {
+            const btn = $(`
+                <button type="button" class="btn btn-sm mr-1 mb-1 class-btn" 
+                        style="background-color:${mclass.color}; color:${_getTextColorForBackground(mclass.color)}; position: relative;">
+                    ${mclass.name}
+                </button>
+            `);
+            btn.data("mclass", mclass);
+            btn.on("click", function() {
+                classData.classConfigButtonRow.find(".class-btn").removeClass("border border-dark").css("box-shadow", "");
+                $(this).addClass("border border-dark").css("box-shadow", "0 0 3.75px 1.5px rgba(0,0,0,0.8)");
+                classNameField.val(mclass.name);
+                classColorButton.css("background-color", mclass.color);
+                hiddenClassColorField.val(mclass.color);
+                classDescriptionField.val(mclass.description);
+            });
+            const popup = $(`
+                <div class="popup border rounded shadow-sm" 
+                    style="position: absolute; top: 102%; left: 0; z-index: 1050; display: none; cursor: pointer; background-color: #ffffff;">
+                    <div class="text-danger px-2 py-1">Delete class</div>
+                </div>
+            `);
+            popup.on("click", function() {
+                if (classData.controlsDisabled) return;
+                popup.remove();
+                btn.remove();
+                const remaining = classData.classConfigButtonRow.find(".class-btn").first();
+                if (remaining.length) remaining.click();
+            });
+            btn.append(popup);
+            popup.find("div").hover(
+                function() { popup.css("background-color", "#e0e0e0"); },
+                function() { popup.css("background-color", "#ffffff"); }
+            );
+            btn.on("contextmenu", function(e) {
+                if (classData.controlsDisabled) return;
+                e.preventDefault();
+                classData.classConfigButtonRow.find(".popup").hide();
+                popup.show();
+                e.stopPropagation();
+                $(document).one("mousedown", function(e) {
+                    if (!popup.is(e.target) && popup.has(e.target).length === 0) {
+                        popup.hide();
+                    }
+                });
+            });
+            return btn;
+        }
+
+        function _createAddClassButton() {
+            const addBtn = $(`
+                <button type="button" class="btn btn-sm btn-secondary mb-1 add-class-btn">+</button>
+            `);
+            addBtn.on("click", function() {
+                const newClass = {
+                    name: "",
+                    description: "",
+                    color: "#346d2e"
+                };
+                const btn = _createClassButton(newClass);
+                btn.insertBefore(addBtn);
+                btn.click();
+            });
+            return addBtn;
+        }
+
+        if (createAddButton) {
+            const addBtn = _createAddClassButton();
+            classData.classConfigButtonRow.append(addBtn);
+        }
+
+        classData.classConfigButtonRow.find("button").not(".add-class-btn").remove();
+        classData.classConfig.forEach(mclass => {
+            const btn = _createClassButton(mclass);
+            btn.insertBefore(classData.classConfigButtonRow.find(".add-class-btn"));
+        });
+        classData.classConfigButtonRow.find(".class-btn").first().click();
+    }
+
     // Seemingly not in use (not up to date)
     // /**
     //  * Fill a jquery selection with a comment section.
@@ -674,6 +1018,234 @@ const htmlHelper = (function() {
     }
 
     /**
+     * 
+     * @param {*} container 
+     */
+    function buildAddAnnotationSetMenu(container) {
+        const body = container.find(".modal-body");
+
+        const [nameRow, nameField, nameErrorLabel] = _annotationSetNameRow();
+        const [descriptionRow, descriptionField] = _annotationSetDescriptionRow();
+        const classControlsHeader = _annotationSetClassControlsHeader();
+        const classConfigButtonRow = _annotationSetClassConfigButtonRow();
+        const [classControlFieldsWrapper, classErrorLabel, classNameField] = _annotationSetClassControlFields(
+            {classConfigButtonRow: classConfigButtonRow}
+        );
+
+        const classData = {
+            classConfig: JSON.parse(JSON.stringify(defaultClassConfig)), 
+            classConfigButtonRow: classConfigButtonRow, 
+            classControlFieldsWrapper: classControlFieldsWrapper,
+            disabledControls: false
+        };
+        const [classConfigRow, classConfigSelect, classConfigInfoLabel] = _annotationSetClassConfigSelectRow(classData);
+        const saveButtonWrapper = _annotationSetSaveButton("Add annotation set", () => {
+            // Get name and check that it's valid
+            const name = nameField.val();
+            const nameErrorMessage = _isValidAnnotationSetName(name, "add");
+            if (nameErrorMessage) {
+                nameErrorLabel.text(nameErrorMessage).show();
+            }
+            else nameErrorLabel.text("").hide();
+            // Get class config and check that it's valid
+            classData.classConfig = classConfigButtonRow.find(".class-btn").map(function() {
+                return $(this).data("mclass");
+            }).get();
+            const classConfigErrorMessage = _isValidClassConfig(classData.classConfig);
+            if (classConfigErrorMessage) {
+                classErrorLabel.text(classConfigErrorMessage).show();
+            }
+            else classErrorLabel.text("").hide();
+            // If no error messages, continue to add the new annotation set
+            if (!nameErrorMessage && !classConfigErrorMessage) {
+                annotationSetHandler.addAnnotationSet(name, descriptionField.val(), classData.classConfig, true);
+                container.modal("hide");
+            }
+        });
+        
+        body.append(
+            nameRow, 
+            descriptionRow, 
+            classConfigRow, 
+            classControlsHeader, 
+            classConfigButtonRow, 
+            classControlFieldsWrapper, 
+            saveButtonWrapper
+        );
+
+        // Initialize the class config button row
+        _createClassConfigButtonRow(classData, true);
+
+        // Make help text pop up when the help button is pressed
+        container.find("[name='help_button']").popover({placement: 'bottom', trigger: 'focus'});
+        
+        // When the add annotation set menu is opened
+        $("#add_annotation_set").click(() => {
+            // Open add annotation set menu modal
+            container.modal("show");
+            // Reset fillable fields and error message labels
+            nameField.val("");
+            descriptionField.val("");
+            nameErrorLabel.text("").hide();
+            classErrorLabel.text("").hide();
+            // Reset class config tracker, the default class config selection, and the class config button row
+            classData.classConfig = JSON.parse(JSON.stringify(defaultClassConfig));
+            classConfigSelect.val("default");
+            _createClassConfigButtonRow(classData, false);
+        });
+    }
+
+    
+    /**
+     * 
+     * @param {*} container 
+     */
+    function buildModifyAnnotationSetMenu(container) {
+        const body = container.find(".modal-body");
+
+        const [nameRow, nameField, nameErrorLabel] = _annotationSetNameRow();
+        const [descriptionRow, descriptionField] = _annotationSetDescriptionRow();
+        const classControlsHeader = _annotationSetClassControlsHeader();
+        const classConfigButtonRow = _annotationSetClassConfigButtonRow();
+        const [classControlFieldsWrapper, classErrorLabel, classNameField] = _annotationSetClassControlFields(
+            {classConfigButtonRow: classConfigButtonRow}
+        );
+
+        const classData = {
+            classConfig: [], 
+            classConfigButtonRow: classConfigButtonRow, 
+            classControlFieldsWrapper: classControlFieldsWrapper,
+            disabledControls: false
+        };
+        const [classConfigRow, classConfigSelect, classConfigInfoLabel] = _annotationSetClassConfigSelectRow(classData);
+        const saveButtonWrapper = _annotationSetSaveButton("Update annotation set", () => {
+            // Get name and check that it's valid
+            const name = nameField.val();
+            const nameErrorMessage = _isValidAnnotationSetName(name, "rename");
+            if (nameErrorMessage) {
+                nameErrorLabel.text(nameErrorMessage).show();
+            }
+            else nameErrorLabel.text("").hide();
+            // Get class config and check that it's valid
+            classData.classConfig = classConfigButtonRow.find(".class-btn").map(function() {
+                return $(this).data("mclass");
+            }).get();
+            const classConfigErrorMessage = _isValidClassConfig(classData.classConfig);
+            if (classConfigErrorMessage) {
+                classErrorLabel.text(classConfigErrorMessage).show();
+            }
+            else classErrorLabel.text("").hide();
+            // If no error messages, continue to add the new annotation set
+            if (!nameErrorMessage && !classConfigErrorMessage) {
+                const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+                const description = descriptionField.val();
+                annotationSetHandler.modifyAnnotationSet(activeAnnotationSet, name, description, classData.classConfig, true);
+                // annotationSetHandler.unlockAnnotationSet(name);
+                container.modal("hide");
+            }
+        });
+        
+        body.append(
+            nameRow, 
+            descriptionRow, 
+            classConfigRow, 
+            classControlsHeader, 
+            classConfigButtonRow, 
+            classControlFieldsWrapper, 
+            saveButtonWrapper
+        );
+
+        // Initialize the class config button row
+        _createClassConfigButtonRow(classData, true);
+
+        // Make help text pop up when the help button is pressed
+        container.find("[name='help_button']").popover({placement: 'bottom', trigger: 'focus'});
+        
+        // When the add annotation set menu is opened
+        $("#modify_annotation_set").click((e) => {
+            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+
+            // Just in case, but the button should already be disabled if the annotation set is locked
+            if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSet.name)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+
+            // Open modify annotation set menu modal
+            container.modal("show");
+
+            // Now we do lock it to prevent collaborators from altering the annotations in the set while 
+            // we modify annotation set properties
+            annotationSetHandler.lockAnnotationSet(activeAnnotationSet.name);
+
+            // Make sure the annotation set is unlocked when we close the modal
+            container.one('hidden.bs.modal', function () {
+                annotationSetHandler.unlockAnnotationSet(activeAnnotationSet.name);
+            });
+
+            try {
+                // Reset fillable fields and error message labels
+                nameField.val(activeAnnotationSet.name);
+                descriptionField.val(activeAnnotationSet.description);
+                nameErrorLabel.text("").hide();
+                classErrorLabel.text("").hide();
+
+                // Reset class config tracker, the default class config selection, and the class config button row
+                classData.classConfig = annotationSetHandler.getActiveClassConfig();
+                // TODO: Temporary solution to compare to the anomaly option, should be handled better (see comment
+                // in _annotationSetClassConfigSelectRow)
+                const anomalyConfig = [
+                    {
+                        name: "Normal",
+                        description: "Normal-appearing nucleus",
+                        color: "#346d2e"
+                    },
+                    {
+                        name: "Abnormal",
+                        description: "Abnormal-appearing nucleus",
+                        color: "#f03c3c"
+                    }
+                ];
+                if (JSON.stringify(defaultClassConfig) === JSON.stringify(classData.classConfig)) {
+                    classConfigSelect.val("default");
+                }
+                else if (JSON.stringify(anomalyConfig) === JSON.stringify(classData.classConfig)) {
+                    classConfigSelect.val("abnormality");
+                }
+                else {
+                    classConfigSelect.val("custom");
+                }
+                _createClassConfigButtonRow(classData, false);
+
+                // Disable some class config controls if there are annotations in the set. 
+                if (!annotationHandler.isEmptySet(activeAnnotationSet.name)) {
+                    classConfigSelect.prop("disabled", true);
+                    classConfigButtonRow.find(".add-class-btn").prop("disabled", true);
+                    classConfigButtonRow.find(".add-class-btn").hide();
+                    classData.controlsDisabled = true;
+                    classNameField.prop("disabled", true);
+                    classConfigInfoLabel.text("Class config controls are limited due to non-empty annotation set.").show();
+                } else {
+                    classConfigSelect.prop("disabled", false);
+                    classConfigButtonRow.find(".add-class-btn").prop("disabled", false);
+                    classConfigButtonRow.find(".add-class-btn").show();
+                    classData.controlsDisabled = false;
+                    classNameField.prop("disabled", false);
+                    classConfigInfoLabel.text("").hide();
+                }
+            }
+            catch (e) {
+                // Q: I added this to make sure that we unlock the annotation set if something goes wrong, 
+                // not fully sure it's needed though
+                annotationSetHandler.unlockAnnotationSet(activeAnnotationSet);
+                container.modal("hide");
+                console.error(`Error occurred while modifying an annotation set: ${e}.`);
+            }
+        });
+    }
+
+    /**
      * Fill a jquery selection with a list of collaborators.
      * @param {Object} container The selection that should contain the
      * collaborators.
@@ -720,6 +1292,8 @@ const htmlHelper = (function() {
         buildAnnotationSettingsMenu,
         buildClassSelectionButtons,
         buildAnnotationSetSelectionButtons,
+        buildAddAnnotationSetMenu,
+        buildModifyAnnotationSetMenu,
         setSelectedAnnotationSetSelectionButton,
         updateLockedAnnotationSetButtonDisplays,
         buildCollaboratorList,

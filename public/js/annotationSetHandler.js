@@ -270,50 +270,68 @@ const annotationSetHandler = (function(){
     }
 
     /**
-     * Rename an annotation set.
-     * @param {AnnotationSet} prevAnnotationSet The annotation set to be renamed.
+     * Modify the properties of an annotation set.
+     * @param {AnnotationSet} prevAnnotationSet The annotation set to be modified.
      * @param {string} newName The new name.
      * @param {string} newDescription The new description.
+     * @param {Array<MClass>} newClassConfig The new class configuration.
      * @param {boolean} [transmit=true] Any collaborators should also be
      * told to rename the annotation set.
      */
-    function renameAnnotationSet(prevAnnotationSet, newName, newDescription, transmit = true) {
+    function modifyAnnotationSet(prevAnnotationSet, newName, newDescription, newClassConfig, transmit = true) {
         const prevName = prevAnnotationSet.name;
         const prevDescription = prevAnnotationSet.description;
+        const prevClassConfig = prevAnnotationSet.classConfig;
 
-        if (isLockedAnnotationSet(prevName)) {
-            console.warn("Cannot rename a locked annotation set, skipping");
-            return;
-        }
-
-        if (prevName === newName && prevDescription === newDescription) {
+        if (prevName === newName && prevDescription === newDescription && 
+            JSON.parse(JSON.stringify(prevClassConfig)) === JSON.parse(JSON.stringify(newClassConfig))) {
             console.log("No updated annotation set information detected, skipping.");
             return;
         }
 
-        if (_annotationSetConfig.some(s => newName === s.name)) {
+        if (_annotationSetConfig.some(s => s.name !== _activeAnnotationSet.name && newName === s.name)) {
             console.warn("Cannot rename an annotation set to the same name as previously existing set");
             return;
         }
 
-        const renamedIndex = getIDFromAnnotationSetName(prevAnnotationSet.name);
+        const renamedIndex = getIDFromAnnotationSetName(prevName);
         if (renamedIndex === -1) {
             console.warn("The annotation set to update was not found");
             return;
         }
 
-        // If the name of the annotation set is changed, we need to rename the assignment of 
-        // the set in all annotations in addition to updating the annotation set config. Note 
-        // that this has to happen before we update the annotation set config to ensure correct
-        // counting and interface updates.
+        // Q: In between the line with "renameAssignment()" and the final line with "update()", adding annotations would cause issues. 
+        // Let's say a collaborator managed to add an annotation in this window, the added annotation would then end up with a new 
+        // annotation in an annotation set that does not exist in the annotation set config. Therefore, we lock the annotation set first, 
+        // making sure that no one can modify it or its contents. Then, we rename the assignments and update the annotation set config. 
+        // Finally, we can unlock the annotation set. I don't know if this is the best approach in practice, but it's at least a working 
+        // solution to an otherwise annoying problem. //Olle
+        const previouslyLocked = isLockedAnnotationSet(prevName);
+        if (!previouslyLocked) lockAnnotationSet(prevName);
+
         if (prevName !== newName) {
+            // If the name changes, and the annotation set was previously locked, we make sure the annotation set
+            // will be locked after the name change. 
+            if (previouslyLocked) lockAnnotationSet(newName);
+
+            // If the name of the annotation set is changed, we need to rename the assignment of 
+            // the set in all annotations in addition to updating the annotation set config. Note 
+            // that this has to happen before we update the annotation set config to ensure correct
+            // counting and interface updates.
             annotationHandler.renameAssignment(prevName, newName, transmit);
         }
 
         // Update the annotation set config.
         _annotationSetConfig[renamedIndex].name = newName;
         _annotationSetConfig[renamedIndex].description = newDescription;
+        _annotationSetConfig[renamedIndex].classConfig = newClassConfig;
         update(_annotationSetConfig, transmit);
+
+        // Now we remove the previous annotation set name from the list of locked annotation sets again. This should
+        // happen both if the name of the annotation set was changed or if the annotation set was previously locked. 
+        if (!previouslyLocked || (prevName !== newName)) {
+            unlockAnnotationSet(prevName);
+        }
     }
 
     /**
@@ -437,7 +455,7 @@ const annotationSetHandler = (function(){
         unlockAnnotationSet,
         
         addAnnotationSet,
-        renameAnnotationSet,
+        modifyAnnotationSet,
         removeAnnotationSet,
         copyAnnotationSet,
         update
