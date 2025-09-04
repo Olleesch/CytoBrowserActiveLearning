@@ -337,22 +337,24 @@
                         </div>
                         <div class="row">
                             <div class="col-3">
-                                <button id="add_annotation_set" type="button" class="btn btn-block btn-primary" data-toggle="modal" data-target="#annotation_set_menu">
+                                <button id="add_annotation_set" type="button" class="btn btn-block btn-primary">
                                     Add set
                                 </button>
                             </div>
                             <div class="col-3">
+                                <button id="modify_annotation_set" type="button" class="btn btn-block btn-primary">
+                                    Modify set
+                                </button>
+                            </div>
+                            <div class="col-3">
                                 <button id="copy_annotation_set" type="button" class="btn btn-primary btn-block"  data-toggle="modal" data-target="#annotation_set_menu">
-                                  Copy set
+                                    Copy set
                                 </button>
                             </div>
                             <div class="col-3">
-                                <button id="rename_annotation_set" type="button" class="btn btn-block btn-primary" data-toggle="modal" data-target="#annotation_set_menu">
-                                    Rename set
+                                <button id="remove_annotation_set" class="btn btn-primary btn-block" type="button">
+                                    Remove set
                                 </button>
-                            </div>
-                            <div class="col-3">
-                                <button id="remove_annotation_set" class="btn btn-primary btn-block" type="button">Remove set</button>
                             </div>
                         </div>
                     </div>
@@ -868,7 +870,70 @@
     </div>
     <!-- End of context menu -->
 
-    <!-- Annotation set menu -->
+    <!-- Annotation set menus -->
+    <div class="modal fade" id="add_annotation_set_menu" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">Add annotation set</h4>
+            <div class="d-flex align-items-center">
+              <button name="help_button" class="btn btn-block btn-secondary" data-toggle="modal" data-target="#add_annotation_set_help" data-html="true"
+                      data-content="This menu is used for adding an annotation set to the session. Specify a name and a description for
+                      the new annotation set in the first two fields. You can specify a class configuration for the new annotation set either 
+                      by selecting a pre-made option in the list or by creating your own custom configuration. The selected configuration 
+                      is displayed and can be modified under 'Class controls'. The displayed configuration contains one button per class, 
+                      each of which can be modified by pressing the corresponding button. To add a new class to the configuration, press 
+                      the button to the far right marked with '+'. To remove a class from the configuration, right-click the corresponding 
+                      class button and press 'delete'. To change the order, drag the class button you want to move. <br><br>
+                      
+                      Keep in mind that the name of an annotation set must not be the same as another existing annotation set of the 
+                      session. Some keywords of the annotation storage format are also not allowed. The name of a class must not contain 
+                      special characters or empty spaces and there must not be two classes of the same name in the same class 
+                      configuration. If any of these rules are violated, a pop-up text will inform you of what needs changing.">
+                Help
+              </button>
+              <button name="close_button" type="button" class="close" data-dismiss="modal">
+                <span>&times;</span>
+              </button>
+            </div>
+          </div>
+          <div class="modal-body">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade" id="modify_annotation_set_menu" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">Modify annotation set</h4>
+            <div class="d-flex align-items-center">
+              <button name="help_button" class="btn btn-block btn-secondary" data-toggle="modal" data-target="#add_annotation_set_help" data-html="true"
+                      data-content="This menu is used for modifying an annotation set in the session. When opened, the window displays 
+                      the current annotation set information. The name, description, and class configuration of the annotation set can 
+                      then be modified using the fields in the window. Please note that you cannot modify certain properties of the 
+                      class configuration if there are annotations in the annotation set. The current class 
+                      configuration is displayed and can be modified under 'Class controls'. The displayed configuration contains one 
+                      button per class, each of which can be modified by pressing it. To add a new class to the 
+                      configuration, press the button to the far right marked with '+'. To remove a class from the configuration, right-
+                      click the corresponding class button and press 'delete'. To change the order, drag the class button you want to move. <br><br>
+                      
+                      Keep in mind that the name of an annotation set must not be the same as another existing annotation set of the 
+                      session. Some keywords of the annotation storage format are also not allowed. The name of a class must not contain 
+                      special characters or empty spaces and there must not be two classes of the same name in the same class 
+                      configuration. If any of these rules are violated, a pop-up text will inform you of what needs changing.">
+                Help
+              </button>
+              <button name="close_button" type="button" class="close" data-dismiss="modal">
+                <span>&times;</span>
+              </button>
+            </div>
+          </div>
+          <div class="modal-body">
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="modal fade" id="annotation_set_menu" tabindex="-1" role="dialog">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -908,6 +973,7 @@
 
 <script src="js/bootstrap/bootstrap.bundle.min.js" ></script>
 <script src="js/bootstrap/bootstrap-slider.min.js" ></script>
+<script src="js/sortable/sortable.min.js" ></script>
 
 <script src="js/openseadragon/openseadragon.min.js"></script>
 <script src="js/openseadragon/openseadragon-focus-levels.js"></script>
