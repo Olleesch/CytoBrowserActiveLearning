@@ -728,7 +728,7 @@ const annotationHandler = (function (){
      * @returns {boolean} Whether or not the annotation set is empty.
      */
     function isEmptySet(annotationSetName) {
-        return _annotations.some(annotation => annotation.assignments.some(a => a.annotationSet === annotationSetName));
+        return !_annotations.some(annotation => annotation.assignments.some(a => a.annotationSet === annotationSetName));
     }
 
     /**
