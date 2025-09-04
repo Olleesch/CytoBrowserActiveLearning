@@ -391,11 +391,14 @@ const htmlHelper = (function() {
         //To set 'style="background-color: ${mclass.color};"' works here, but se we cannot use
         //pseudo-selectors (e.g. hover) in inline style, we do all colors below with CSS
         const button = $(`
-            <label id="class_${mclass.name}" class="btn btn-dark px-0 px-md-1 px-lg-2" title="${mclass.description}">
+            <label id="class_${mclass.name}" class="btn px-0 px-md-1 px-lg-2" title="${mclass.description}">
                 <input type="radio" name="class_options" autocomplete="off">${_noWrapHyphens(mclass.name)}</input>
                 <span class="badge badge-light mt-1 d-block" id="class_counter_${mclass.name}">0</span>
             </label>
         `);
+        button.css("color", _getTextColorForBackground(mclass.color));
+        button.css("border", "1px solid #343a40");
+
         if (active)
             button.addClass("active");
         button.click(() => {
