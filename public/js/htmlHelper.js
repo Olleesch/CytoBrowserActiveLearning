@@ -660,6 +660,21 @@ const htmlHelper = (function() {
         return [classConfigRow, classConfigSelect, classConfigInfoLabel];
     }
 
+    function _annotationSetCheckboxRow(label, id) {
+        const checkboxWrapper = $(`
+            <div class="form-row align-items-center mb-2">
+                <div class="col-12 d-flex justify-content-center">
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="${id}">
+                        <label class="custom-control-label px-1" for="${id}">${label}</label>
+                    </div>
+                </div>
+            </div>
+        `);
+        const checkbox = checkboxWrapper.find(`#${id}`);
+        return [checkboxWrapper, checkbox];
+    }
+
     function _annotationSetClassControlsHeader(){
         const classControlsHeader = $(`
             <div class="form-row">
@@ -1246,6 +1261,65 @@ const htmlHelper = (function() {
     }
 
     /**
+     * 
+     * @param {*} container 
+     */
+    function buildCopyAnnotationSetMenu(container) {
+        const body = container.find(".modal-body");
+
+        const [nameRow, nameField, nameErrorLabel] = _annotationSetNameRow();
+        const [copyAnnotationsRow, copyAnnotationsCheckbox] = _annotationSetCheckboxRow(
+            "Copy annotations to the new annotation set?", 
+            "copyAnnotationsCheckbox"
+        );
+
+        // Add something like a radio button of whether to copy over annotations too
+
+        const saveButtonWrapper = _annotationSetSaveButton("Add annotation set copy", () => {
+            const name = nameField.val();
+            const nameErrorMessage = _isValidAnnotationSetName(name, "add");
+            if (nameErrorMessage) {
+                nameErrorLabel.text(nameErrorMessage).show();
+            }
+            else {
+                nameErrorLabel.text("").hide();
+                const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+                if (copyAnnotationsCheckbox.is(":checked")) annotationSetHandler.copyAnnotationSet(name, activeAnnotationSet, true);
+                else annotationSetHandler.addAnnotationSet(name, activeAnnotationSet.description, activeAnnotationSet.classConfig, true);
+                container.modal("hide");
+            }
+        });
+        
+        body.append(
+            nameRow, 
+            copyAnnotationsRow,
+            saveButtonWrapper
+        );
+
+        // Make help text pop up when the help button is pressed
+        container.find("[name='help_button']").popover({placement: 'bottom', trigger: 'focus'});
+        
+        // When the add annotation set menu is opened
+        $("#copy_annotation_set").click(() => {
+            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+
+            // Just in case, but the button should already be disabled if the annotation set is locked
+            if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSet.name)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+
+            // Open add annotation set menu modal
+            container.modal("show");
+
+            // Reset fillable fields and error message labels
+            nameField.val(`${activeAnnotationSet.name} - Copy`);
+            nameErrorLabel.text("").hide();
+        });
+    }
+
+    /**
      * Fill a jquery selection with a list of collaborators.
      * @param {Object} container The selection that should contain the
      * collaborators.
@@ -1294,6 +1368,7 @@ const htmlHelper = (function() {
         buildAnnotationSetSelectionButtons,
         buildAddAnnotationSetMenu,
         buildModifyAnnotationSetMenu,
+        buildCopyAnnotationSetMenu,
         setSelectedAnnotationSetSelectionButton,
         updateLockedAnnotationSetButtonDisplays,
         buildCollaboratorList,
