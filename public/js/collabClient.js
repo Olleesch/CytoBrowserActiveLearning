@@ -94,10 +94,10 @@ const collabClient = (function(){
                 annotationSetHandler.update(msg.annotationSetConfig, false);
                 break;
             case "lock":
-                annotationSetHandler.lockAnnotationSet(msg.annotationSetName);
+                annotationSetHandler.lockAnnotationSet(msg.annotationSetName, false);
                 break;
             case "unlock":
-                annotationSetHandler.unlockAnnotationSet(msg.annotationSetName);
+                annotationSetHandler.unlockAnnotationSet(msg.annotationSetName, false);
                 break;
             default:
                 console.warn(`Unknown class config action type: ${msg.actionType}`);
@@ -221,7 +221,7 @@ const collabClient = (function(){
         _userId= _localMember.id;
         annotationSetHandler.setActiveAnnotationSet(annotationSetHandler.getAnnotationSetFromID(0).name);
 
-        msg.lockedAnnotationSets.forEach(a => annotationSetHandler.lockAnnotationSet(a));
+        msg.lockedAnnotationSets.forEach(a => annotationSetHandler.lockAnnotationSet(a, false));
 
         _memberUpdate();
 
@@ -628,6 +628,30 @@ const collabClient = (function(){
     }
 
     /**
+     * Notify collaborators of an annotation set being locked.
+     * @param {string} annotationSetName The annotation set to lock.
+     */
+    function lockAnnotationSet(annotationSetName) {
+        send({
+            type: "annotationSetConfigAction",
+            actionType: "lock",
+            annotationSetName: annotationSetName
+        });
+    }
+    
+    /**
+     * Notify collaborators of an annotation set being unlocked.
+     * @param {string} annotationSetName The annotation set to unlock.
+     */
+    function unlockAnnotationSet(annotationSetName) {
+        send({
+            type: "annotationSetConfigAction",
+            actionType: "unlock",
+            annotationSetName: annotationSetName
+        });
+    }
+
+    /**
      * Add a comment to the current collaboration.
      * @param {string} content The text content of the comment.
      */
@@ -865,6 +889,8 @@ const collabClient = (function(){
         clearAnnotations,
         renameAnnotationAssignmentName,
         updateAnnotationSetConfig,
+        lockAnnotationSet,
+        unlockAnnotationSet,
         addComment,
         removeComment,
         changeUsername,
