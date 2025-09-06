@@ -1192,11 +1192,11 @@ const htmlHelper = (function() {
 
             // Now we do lock it to prevent collaborators from altering the annotations in the set while 
             // we modify annotation set properties
-            annotationSetHandler.lockAnnotationSet(activeAnnotationSet.name);
+            annotationSetHandler.lockAnnotationSet(activeAnnotationSet.name, true);
 
             // Make sure the annotation set is unlocked when we close the modal
             container.one('hidden.bs.modal', function () {
-                annotationSetHandler.unlockAnnotationSet(activeAnnotationSet.name);
+                annotationSetHandler.unlockAnnotationSet(activeAnnotationSet.name, true);
             });
 
             try {
@@ -1253,7 +1253,7 @@ const htmlHelper = (function() {
             catch (e) {
                 // Q: I added this to make sure that we unlock the annotation set if something goes wrong, 
                 // not fully sure it's needed though
-                annotationSetHandler.unlockAnnotationSet(activeAnnotationSet);
+                annotationSetHandler.unlockAnnotationSet(activeAnnotationSet, true);
                 container.modal("hide");
                 console.error(`Error occurred while modifying an annotation set: ${e}.`);
             }
