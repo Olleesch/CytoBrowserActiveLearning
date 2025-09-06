@@ -222,27 +222,33 @@ const annotationSetHandler = (function(){
     /**
      * Lock a specified annotation set.
      * @param {string} annotationSetName The name of the annotation set to lock.
+     * @param {boolean} [transmit=true] Any collaborators should also be
+     * told to lock the annotation set.
      */
-    function lockAnnotationSet(annotationSetName) {
-        if (!isLockedAnnotationSet(annotationSetName)) {
-            _lockedAnnotationSets.push(annotationSetName);
-            htmlHelper.updateLockedAnnotationSetButtonDisplays();
-        } else {
-            console.log(`Tried to lock already locked annotation set ${annotationSetName}, ignoring`);
+    function lockAnnotationSet(annotationSetName, transmit = true) {
+        if (isLockedAnnotationSet(annotationSetName)) {
+            console.warn(`Tried to lock already locked annotation set ${annotationSetName}, ignoring`);
+            return;
         }
+        _lockedAnnotationSets.push(annotationSetName);
+        htmlHelper.updateLockedAnnotationSetButtonDisplays();
+        transmit && collabClient.lockAnnotationSet(annotationSetName);
     }
 
     /**
      * Unlock a specified annotation set. 
      * @param {string} annotationSetName The name of the annotation set to unlock. 
+     * @param {boolean} [transmit=true] Any collaborators should also be
+     * told to unlock the annotation set.
      */
-    function unlockAnnotationSet(annotationSetName) {
-        if (isLockedAnnotationSet(annotationSetName)) {
-            _lockedAnnotationSets = _lockedAnnotationSets.filter(a => a !== annotationSetName);
-            htmlHelper.updateLockedAnnotationSetButtonDisplays();
-        } else {
-            console.log(`Tried to unlock already unlocked annotation set ${annotationSetName}, ignoring`);
+    function unlockAnnotationSet(annotationSetName, transmit = true) {
+        if (!isLockedAnnotationSet(annotationSetName)) {
+            console.warn(`Tried to unlock already unlocked annotation set ${annotationSetName}, ignoring`);
+            return;
         }
+        _lockedAnnotationSets = _lockedAnnotationSets.filter(a => a !== annotationSetName);
+        htmlHelper.updateLockedAnnotationSetButtonDisplays();
+        transmit && collabClient.unlockAnnotationSet(annotationSetName);
     }
 
     /**
@@ -308,12 +314,12 @@ const annotationSetHandler = (function(){
         // Finally, we can unlock the annotation set. I don't know if this is the best approach in practice, but it's at least a working 
         // solution to an otherwise annoying problem. //Olle
         const previouslyLocked = isLockedAnnotationSet(prevName);
-        if (!previouslyLocked) lockAnnotationSet(prevName);
+        if (!previouslyLocked) lockAnnotationSet(prevName, true);
 
         if (prevName !== newName) {
             // If the name changes, and the annotation set was previously locked, we make sure the annotation set
             // will be locked after the name change. 
-            if (previouslyLocked) lockAnnotationSet(newName);
+            if (previouslyLocked) lockAnnotationSet(newName, true);
 
             // If the name of the annotation set is changed, we need to rename the assignment of 
             // the set in all annotations in addition to updating the annotation set config. Note 
@@ -331,7 +337,7 @@ const annotationSetHandler = (function(){
         // Now we remove the previous annotation set name from the list of locked annotation sets again. This should
         // happen both if the name of the annotation set was changed or if the annotation set was previously locked. 
         if (!previouslyLocked || (prevName !== newName)) {
-            unlockAnnotationSet(prevName);
+            unlockAnnotationSet(prevName, true);
         }
     }
 
