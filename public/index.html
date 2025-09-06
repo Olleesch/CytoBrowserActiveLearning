@@ -352,7 +352,7 @@
                                 </button>
                             </div>
                             <div class="col-3">
-                                <button id="copy_annotation_set" type="button" class="btn btn-primary btn-block"  data-toggle="modal" data-target="#annotation_set_menu">
+                                <button id="copy_annotation_set" type="button" class="btn btn-primary btn-block">
                                     Copy set
                                 </button>
                             </div>
@@ -943,41 +943,32 @@
         </div>
       </div>
     </div>
-    <div class="modal fade" id="annotation_set_menu" tabindex="-1" role="dialog">
+    <div class="modal fade" id="copy_annotation_set_menu" tabindex="-1" role="dialog">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Annotation set menu</h5>
-            <button id="annotation_set_menu_close_button" type="button" class="close" data-dismiss="modal">
-              <span>&times;</span>
-            </button>
+            <h4 class="modal-title">Copy annotation set</h4>
+            <div class="d-flex align-items-center">
+              <button name="help_button" class="btn btn-block btn-secondary" data-toggle="modal" data-target="#add_annotation_set_help" data-html="true"
+                      data-content="This menu is used for copying the currently selected annotation set in the session. 
+                      Specify a name for the new (copied) annotation set in the first field and whether to copy the 
+                      annotations in the set in the second. <br><br>
+                      
+                      Keep in mind that the name of an annotation set must not be 
+                      the same as another existing annotation set of the session. Some keywords of the annotation storage format are also 
+                      not allowed. If any of these rules are violated, a pop-up text will inform you of what needs changing.">
+                Help
+              </button>
+              <button name="close_button" type="button" class="close" data-dismiss="modal">
+                <span>&times;</span>
+              </button>
+            </div>
           </div>
           <div class="modal-body">
-              <div class="form-row pb-4">
-                  <label class="col-3 col-form-label">Name</label>
-                  <div class="col-9">
-                      <input type="text" name="name" class="form-control" placeholder="Annotation set name">
-                      <div id="annotation_set_menu_name_error_message" style="color: red; font-size: 14px; display: none;"></div>
-                  </div>
-              </div>
-              <div class="form-row pb-4">
-                  <label class="col-3 col-form-label">Description</label>
-                  <div class="col-9">
-                      <textarea name="description" class="form-control" placeholder="Annotation set description" rows="4"></textarea>
-                  </div>
-              </div>
-              <div class="form-row pb-2">
-                  <div class="col-12">
-                      <button id="annotation_set_menu_button" type="button" class="btn btn-block btn-primary">
-                          Save annotation set
-                      </button>
-                  </div>
-              </div>
           </div>
         </div>
       </div>
     </div> <!-- End of annotation set menu -->
-
 </body>
 
 <script src="js/bootstrap/bootstrap.bundle.min.js" ></script>
