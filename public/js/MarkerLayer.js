@@ -241,7 +241,7 @@ class MarkerLayer extends OverlayLayer {
             setTimeout(()=>_taps=0,300);
             if (event.data.originalEvent.ctrlKey) {
                 // console.log('Remove');
-                annotationHandler.remove(id);
+                annotationHandler.remove(id, annotationSetHandler.getActiveAnnotationSet().name);
             }
             else {
                 //if (_taps>0) {console.log('Taps: ',_taps);}
