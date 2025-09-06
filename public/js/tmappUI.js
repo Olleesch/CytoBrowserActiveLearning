@@ -289,38 +289,6 @@ const tmappUI = (function(){
         htmlHelper.buildAnnotationSetSelectionButtons(container, selectedIndex);
     }
 
-    function _isValidAnnotationSetName(name, mode) {
-        if (name === "") {
-            return "Annotation set name must not be empty";
-        }
-        // if (!(/^[A-Za-z0-9_-]+$/.test(name))) {
-        //     return "Annotation set name must only contain letters (A-Z, a-z), \
-        //         digits (0-9), hyphens (-), and underscores (_)";
-        // }
-        if (["points", "id", "x", "y", "originalauthor", "assignments", "z", "mclass", "author", 
-             "bookmarked", "prediction", "originalid", "comments"].includes(name.toLowerCase())) {
-            return "Annotation set name must not be the same as an internal key name of the \
-                annotation storage format to avoid confusion."
-        }
-        if (mode === "rename") {
-            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
-            if (annotationSetHandler.getAnnotationSetConfig().some(annotationSet => {
-                return annotationSet.name === name && annotationSet.name !== activeAnnotationSet.name;
-            })) {
-                return "Annotation set name must not be the same as a previously existing annotation set name";
-            }
-        } else if (mode === "add") {
-            if (annotationSetHandler.getAnnotationSetConfig().some(annotationSet => {
-                return annotationSet.name === name;
-            })) {
-                return "Annotation set name must not be the same as a previously existing annotation set name";
-            }
-        } else {
-            throw new Error("Unrecognized mode in annotation set menu isValidName.");
-        }
-        return undefined;
-    }
-
     function _initAnnotationSetButtons() {
         // Build add annotation set menu
         const addSetContainer = $("#add_annotation_set_menu");
@@ -330,34 +298,11 @@ const tmappUI = (function(){
         const modifySetContainer = $("#modify_annotation_set_menu");
         htmlHelper.buildModifyAnnotationSetMenu(modifySetContainer);
 
-        $("#copy_annotation_set").click(function(event) {
-            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
-            // No action if the currently selected annotation set is locked
-            if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSet.name)) {
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-            $("#annotation_set_menu .modal-title").text("Copy annotation set");
-            $("#annotation_set_menu [name='name']").val("");
-            $("#annotation_set_menu [name='description']").val("");
-            $("#annotation_set_menu_button").text("Copy annotation set");
-            $("#annotation_set_menu_button").off("click").click(function(event) {
-                const name = $("#annotation_set_menu [name='name']").val();
-                const nameErrorMessage = _isValidAnnotationSetName(name, "add");
-                if (!nameErrorMessage) {
-                    annotationSetHandler.copyAnnotationSet(name, activeAnnotationSet, true);
-                    $("#annotation_set_menu").modal("hide");
-                }
-                else {
-                    $("#annotation_set_menu_name_error_message").text(nameErrorMessage).show();
-                }
-            });
-        });
-        $("#annotation_set_menu").on("hide.bs.modal", function () {
-            $("#annotation_set_menu_button").blur();
-            $("#annotation_set_menu_name_error_message").hide();
-        });
+        // Build copy annotation set menu
+        const copySetContainer = $("#copy_annotation_set_menu");
+        htmlHelper.buildCopyAnnotationSetMenu(copySetContainer);
+        
+        // The remove annotation set button is handled through the annotationSetHandler directly
         $("#remove_annotation_set").click(() => {
             const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
             // No action if the currently selected annotation set is locked
