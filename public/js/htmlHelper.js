@@ -1033,8 +1033,9 @@ const htmlHelper = (function() {
     }
 
     /**
-     * 
-     * @param {*} container 
+     * Fill a jquery selection with the menu for adding an annotation set.
+     * @param {Object} container The selection that should contain the 'add annotation
+     * set menu' modal.
      */
     function buildAddAnnotationSetMenu(container) {
         const body = container.find(".modal-body");
@@ -1112,8 +1113,9 @@ const htmlHelper = (function() {
 
     
     /**
-     * 
-     * @param {*} container 
+     * Fill a jquery selection with the menu for modifying an annotation set.
+     * @param {Object} container The selection that should contain the 'modify annotation
+     * set menu' modal.
      */
     function buildModifyAnnotationSetMenu(container) {
         const body = container.find(".modal-body");
@@ -1261,8 +1263,9 @@ const htmlHelper = (function() {
     }
 
     /**
-     * 
-     * @param {*} container 
+     * Fill a jquery selection with the menu for copying an annotation set.
+     * @param {Object} container The selection that should contain the 'copy annotation
+     * set menu' modal.
      */
     function buildCopyAnnotationSetMenu(container) {
         const body = container.find(".modal-body");
