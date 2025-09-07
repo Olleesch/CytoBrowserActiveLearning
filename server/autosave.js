@@ -83,7 +83,7 @@ function getSavedCollabInfo(image) {
                         author: data.author,
                         createdOn: data.createdOn,
                         updatedOn: data.updatedOn,
-                        nAnnotationSets: data.annotationSetConfig ? data.annotationSetConfig.length : 0,    // Q: why else?
+                        nAnnotationSets: data.annotationSetConfig.length || 1,  // Empty config refers to default config with 1 annotation set
                         nAnnotations: data.nAnnotations,
                         nComments: data.nComments
                     };
