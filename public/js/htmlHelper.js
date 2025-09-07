@@ -415,13 +415,26 @@ const htmlHelper = (function() {
     }
     
     function _annotationSetSelectionButton(annotationSet, active) {
+        const annotationSetID = annotationSetHandler.getIDFromAnnotationSetName(annotationSet.name);
         const button = $(`
-            <label id="annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(annotationSet.name)}" class="btn btn-primary px-0 px-md-1 px-lg-2" title="${annotationSet.description}">
-                <input type="radio" name="annotation_set_options" autocomplete="off">${annotationSet.name}</input>
-                <span class="spinner-border spinner-border-sm ms-1 d-none" role="status" aria-hidden="true"></span>
-                <span class="badge badge-light mt-1 d-block" id="annotation_set_counter_${annotationSetHandler.getIDFromAnnotationSetName(annotationSet.name)}">0</span>
+            <label id="annotation_set_${annotationSetID}"
+                   class="btn btn-primary position-relative d-inline-block text-center px-2 py-2"
+                   style="min-width: 100px;" title="${annotationSet.description}">
+                <input type="radio" name="annotation_set_options" autocomplete="off" class="d-none">
+                <div>${annotationSet.name}</div>
+                <span class="badge badge-light d-block mt-1" id="annotation_set_counter_${annotationSetID}">
+                    0
+                </span>
+                <div class="position-absolute d-flex align-items-center"
+                    style="top: 2px; right: 4px; gap: 4px;">
+                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    <span class="d-none" data-toggle="tooltip" title="">
+                        <i class="fas fa-info-circle"></i>
+                    </span>
+                </div>
             </label>
         `);
+        button.find("[data-toggle='tooltip']").tooltip();
         if (active)
             button.addClass("active");
         button.click(() => {
@@ -443,6 +456,7 @@ const htmlHelper = (function() {
 
     function updateLockedAnnotationSetButtonDisplays() {
         const activeAnnotationSetName = annotationSetHandler.getActiveAnnotationSet().name;
+        const lockedAnnotationSets = annotationSetHandler.getLockedAnnotationSets();
         if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSetName)) {
             $("#modify_annotation_set").prop("disabled", true);
             $("#remove_annotation_set").prop("disabled", true);
@@ -453,10 +467,17 @@ const htmlHelper = (function() {
             $("#copy_annotation_set").prop("disabled", false);
         }
         annotationSetHandler.forEachAnnotationSet(a => {
-            if (annotationSetHandler.isLockedAnnotationSet(a.name)) {
-                $(`#annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(a.name)} .spinner-border`).removeClass("d-none");
+            const button = $(`#annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(a.name)}`);
+            const infoIcon = button.find("[data-toggle='tooltip']");
+            const lockedSetInfo = lockedAnnotationSets.find(lockedSet => lockedSet.annotationSetName === a.name);
+            if (lockedSetInfo) {
+                button.find(".spinner-border").removeClass("d-none");
+                infoIcon.removeClass("d-none");
+                infoIcon.attr("title", `Locked: ${lockedSetInfo.reason}`);
+                infoIcon.tooltip('dispose').tooltip(); 
             } else {
-                $(`#annotation_set_${annotationSetHandler.getIDFromAnnotationSetName(a.name)} .spinner-border`).addClass("d-none");
+                button.find(".spinner-border").addClass("d-none");
+                infoIcon.addClass("d-none");
             }
         });
     }
@@ -1157,7 +1178,6 @@ const htmlHelper = (function() {
                 const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
                 const description = descriptionField.val();
                 annotationSetHandler.modifyAnnotationSet(activeAnnotationSet, name, description, classData.classConfig, true);
-                // annotationSetHandler.unlockAnnotationSet(name);
                 container.modal("hide");
             }
         });
@@ -1194,7 +1214,11 @@ const htmlHelper = (function() {
 
             // Now we do lock it to prevent collaborators from altering the annotations in the set while 
             // we modify annotation set properties
-            annotationSetHandler.lockAnnotationSet(activeAnnotationSet.name, true);
+            annotationSetHandler.lockAnnotationSet(
+                activeAnnotationSet.name, 
+                `${userInfo.getName()} is modifying the annotation set properties`,
+                true
+            );
 
             // Make sure the annotation set is unlocked when we close the modal
             container.one('hidden.bs.modal', function () {
@@ -1287,8 +1311,12 @@ const htmlHelper = (function() {
             else {
                 nameErrorLabel.text("").hide();
                 const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
-                if (copyAnnotationsCheckbox.is(":checked")) annotationSetHandler.copyAnnotationSet(name, activeAnnotationSet, true);
-                else annotationSetHandler.addAnnotationSet(name, activeAnnotationSet.description, activeAnnotationSet.classConfig, true);
+                if (annotationSetHandler.isLockedAnnotationSet(activeAnnotationSet.name)) {
+                    console.warn("Cannot copy a locked annotation set, skipping");
+                } else {
+                    if (copyAnnotationsCheckbox.is(":checked")) annotationSetHandler.copyAnnotationSet(name, activeAnnotationSet, true);
+                    else annotationSetHandler.addAnnotationSet(name, activeAnnotationSet.description, activeAnnotationSet.classConfig, true);
+                }
                 container.modal("hide");
             }
         });
@@ -1319,6 +1347,7 @@ const htmlHelper = (function() {
             // Reset fillable fields and error message labels
             nameField.val(`${activeAnnotationSet.name} - Copy`);
             nameErrorLabel.text("").hide();
+            copyAnnotationsCheckbox.prop("checked", true);
         });
     }
 
