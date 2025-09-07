@@ -93,6 +93,15 @@ class Collaboration {
             eventType: "remove",
             member: member
         });
+        // Unlock any annotation sets that should be unlocked on user disconnect (e.g. the disconnecting user modifying a set).
+        const toBeUnlocked = this.lockedAnnotationSets.filter(a => a.details.unlockOnDisconnect && a.details.userID === member.id)
+        for (const annotationSet of toBeUnlocked) {
+            this.handleMessage(ws, {
+                type: "annotationSetConfigAction",
+                actionType: "unlock",
+                annotationSetName: annotationSet.annotationSetName
+            });
+        }
         this.log(`${member.name} has disconnected.`, console.info);
         this.members.delete(ws);
         if (this.members.size === 0) {
@@ -340,17 +349,22 @@ class Collaboration {
                 break;
             case "lock":
                 {
-                    if (!this.lockedAnnotationSets.includes(msg.annotationSetName)) {
-                        this.lockedAnnotationSets.push(msg.annotationSetName);  // Mark the annotation set as locked
+                    if (!this.lockedAnnotationSets.some(a => a.annotationSetName === msg.annotationSetName)) {
+                        this.lockedAnnotationSets.push({
+                            annotationSetName: msg.annotationSetName,
+                            reason: msg.reason,
+                            details: {
+                                userID: member.id,
+                                unlockOnDisconnect: msg.unlockOnDisconnect
+                            }
+                        });
                     }
                 }
                 this.forwardMessage(sender, msg);
                 break;
             case "unlock":
                 {
-                    if (this.lockedAnnotationSets.includes(msg.annotationSetName)) {
-                        this.lockedAnnotationSets = this.lockedAnnotationSets.filter(a => a !== msg.annotationSetName);
-                    }
+                    this.lockedAnnotationSets = this.lockedAnnotationSets.filter(a => a.annotationSetName !== msg.annotationSetName);
                 }
                 this.forwardMessage(sender, msg);
                 break;

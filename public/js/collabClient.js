@@ -94,7 +94,7 @@ const collabClient = (function(){
                 annotationSetHandler.update(msg.annotationSetConfig, false);
                 break;
             case "lock":
-                annotationSetHandler.lockAnnotationSet(msg.annotationSetName, false);
+                annotationSetHandler.lockAnnotationSet(msg.annotationSetName, msg.reason, false);
                 break;
             case "unlock":
                 annotationSetHandler.unlockAnnotationSet(msg.annotationSetName, false);
@@ -221,7 +221,7 @@ const collabClient = (function(){
         _userId= _localMember.id;
         annotationSetHandler.setActiveAnnotationSet(annotationSetHandler.getAnnotationSetFromID(0).name);
 
-        msg.lockedAnnotationSets.forEach(a => annotationSetHandler.lockAnnotationSet(a, false));
+        msg.lockedAnnotationSets.forEach(a => annotationSetHandler.lockAnnotationSet(a.annotationSetName, a.reason, false));
 
         _memberUpdate();
 
@@ -630,12 +630,18 @@ const collabClient = (function(){
     /**
      * Notify collaborators of an annotation set being locked.
      * @param {string} annotationSetName The annotation set to lock.
+     * @param {string} reason A description of the reason the annotation 
+     * set was locked.
+     * @param {boolean} [unlockOnDisconnect=true] A flag indicating if the 
+     * annotation set should be unlocked if the user disconnects.
      */
-    function lockAnnotationSet(annotationSetName) {
+    function lockAnnotationSet(annotationSetName, reason, unlockOnDisconnect = true) {
         send({
             type: "annotationSetConfigAction",
             actionType: "lock",
-            annotationSetName: annotationSetName
+            annotationSetName: annotationSetName,
+            reason: reason,
+            unlockOnDisconnect: unlockOnDisconnect
         });
     }
     
