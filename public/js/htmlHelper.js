@@ -1203,6 +1203,26 @@ const htmlHelper = (function() {
 
         // Make help text pop up when the help button is pressed
         container.find("[name='help_button']").popover({placement: 'bottom', trigger: 'focus'});
+
+        container.on('shown.bs.modal', function () {
+            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
+            const prevLocked = annotationSetHandler.isLockedAnnotationSet(activeAnnotationSet.name);
+            // If the modify menu is opened, we lock the annotation set to prevent collaborators 
+            // from altering the set while we modify annotation set properties. 
+            annotationSetHandler.lockAnnotationSet(
+                activeAnnotationSet.name, 
+                `${userInfo.getName()} is modifying the annotation set properties`,
+                true
+            );
+            // Make sure the annotation set is unlocked when we close the modal if the set was not 
+            // previously locked. Note that the set should atm never be previously locked as we shouldn't
+            // be allowed to modify a previously locked set. But this check was added for robustness. 
+            if (!prevLocked) {
+                container.one('hidden.bs.modal', function () {
+                    annotationSetHandler.unlockAnnotationSet(activeAnnotationSet.name, true);
+                });
+            }
+        });
         
         // When the add annotation set menu is opened
         $("#modify_annotation_set").click((e) => {
@@ -1217,19 +1237,6 @@ const htmlHelper = (function() {
 
             // Open modify annotation set menu modal
             container.modal("show");
-
-            // Now we do lock it to prevent collaborators from altering the annotations in the set while 
-            // we modify annotation set properties
-            annotationSetHandler.lockAnnotationSet(
-                activeAnnotationSet.name, 
-                `${userInfo.getName()} is modifying the annotation set properties`,
-                true
-            );
-
-            // Make sure the annotation set is unlocked when we close the modal
-            container.one('hidden.bs.modal', function () {
-                annotationSetHandler.unlockAnnotationSet(activeAnnotationSet.name, true);
-            });
 
             try {
                 // Reset fillable fields and error message labels

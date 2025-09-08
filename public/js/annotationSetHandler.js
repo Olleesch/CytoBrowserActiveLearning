@@ -264,6 +264,14 @@ const annotationSetHandler = (function(){
     }
 
     /**
+     * Unlock all annotation sets of the session.
+     */
+    function unlockAllAnnotationSets() {
+        _lockedAnnotationSets = [];
+        htmlHelper.updateLockedAnnotationSetButtonDisplays();
+    }
+
+    /**
      * Add a new annotation set to the annotation set config.
      * @param {string} name The name of the new annotation set.
      * @param {string} description The description of the new annotation set.
@@ -485,6 +493,7 @@ const annotationSetHandler = (function(){
         lockAnnotationSet,
         unlockAnnotationSet,
         getLockedAnnotationSets,
+        unlockAllAnnotationSets,
         
         addAnnotationSet,
         modifyAnnotationSet,
