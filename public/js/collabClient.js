@@ -218,6 +218,7 @@ const collabClient = (function(){
         _userId= _localMember.id;
         annotationSetHandler.setActiveAnnotationSet(annotationSetHandler.getAnnotationSetFromID(0).name);
 
+        annotationSetHandler.unlockAllAnnotationSets();
         msg.lockedAnnotationSets.forEach(a => annotationSetHandler.lockAnnotationSet(a.annotationSetName, a.reason, false));
 
         _memberUpdate();
