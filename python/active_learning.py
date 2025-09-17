@@ -232,6 +232,7 @@ def active_learning_experiment(
         args_train.checkfreq = min(args_train.checkfreq, args_train.epochs)
         args_train.dir_checkpoint = round_res_dir / "checkpoints/"
         args_train.model = round_res_dir / "model.pth"
+        net = load_network(device)
         train_net(args_train, net, labeled_set, dataset_val, device)
         logging.info(f"Initial model training finished\n")
 
