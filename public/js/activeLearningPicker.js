@@ -79,7 +79,7 @@ const activeLearningPicker = (function() {
             key: "nQueried",
             sortable: true,
             selectFun: d => {
-                return d.query ? process.query.samples.length : "-";
+                return d.query ? d.query.samples.length : "-";
             }
         },
         {
