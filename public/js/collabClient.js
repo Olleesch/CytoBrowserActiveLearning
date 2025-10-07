@@ -288,7 +288,12 @@ const collabClient = (function(){
             label: "Reconnect",
             click: _attemptReconnect
         }];
-        tmappUI.choice(title, null, choices, null, true);
+        // If we have a modal that should not be re-opened on reconnect, we can tag it
+        // with data-skip-reopen-on-reconnect="true". 
+        // TODO: This is a bit of a hacky solution, and could potentially be handled better. 
+        const activeModal = $(".modal.show");
+        const reOpenModal = !activeModal.data("skip-reopen-on-reconnect");
+        tmappUI.choice(title, null, choices, null, true, reOpenModal);
     }
 
     function _becomeIdle() {
