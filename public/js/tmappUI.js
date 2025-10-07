@@ -721,9 +721,6 @@ const tmappUI = (function(){
      */
     function choice(title, html, choices, onCancel, forceChoice=false, reOpenModal=true) {
         const activeModal = $(".modal.show");
-        // If we have a modal that should not be re-opened on reconnect, we can tag it
-        // with data-skip-reopen-on-reconnect="true". 
-        const reOpenModal = !activeModal.data("skip-reopen-on-reconnect");
         activeModal.modal("hide");
         
         //https://stackoverflow.com/questions/34440464/bootstrap-modal-backdrop-static-not-working/
