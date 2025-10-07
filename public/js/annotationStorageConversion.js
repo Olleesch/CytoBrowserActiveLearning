@@ -29,26 +29,35 @@ const annotationStorageConversion = (function() {
      */
     function addAnnotationStorageData(data, ignoreMismatch=false) {
         if (data.version === "1.0" || data.version === "1.1" || data.version === "1.2") {
+            
+            const baseName = "Imported set";
 
-            // Find new annotation set name "Imported set [num]" based on existing sets
-            let importedAnnotationSetName = "Imported set";
-            const existingAnnotationSetNames = annotationSetHandler.getAnnotationSetConfig().map(s => {
-                return s.name;
-            });
-            if (existingAnnotationSetNames.some(name => name === importedAnnotationSetName)) {
-                let nameCount = 1;
-                while (existingAnnotationSetNames.some(name => (`${name}-${nameCount}`) === importedAnnotationSetName)) {
-                    nameCount++;
+            // Help function to find new annotation set name "Imported set [num]" based on existing sets
+            const getValidNewName = (importedAnnotationSetName) => {
+                const existingAnnotationSetNames = annotationSetHandler.getAnnotationSetConfig().map(s => {
+                    return s.name;
+                });
+                if (existingAnnotationSetNames.some(name => name === importedAnnotationSetName)) {
+                    let nameCount = 1;
+                    while (existingAnnotationSetNames.some(name => name === `${importedAnnotationSetName} ${nameCount}`)) {
+                        nameCount++;
+                    }
+                    return `${importedAnnotationSetName} ${nameCount}`;
                 }
-                importedAnnotationSetName = `${importedAnnotationSetName}-${nameCount}`;
+                else {
+                    return importedAnnotationSetName;
+                }
             }
             
             // Help function to load annotation set config and deal with previous storage versions. 
+            let annotationSetNameMap = new Map();
             const loadAnnotationSetConfig = () => {
                 if (data.version === "1.0" || data.version === "1.1") {
+                    const newName = getValidNewName(baseName);
+                    annotationSetNameMap.set(baseName, newName);
                     data.annotationSetConfig = [
                         {
-                            name: importedAnnotationSetName,
+                            name: newName,
                             description: "Imported annotation set from older data version",
                             classConfig: data.classConfig ?? [],
                             author: data.author ?? "Unknown",   // Q: Current user if missing? Or better to state unknown?
@@ -58,6 +67,10 @@ const annotationStorageConversion = (function() {
                 }
                 else if (data.version === "1.2") {
                     data.annotationSetConfig.forEach(annotationSet => {
+                        const prevName = annotationSet.name;
+                        const newName = getValidNewName(prevName);
+                        annotationSetNameMap.set(prevName, newName);
+                        if (prevName !== newName) annotationSet.name = newName;
                         if (!annotationSet.author) annotationSet.author = "Unknown"; // Q: Current user if missing? Or better to state unknown?
                         if (!annotationSet.createdOn) annotationSet.createdOn = dateUtils.getCurrentTimeAsString();
                     });
@@ -88,7 +101,7 @@ const annotationStorageConversion = (function() {
                         a.originalAuthor = a.author ?? (data.author ?? "Unknown");
                         a.assignments = [
                             {
-                                annotationSet: importedAnnotationSetName,
+                                annotationSet: annotationSetNameMap.get(baseName),
                                 z: a.z,
                                 mclass: a.mclass,
                                 author: a.author ?? (data.author ?? "Unknown"),
@@ -101,7 +114,13 @@ const annotationStorageConversion = (function() {
                         delete a.z;
                     });
                 }
-                // Q: Any optional fields we should configure/ensure exist if the version is 1.2?
+                else if (data.version === "1.2") {
+                    data.annotations.forEach(a => {
+                        a.assignments.forEach(assignment => {
+                            assignment.annotationSet = annotationSetNameMap.get(assignment.annotationSet);
+                        });
+                    });
+                }
                 return data.annotations;
             }
 
