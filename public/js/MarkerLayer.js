@@ -105,7 +105,7 @@ class MarkerLayer extends OverlayLayer {
 
     async #createMarkerTextures() {
         this.#markerTextures = {};
-        const classConfig = classUtils.getClassConfig();
+        const classConfig = annotationSetHandler.getActiveClassConfig();
 
         const _createMarkerTexture = async (color) => {
             const step = Math.SQRT2 * this.#markerSquareSize * 1000;
@@ -143,7 +143,7 @@ class MarkerLayer extends OverlayLayer {
     }
 
     async updateMarkerTextures() {
-        const currentClassConfigString  = classUtils.getClassConfig().map(c => c.name).sort().join(',');
+        const currentClassConfigString  = annotationSetHandler.getActiveClassConfig().map(c => c.name).sort().join(',');
         if (!this.#markerTextures || currentClassConfigString !== this.#lastClassConfigString) {
             await this.#createMarkerTextures();
             this.#lastClassConfigString = currentClassConfigString;
@@ -363,10 +363,12 @@ class MarkerLayer extends OverlayLayer {
 
 
     #pixiMarker(d, duration=0) {
+        const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet().name;
+        const mclass = d.assignments.find(a => a.annotationSet === activeAnnotationSet).mclass;
         const coords = coordinateHelper.imageToOverlay(d.points[0]);
-        const texture = this.#markerTextures[d.mclass];
+        const texture = this.#markerTextures[mclass];
         if (!texture) {
-            console.warn(`No texture found for marker type ${d.mclass}`);
+            console.warn(`No texture found for marker type ${mclass}`);
             return null;
         }
 
@@ -376,7 +378,7 @@ class MarkerLayer extends OverlayLayer {
         sprite.angle = -this.#rotation;
         sprite.scale.set(0);
         sprite.id = d.id;
-        sprite.mclass = d.mclass;
+        sprite.mclass = mclass;
         sprite.hitArea = texture.hitArea;
 
         this.#addMarkerInteraction(d, sprite, sprite);
@@ -462,9 +464,11 @@ class MarkerLayer extends OverlayLayer {
                 this.#annotationIdToMarker.set(d.id, markerItem);
             }
             
-            if (marker.mclass!==d.mclass) {
-                marker.texture = this.#markerTextures[d.mclass];
-                marker.mclass = d.mclass;
+            const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet().name;
+            const newClass = d.assignments.find(a => a.annotationSet === activeAnnotationSet).mclass;
+            if (marker.mclass!==newClass) {
+                marker.texture = this.#markerTextures[newClass];
+                marker.mclass = newClass;
                 changed = true;
             }
 
