@@ -39,7 +39,7 @@ const annotationSetHandler = (function(){
             _activeClassConfig = defaultClassConfig;
         }
         tmappUI.updateClassSelectionButtons();
-        layerHandler.getLayer("marker").updateMarkerTextures().then();
+        if (layerHandler.getLayer("marker")) layerHandler.getLayer("marker").updateMarkerTextures().then();
     }
 
     /**
