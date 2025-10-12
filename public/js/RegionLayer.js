@@ -202,7 +202,7 @@ class RegionLayer extends OverlayLayer {
                 this.#unHighlight(node);
 
                 if (event.originalEvent.ctrlKey) {
-                    annotationHandler.remove(d.id);
+                    annotationHandler.remove(d.id, annotationSetHandler.getActiveAnnotationSet().name);
                 }
                 else if (layerHandler.topLayer().name==="region") {
                     const rect1 = event.eventSource.element.getBoundingClientRect(); //There must be an easier way
