@@ -241,7 +241,7 @@ const tmappUI = (function(){
                 <tr>
                     <td class="py-1">
                         <div class="d-flex justify-content-between"">
-                            <strong>${s.name}</strong>
+                            <strong>Annotation set - ${s.name}</strong>
                             <span id="${annotationSetHandler.getIDFromAnnotationSetName(s.name)}_name">Author: ${s.author}</span>
                         </div>
                     </td>
