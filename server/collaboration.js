@@ -243,12 +243,17 @@ class Collaboration {
             case "clear":
                 {
                     const annotationSetName = msg.annotationSet;
+<<<<<<< HEAD
                     const ids = [];
                     for (const [id, annotation] of this.annotationMap) {
                         if (annotation.assignments.some(a => a.annotationSet === annotationSetName)) {
                             ids.push(id);
                         }
                     }
+=======
+                    const ids = this.annotations.filter(annotation => annotation.assignments.some(a => a.annotationSet === annotationSetName))
+                        .map(annotation => annotation.id);
+>>>>>>> 2e3a112 (Update annotation save format to remove dynamic dict keys in the assignments-field)
                     this.removeAnnotations(member, ids, annotationSetName);
                     this.forwardMessage(sender, msg);
                 }
@@ -284,7 +289,11 @@ class Collaboration {
             if (overlappingAnnotation) {
                 for (const newAssignment of newAnnotation.assignments) {
                     // Check if the overlapping annotation has a class in the annotation set of the new annotation
+<<<<<<< HEAD
                     if (overlappingAnnotation.assignments.some(a => a.annotationSet === newAssignment.annotationSet)) {
+=======
+                    if (newAssignment.annotationSet in (overlappingAnnotation.assignments.map(a => a.annotationSet))) {
+>>>>>>> 2e3a112 (Update annotation save format to remove dynamic dict keys in the assignments-field)
                         this.log(`${member.name} tried to add an annotation to a point that already has \
                             an annotation in the annotation set, ignoring.`, console.info);
                     }
@@ -306,26 +315,39 @@ class Collaboration {
         ids.forEach(id => {
             // Check if the annotation exists first (annotation with ID exists and 
             // has an annotation in the annotation set)
+<<<<<<< HEAD
             const removedAnnotation = this.annotationMap.get(id);
             if (!removedAnnotation || !(removedAnnotation.assignments.some(a => a.annotationSet === annotationSetName))) {
+=======
+            if (deletedIndex === -1 || !(this.annotations[deletedIndex].assignments.some(a => a.annotationSet === annotationSetName))) {
+>>>>>>> 2e3a112 (Update annotation save format to remove dynamic dict keys in the assignments-field)
                 this.log(`${member.name} tried to remove nonexisting annotation with ID ${id} in \
                     annotation set ${annotationSetName}`, console.warn);
                 return;
             }
             // Check if the annotation contains classes in multiple annotation sets
             // If the annotation is only included in one annotation set, remove the entire annotation
+<<<<<<< HEAD
             if (removedAnnotation.assignments.length === 1) {
                 this.annotationMap.delete(id);
                 const index = this.annotations.indexOf(removedAnnotation);
                 if (index >= 0) {
                     this.annotations.splice(index, 1);
                 }
+=======
+            if (this.annotations[deletedIndex].assignments.length === 1) {
+                this.annotations.splice(deletedIndex, 1)[0];
+>>>>>>> 2e3a112 (Update annotation save format to remove dynamic dict keys in the assignments-field)
             } 
             // If the annotation contains classes in multiple sets, only remove the class entry 
             // for the annotation set in question, keep the rest of it
             else {
+<<<<<<< HEAD
                 const removedAssignmentIndex = removedAnnotation.assignments.findIndex(a => a.annotationSet === annotationSetName);
                 removedAnnotation.assignments.splice(removedAssignmentIndex, 1);
+=======
+                this.annotations[deletedIndex].assignments.filter(a => a.annotationSet !== annotationSetName);
+>>>>>>> 2e3a112 (Update annotation save format to remove dynamic dict keys in the assignments-field)
             }
         });
     }
@@ -656,15 +678,16 @@ class Collaboration {
                                             }],
                                             "id": this.generateAnnotationId(newAnnotations),
                                             "originalAuthor": msg.method,
-                                            "assignments": {
-                                                [name]: {
+                                            "assignments": [
+                                                {
+                                                    "annotationSet": name,
                                                     "z": newAnnotation[2],
                                                     "mclass": classConfig[0].name,
                                                     "author": msg.method,
                                                     "bookmarked": false,
                                                     "prediction": null
                                                 }
-                                            }
+                                            ]
                                         });
                                     });
                                     // Send the annotations to collaborators
@@ -706,12 +729,12 @@ class Collaboration {
                 break;
             case "classification":
                 const nuclei = this.annotations.filter(annotation => {
-                    return (msg.srcAnnotationSetName in annotation.assignments) && 
-                        ((msg.srcClassName === "All") || (msg.srcClassName === annotation.assignments[msg.srcAnnotationSetName].mclass));
+                    return (annotation.assignments.some(a => a.annotationSet === msg.srcAnnotationSetName)) && 
+                        ((msg.srcClassName === "All") || (msg.srcClassName === annotation.assignments.find(a => a.annotationSet === msg.srcAnnotationSetName).mclass));
                 }).map(annotation => {
                     return {
                         points: annotation.points,
-                        z: annotation.assignments[msg.srcAnnotationSetName].z,
+                        z: annotation.assignments.find(a => a.annotationSet === msg.srcAnnotationSetName).z,
                         id: annotation.id
                     };
                 });
@@ -801,16 +824,17 @@ class Collaboration {
                             // Add new annotations to data
                             const newAnnotations = data.annotations;
                             newAnnotations.forEach(newAnnotation => {
-                                newAnnotation.originalAuthor = msg.method
-                                newAnnotation.assignments = {
-                                    [name]: {
+                                newAnnotation.originalAuthor = msg.method;
+                                newAnnotation.assignments = [
+                                    {
+                                        "annotationSet": name,
                                         "z": newAnnotation.z,
                                         "mclass": newAnnotation.mclass,
                                         "author": msg.method,
                                         "bookmarked": false,
                                         "prediction": newAnnotation.prediction || null
                                     }
-                                };
+                                ];
                                 delete newAnnotation.z;
                                 delete newAnnotation.mclass;
                                 delete newAnnotation.prediction;
