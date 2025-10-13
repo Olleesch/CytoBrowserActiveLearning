@@ -199,7 +199,8 @@ async function runApp() {
     });
     pythonBackend.on("exit", (code, signal) => {
         console.log(`Python backend exited with code ${code} and signal ${signal}.`);
-        // Q: Should nodejs server also terminate when the python backend exits? 
+        console.log("Stopping NodeJS server...");
+        process.exit();
     });
 
     // Handle exit signal to make sure both python and nodejs servers are shut down
