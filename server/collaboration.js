@@ -53,13 +53,13 @@ class Collaboration {
         this.loadState(false);
         this.log(`Initializing collaboration.`, console.info);
 
-        // Q: Check that this is reasonable (no skipped fields required, ws)
+        // Q: Should the analyzer be added as a full member?
         this.analyzer = {
             id: this.id,
             name: "Analyzer",
             ready: true,
-            pythonHost: pythonHost,     // Q: Any issues (e.g. security) with setting host and port
-            pythonPort: pythonPort      // of python backend like this? 
+            pythonHost: pythonHost,
+            pythonPort: pythonPort
         }
     }
 
@@ -199,7 +199,7 @@ class Collaboration {
                 this.handleNameChange(sender, member, msg);
                 break;
             case "analysisAction":
-                this.ongoingLoad.then(() => {   // Q: What exactly does ongoingLoad do here?
+                this.ongoingLoad.then(() => {
                     this.handleAnalysisAction(sender, member, msg);
                 });
                 break;
@@ -484,6 +484,7 @@ class Collaboration {
                     body: JSON.stringify({
                         "image_ID": this.image,
                         "method": msg.method
+                        // Read annotations here?
                     })
                 }).then(response => {
                     return response.json().then(responseJSON => {
@@ -509,7 +510,7 @@ class Collaboration {
                         {
                             type: "classConfigAction",
                             actionType: "update",
-                            classConfig: msg.classConfig
+                            classConfig: msg.classConfig        // Q: Update to match annotation sets
                         }
                     );
                     const newAnnotations = data.annotations;
