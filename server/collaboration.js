@@ -620,7 +620,9 @@ class Collaboration {
                     {
                         type: "annotationSetConfigAction",
                         actionType: "lock",
-                        annotationSetName: name
+                        annotationSetName: name,
+                        reason: `Processing a nucleus detection request by ${member.name}`,
+                        unlockOnDisconnect: false
                     }
                 );
                 // Add annotations from detection pipeline (calls python backend)
@@ -678,7 +680,7 @@ class Collaboration {
                                 {
                                     type: "annotationAction",
                                     actionType: "add",
-                                    annotation: newAnnotations
+                                    annotations: newAnnotations
                                 }
                             );
                         }
@@ -856,7 +858,9 @@ class Collaboration {
                                 {
                                     type: "annotationSetConfigAction",
                                     actionType: "lock",
-                                    annotationSetName: name
+                                    annotationSetName: name,
+                                    reason: `Processing a nucleus classification request by ${member.name}`,
+                                    unlockOnDisconnect: false
                                 }
                             );
                         } 
@@ -885,7 +889,7 @@ class Collaboration {
                                 {
                                     type: "annotationAction",
                                     actionType: "add",
-                                    annotation: newAnnotations
+                                    annotations: newAnnotations
                                 }
                             );
                         }
