@@ -612,12 +612,17 @@ class Collaboration {
                                             "x": newAnnotation[0],
                                             "y": newAnnotation[1]
                                         }],
-                                        "z": newAnnotation[2],
                                         "id": this.generateAnnotationId(newAnnotations),
-                                        "mclass": {[name]: classConfig[0].name},
-                                        "author": msg.method,
-                                        "bookmarked": false,
-                                        "prediction": null
+                                        "originalAuthor": msg.method,
+                                        "assignments": {
+                                            [name]: {
+                                                "z": newAnnotation[2],
+                                                "mclass": classConfig[0].name,
+                                                "author": msg.method,
+                                                "bookmarked": false,
+                                                "prediction": null
+                                            }
+                                        }
                                     });
                                 });
                                 // Send the annotations to collaborators
@@ -647,12 +652,12 @@ class Collaboration {
                 break;
             case "classification":
                 const nuclei = this.annotations.filter(annotation => {
-                    return (msg.srcAnnotationSetName in annotation.mclass) && 
-                        ((msg.srcClassName === "All") || (msg.srcClassName === annotation.mclass[msg.srcAnnotationSetName]));
+                    return (msg.srcAnnotationSetName in annotation.assignments) && 
+                        ((msg.srcClassName === "All") || (msg.srcClassName === annotation.assignments[msg.srcAnnotationSetName].mclass));
                 }).map(annotation => {
                     return {
                         points: annotation.points,
-                        z: annotation.z,
+                        z: annotation.assignments[msg.srcAnnotationSetName].z,
                         id: annotation.id
                     };
                 });
@@ -723,10 +728,19 @@ class Collaboration {
                             // Add new annotations to data
                             const newAnnotations = data.annotations;
                             newAnnotations.forEach(newAnnotation => {
-                                newAnnotation.mclass = {[name]: newAnnotation.mclass};
-                                newAnnotation.author = msg.method;
-                                newAnnotation.bookmarked = false;
-                                newAnnotation.prediction = null;
+                                newAnnotation.originalAuthor = msg.method
+                                newAnnotation.assignments = {
+                                    [name]: {
+                                        "z": newAnnotation.z,
+                                        "mclass": newAnnotation.mclass,
+                                        "author": msg.method,
+                                        "bookmarked": false,
+                                        "prediction": newAnnotation.prediction || null
+                                    }
+                                };
+                                delete newAnnotation.z;
+                                delete newAnnotation.mclass;
+                                delete newAnnotation.prediction;
                             });
                             this.handleAnnotationAction(
                                 null, 
