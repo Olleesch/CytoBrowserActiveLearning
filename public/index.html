@@ -51,6 +51,11 @@
                         <li class="navbar-text font-weight-bold px-1 px-lg-2" style="margin:-1px -1px;"> <pre id="fps" style="margin:0;padding:0;"></pre></li>
                     </ul>
                     <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item" style="margin:-3px; margin-right:0.75rem;">
+                            <a id="browse_sessions" class="nav-link font-weight-bold" style="cursor:pointer; font-size:1.2rem; max-width: 20vw; overflow:hidden; white-space:nowrap; text-overflow: ellipsis;">
+                                <span class="fa fa-caret-down"> </span> Browse Sessions
+                            </a>
+                        </li>
                         <li class="nav-item" style="margin:-3px;">
                             <a class="nav-link font-weight-bold" style="cursor:pointer; font-size:1.2rem; max-width: 35vw; overflow:hidden; white-space:nowrap; text-overflow: ellipsis;" data-toggle="modal" data-target="#collaboration_menu">
                                 <span class="fa fa-caret-down"> </span> Session: <span id="collab_name"> -</span>
@@ -830,6 +835,43 @@
         </div>
     </div> <!-- End of session picker -->
 
+    <!-- Session browser -->
+    <div class="modal fade" id="session-browser" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Browse Sessions</h5>
+                    <button id="session-browser-close-button" type="button" class="close" data-dismiss="modal">
+                        <span>×</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row pb-4">
+                        <div class="col-12">
+                            <div class="input-group">
+                                <input id="session-browser-filter-query-input" type="text" class="form-control" placeholder="Filter sessions and annotation sets">
+                                <div id="session-browser-filter-query-error" class="invalid-feedback">
+                                </div>
+                                <div id="session-browser-filter-query-info" class="valid-feedback">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="session-browser-list-container" class="card bg-secondary" style="height: 50vh; overflow-y: auto;">
+                        <table id="session-browser-list" class="table table-hover text-center bg-white">
+                        </table>
+                    </div>
+                    <div class="form-row pt-4">
+                        <div class="col-12 d-flex justify-content-between">
+                            <button id="session-browser-refresh" class="btn btn-link">Refresh</button>
+                            <button id="session-browser-open" class="btn btn-primary" disabled="">Open</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- End of session browser -->
+
     <!-- Version picker -->
     <div class="modal fade" id="version-picker" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
@@ -989,6 +1031,7 @@
 <script src="js/versionRevert.js"></script>
 <script src="js/collabClient.js"></script>
 <script src="js/collabPicker.js"></script>
+<script src="js/sessionBrowser.js"></script>
 <script src="js/globalDataHandler.js"></script>
 <script src="js/metadataHandler.js"></script>
 <script src="js/annotationHandler.js"></script>

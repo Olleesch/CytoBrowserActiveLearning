@@ -109,6 +109,17 @@ app.get("/api/collaboration/available", (req, res) => {
     });
 });
 
+// Get a list of existing collaborations across all images
+app.get("/api/collaboration/allAvailable", (req, res) => {
+    collaboration.getAllAvailable().then(available => {
+        res.status(200);
+        res.json({available});
+    }).catch(err => {
+        console.warn(err.message);
+        res.status(400);
+    });
+});
+
 // Add websocket endpoints for collaboration
 app.ws("/collaboration/:id", (ws, req) => {
     const id = req.params.id;

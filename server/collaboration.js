@@ -730,6 +730,28 @@ function handleMessage(ws, id, msg) {
 }
 
 /**
+ * Enrich a saved-collaboration info entry with the live in-memory state of
+ * its collaboration, if it currently has one. This is needed on top of the
+ * on-disk snapshot read by autosave.getSavedCollabInfo/getAllSavedCollabInfo,
+ * since actual saving to disk is debounced (autosaveTimeout, see
+ * trySavingState) - so for an actively edited collab, the file can lag
+ * behind the true current state by up to that many seconds.
+ * @param {Object} info A saved-collaboration info entry, mutated in place.
+ */
+function _enrichWithLiveState(info) {
+    const collab = collabs[info.id];
+    if (collab) {
+        info.nUsers = collab.members.size;
+        info.nAnnotationSets = collab.annotationSetConfig.length || 1;
+        info.nAnnotations = collab.annotations.length;
+        info.annotationSets = autosave.getAnnotationSetBreakdown(collab);
+    }
+    else {
+        info.nUsers = 0;
+    }
+}
+
+/**
  * Get a list of all collaborations that have previously been saved
  * for a given image.
  * @param {string} image The name of the image.
@@ -739,15 +761,20 @@ function handleMessage(ws, id, msg) {
 function getAvailable(image) {
     const cleanImage = sanitize(image);
     return autosave.getSavedCollabInfo(cleanImage).then(available => {
-        available.forEach(info => {
-            if (collabs[info.id]) {
-                const collab = collabs[info.id];
-                info.nUsers = collab.members.size;
-            }
-            else {
-                info.nUsers = 0;
-            }
-        });
+        available.forEach(_enrichWithLiveState);
+        return available;
+    });
+}
+
+/**
+ * Get a list of all collaborations that have previously been saved,
+ * across every image.
+ * @returns {Promise<Array<Object>>} A promise of the list of available
+ * collaborations, each including which image it belongs to.
+ */
+function getAllAvailable() {
+    return autosave.getAllSavedCollabInfo().then(available => {
+        available.forEach(_enrichWithLiveState);
         return available;
     });
 }
@@ -760,6 +787,7 @@ module.exports = function(autosaveDir, metadataJsonDir) {
         joinCollab,
         leaveCollab,
         handleMessage,
-        getAvailable
+        getAvailable,
+        getAllAvailable
     };
 }

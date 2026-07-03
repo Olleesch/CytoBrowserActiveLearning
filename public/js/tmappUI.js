@@ -191,6 +191,13 @@ const tmappUI = (function(){
         collabPicker.init();
     }
 
+    function _initSessionBrowser() {
+        sessionBrowser.init();
+        $("#browse_sessions").click(function(event) {
+            sessionBrowser.open();
+        });
+    }
+
     function _initVersionPicker() {
         versionRevert.init();
     }
@@ -653,6 +660,7 @@ const tmappUI = (function(){
     function initUI() {
         _initAnnotationList();
         _initCollabPicker();
+        _initSessionBrowser();
         _initVersionPicker();
         _initGlobalComments();
         _initAnnotationSetData();

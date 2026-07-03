@@ -171,6 +171,30 @@ main {
     transform: rotate(180deg);
 }
 
+/* Q: Best way to accomplish these animations and styles? */ 
+.expand-toggle-icon {
+    transition: .3s transform ease-in-out;
+}
+.expand-toggle-icon.expanded {
+    transform: rotate(90deg);
+}
+tr.child-row,
+.table-hover tbody tr.child-row:hover {
+    background-color: #fff !important;
+}
+tr.child-row.stripe-odd,
+.table-hover tbody tr.child-row.stripe-odd:hover {
+    background-color: rgba(0,0,0,.05) !important;
+}
+tbody tr.data-row.stripe-odd {
+    background-color: rgba(0,0,0,.05);
+}
+.expand-content-inner {
+    overflow: hidden;
+    height: 0;
+    transition: .3s height ease-in-out;
+}
+
 
 /* See also https://stackoverflow.com/questions/47738975/customizing-the-collapse-transition-in-bootstrap-4 */
 .collapsing.width {

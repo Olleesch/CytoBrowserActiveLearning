@@ -92,10 +92,12 @@ const annotationSetHandler = (function(){
      * @property {string} name The name of the annotation set.
      * @property {string} description The extended description of the
      * annotation set.
-     * @property {Array<MClass>} classConfig The class configuration of the annotation 
+     * @property {Array<MClass>} classConfig The class configuration of the annotation
      * set.
      * @property {string} [author] The author of the annotation set.
-     * @property {string} [createdOn] The time the annotation set was created. 
+     * @property {string} [createdOn] The time the annotation set was created.
+     * @property {Array<{name: string, color: string}>} [tags] Tags added to
+     * the annotation set, e.g. for filtering in the session browser.
      */
 
     /**
@@ -276,10 +278,11 @@ const annotationSetHandler = (function(){
      * @param {string} name The name of the new annotation set.
      * @param {string} description The description of the new annotation set.
      * @param {Object} classConfig The class config of the new annotation set.
+     * @param {Array<{name: string, color: string}>} [tags=[]] The tags of the new annotation set.
      * @param {boolean} [transmit=true] Any collaborators should also be
      * told to add the annotation set.
      */
-    function addAnnotationSet(name, description, classConfig, transmit = true) {
+    function addAnnotationSet(name, description, classConfig, tags = [], transmit = true) {
         // Check if new annotation set name already exists.
         if (_annotationSetConfig.some(s => name === s.name)) {
             console.warn("Cannot add an annotation set with the same name as a previously existing set.");
@@ -290,6 +293,7 @@ const annotationSetHandler = (function(){
             name: name,
             description: description,
             classConfig: classConfig,
+            tags: tags,
             author: userInfo.getName(),
             createdOn: dateUtils.getCurrentTimeAsString()
         });
@@ -302,10 +306,11 @@ const annotationSetHandler = (function(){
      * @param {string} newName The new name.
      * @param {string} newDescription The new description.
      * @param {Array<MClass>} newClassConfig The new class configuration.
+     * @param {Array<{name: string, color: string}>} newTags The new tags.
      * @param {boolean} [transmit=true] Any collaborators should also be
      * told to rename the annotation set.
      */
-    function modifyAnnotationSet(prevAnnotationSet, newName, newDescription, newClassConfig, transmit = true) {
+    function modifyAnnotationSet(prevAnnotationSet, newName, newDescription, newClassConfig, newTags, transmit = true) {
         const prevName = prevAnnotationSet.name;
         const prevDescription = prevAnnotationSet.description;
         const prevClassConfig = prevAnnotationSet.classConfig;
@@ -364,6 +369,7 @@ const annotationSetHandler = (function(){
         _annotationSetConfig[renamedIndex].name = newName;
         _annotationSetConfig[renamedIndex].description = newDescription;
         _annotationSetConfig[renamedIndex].classConfig = newClassConfig;
+        _annotationSetConfig[renamedIndex].tags = newTags;
         update(_annotationSetConfig, transmit);
 
         // Now we remove the previous annotation set name from the list of locked annotation sets again. This should
@@ -442,6 +448,7 @@ const annotationSetHandler = (function(){
             name: newName,
             description: copiedAnnotationSet.description,
             classConfig: JSON.parse(JSON.stringify(copiedAnnotationSet.classConfig)),
+            tags: JSON.parse(JSON.stringify(copiedAnnotationSet.tags || [])),
             author: copiedAnnotationSet.author,
             createdOn: copiedAnnotationSet.createdOn
         });

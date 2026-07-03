@@ -57,6 +57,30 @@ function saveAnnotations(id, image, data) {
 }
 
 /**
+ * Compute a per-annotation-set breakdown (name, description, tags, and
+ * annotation count) from a collab's saved data. Guards against legacy data
+ * formats (pre-1.2) where annotationSetConfig may be missing/malformed.
+ * @param {Object} data Parsed contents of a saved collaboration file.
+ * @returns {Array<Object>} The annotation sets, each with an nAnnotations count.
+ */
+function getAnnotationSetBreakdown(data) {
+    const setConfig = Array.isArray(data.annotationSetConfig) ? data.annotationSetConfig : [];
+    const counts = {};
+    setConfig.forEach(set => counts[set.name] = 0);
+    (data.annotations || []).forEach(annotation => {
+        (annotation.assignments || []).forEach(assignment => {
+            counts[assignment.annotationSet] = (counts[assignment.annotationSet] || 0) + 1;
+        });
+    });
+    return setConfig.map(set => ({
+        name: set.name,
+        description: set.description,
+        tags: set.tags || [],
+        nAnnotations: counts[set.name] || 0
+    }));
+}
+
+/**
  * Get a list of ids for the collaborations that have been saved in the
  * autosave directory for a given image.
  * @param {string} image The name of the image.
@@ -85,12 +109,39 @@ function getSavedCollabInfo(image) {
                         updatedOn: data.updatedOn,
                         nAnnotationSets: data.annotationSetConfig.length || 1,  // Empty config refers to default config with 1 annotation set
                         nAnnotations: data.nAnnotations,
-                        nComments: data.nComments
+                        nComments: data.nComments,
+                        annotationSets: getAnnotationSetBreakdown(data)
                     };
                 });
             });
         return Promise.all(entries);
     }).catch(err => {
+        if (err.code === "ENOENT") {
+            return [];
+        }
+        else {
+            throw err;
+        }
+    });
+}
+
+/**
+ * Get a list of saved collaborations across every image in the autosave
+ * directory, each stamped with the image it belongs to.
+ * @returns {Promise<Array<Object>>} A promise that resolves with the list
+ * of saved collaborations for all images.
+ */
+function getAllSavedCollabInfo() {
+    return fsPromises.readdir(autosaveDir, {withFileTypes: true}).then(entries => {
+        const imageDirs = entries.filter(entry => entry.isDirectory()).map(entry => entry.name);
+        return Promise.all(imageDirs.map(image => {
+            return getSavedCollabInfo(image).then(collabs => {
+                collabs.forEach(collab => collab.image = image);
+                return collabs;
+            });
+        }));
+    }).then(collabsByImage => collabsByImage.flat())
+    .catch(err => {
         if (err.code === "ENOENT") {
             return [];
         }
@@ -146,6 +197,8 @@ module.exports = function(dir) {
         loadAnnotations: loadAnnotations,
         saveAnnotations: saveAnnotations,
         getSavedCollabInfo: getSavedCollabInfo,
+        getAllSavedCollabInfo: getAllSavedCollabInfo,
+        getAnnotationSetBreakdown: getAnnotationSetBreakdown,
         getAvailableVersions: getAvailableVersions,
         revertAnnotations: revertAnnotations
     };

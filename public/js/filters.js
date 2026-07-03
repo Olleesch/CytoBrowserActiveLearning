@@ -131,7 +131,11 @@ const filters = (function () {
         }
 
         evaluate(input) {
-            return input[this.key] === this.value.evaluate(input);
+            const fieldValue = input[this.key];
+            if (Array.isArray(fieldValue)) {
+                return fieldValue.includes(this.value.evaluate(input));
+            }
+            return fieldValue === this.value.evaluate(input);
         }
     }
 
@@ -420,9 +424,50 @@ const filters = (function () {
         };
     }
 
+    /**
+     * Q: Should maybe be merged with the above? Refers to the same thing, 
+     * but used in different places. 
+     * Create an object that contains the filterable properties of a 
+     * session/collab. 
+     * @param {Object} session The session/collab to be processed.
+     * @return {Object} The processed object.
+     */
+    function preprocessSessionBeforeFiltering(session) {
+        return {
+            name: session.name,
+            image: session.image,
+            author: session.author,
+            created: dateUtils.formatReadableDate(session.createdOn),
+            updated: dateUtils.formatReadableDate(session.updatedOn),
+            annotationSets: session.nAnnotationSets,
+            annotations: session.nAnnotations,
+            users: session.nUsers
+        };
+    }
+
+    /**
+     * Create an object that contains the filterable properties of a single
+     * annotation set within a session/collab, combined with that session's
+     * filterable properties. 
+     * @param {Object} session The session the annotation set belongs to.
+     * @param {Object} annotationSet The annotation set to be processed.
+     * @return {Object} The processed object.
+     */
+    function preprocessAnnotationSetBeforeFiltering(session, annotationSet) {
+        return {
+            ...preprocessSessionBeforeFiltering(session),
+            setName: annotationSet.name,
+            setDescription: annotationSet.description,
+            tags: (annotationSet.tags || []).map(tag => tag.name),
+            setAnnotations: annotationSet.nAnnotations
+        };
+    }
+
     return {
         getFilterFromQuery: getFilterFromQuery,
         preprocessAnnotationBeforeFiltering: preprocessAnnotationBeforeFiltering,
-        preprocessCollabBeforeFiltering: preprocessCollabBeforeFiltering
+        preprocessCollabBeforeFiltering: preprocessCollabBeforeFiltering,
+        preprocessSessionBeforeFiltering: preprocessSessionBeforeFiltering,
+        preprocessAnnotationSetBeforeFiltering: preprocessAnnotationSetBeforeFiltering
     };
 })();

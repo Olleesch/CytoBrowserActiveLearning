@@ -396,7 +396,7 @@ const htmlHelper = (function() {
                 <span class="badge badge-light mt-1 d-block" id="class_counter_${mclass.name}">0</span>
             </label>
         `);
-        button.css("color", _getTextColorForBackground(mclass.color));
+        button.css("color", getTextColorForBackground(mclass.color));
         button.css("border", "1px solid #343a40");
 
         if (active)
@@ -771,7 +771,7 @@ const htmlHelper = (function() {
             const selected = classData.classConfigButtonRow.find(".class-btn.border-dark");
             if (selected.length) {
                 selected.css("background-color", color);
-                selected.css("color", _getTextColorForBackground(color));
+                selected.css("color", getTextColorForBackground(color));
                 selected.data("mclass").color = color;
             }
             classColorButton.css("background-color", color);
@@ -853,7 +853,7 @@ const htmlHelper = (function() {
         return undefined;
     }
 
-    function _getTextColorForBackground(hexColor) {
+    function getTextColorForBackground(hexColor) {
         const bigint = parseInt(hexColor.slice(1), 16);
         const r = (bigint >> 16) & 255;
         const g = (bigint >> 8) & 255;
@@ -873,7 +873,7 @@ const htmlHelper = (function() {
         function _createClassButton(mclass) {
             const btn = $(`
                 <button type="button" class="btn btn-sm mr-1 mb-1 class-btn" 
-                        style="background-color:${mclass.color}; color:${_getTextColorForBackground(mclass.color)}; position: relative;">
+                        style="background-color:${mclass.color}; color:${getTextColorForBackground(mclass.color)}; position: relative;">
                     ${mclass.name}
                 </button>
             `);
@@ -947,6 +947,166 @@ const htmlHelper = (function() {
             btn.insertBefore(classData.classConfigButtonRow.find(".add-class-btn"));
         });
         classData.classConfigButtonRow.find(".class-btn").first().click();
+    }
+
+    function _annotationSetTagsRow() {
+        const tagsRow = $(`
+            <div class="form-row pb-2">
+                <label class="col-3 col-form-label">Tags</label>
+                <div class="col-9 d-flex flex-wrap align-items-center" name="tags_row"></div>
+            </div>
+        `);
+        const tagsButtonRow = tagsRow.find("div[name='tags_row']");
+        new Sortable(tagsButtonRow.get(0), {
+            animation: 150,
+            draggable: "button:not(.add-tag-btn)",
+            filter: ".add-tag-btn"
+        });
+        return [tagsRow, tagsButtonRow];
+    }
+
+    function _annotationSetTagControlFields(tagsData) {
+        const tagControlFieldsWrapper = $(`
+            <div>
+                <div name="tag_config_error_message" style="color: red; font-size: 14px; display: none;"></div>
+            </div>
+            <div class="form-row pb-3">
+                <div class="col-3"></div>
+                <div class="col-9">
+                    <div class="form-row">
+                        <div class="col-8">
+                            <label class="col-form-label-sm py-0">Tag name</label>
+                            <input type="text" name="tag_name" class="form-control form-control-sm" placeholder="Tag name">
+                        </div>
+                        <div class="col-4">
+                            <label class="col-form-label-sm py-0">Tag color</label>
+                            <button type="button" class="btn btn-sm btn-block btn-secondary" name="tag_color" style="height: calc(1.5em + 0.5rem + 2px); background-color:#346d2e;"></button>
+                            <input type="color" name="hidden_tag_color" style="height:1px;opacity:0;" value="#346d2e">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+        const tagErrorLabel = tagControlFieldsWrapper.find("div[name='tag_config_error_message']");
+        const tagNameField = tagControlFieldsWrapper.find("input[name='tag_name']");
+        const tagColorButton = tagControlFieldsWrapper.find("button[name='tag_color']");
+        const hiddenTagColorField = tagControlFieldsWrapper.find("input[name='hidden_tag_color']");
+
+        tagColorButton.on("click", () => hiddenTagColorField.click());
+
+        tagNameField.on("input", function() {
+            const selected = tagsData.tagsButtonRow.find(".tag-btn.border-dark");
+            if (selected.length) {
+                selected.find(".tag-btn-label").text($(this).val());
+                selected.data("tag").name = $(this).val();
+            }
+        });
+        hiddenTagColorField.on("input", function() {
+            const color = $(this).val();
+            tagColorButton.css("background-color", color);
+            const selected = tagsData.tagsButtonRow.find(".tag-btn.border-dark");
+            if (selected.length) {
+                selected.css("background-color", color);
+                selected.css("color", getTextColorForBackground(color));
+                selected.data("tag").color = color;
+            }
+            tagColorButton.css("background-color", color);
+        });
+        return [tagControlFieldsWrapper, tagErrorLabel, tagNameField];
+    }
+
+    function _updateTagControlFieldsVisibility(tagsData) {
+        if (tagsData.tagsButtonRow.find(".tag-btn").length > 0) {
+            tagsData.tagControlFieldsWrapper.show();
+        }
+        else {
+            tagsData.tagControlFieldsWrapper.hide();
+        }
+    }
+
+    function _createTagsButtonRow(tagsData, createAddButton=false) {
+
+        const tagNameField = tagsData.tagControlFieldsWrapper.find("[name='tag_name']");
+        const tagColorButton = tagsData.tagControlFieldsWrapper.find("[name='tag_color']");
+        const hiddenTagColorField = tagsData.tagControlFieldsWrapper.find("[name='hidden_tag_color']");
+
+        function _createTagButton(tag) {
+            const btn = $(`
+                <button type="button" class="btn btn-sm mr-1 mb-1 tag-btn"
+                        style="background-color:${tag.color}; color:${getTextColorForBackground(tag.color)}; position: relative;">
+                    <span class="tag-btn-label">${tag.name}</span>
+                </button>
+            `);
+            btn.data("tag", tag);
+            btn.on("click", function() {
+                tagsData.tagsButtonRow.find(".tag-btn").removeClass("border border-dark").css("box-shadow", "");
+                $(this).addClass("border border-dark").css("box-shadow", "0 0 3.75px 1.5px rgba(0,0,0,0.8)");
+                tagNameField.val(tag.name);
+                tagColorButton.css("background-color", tag.color);
+                hiddenTagColorField.val(tag.color);
+            });
+            const popup = $(`
+                <div class="popup border rounded shadow-sm"
+                    style="position: absolute; top: 102%; left: 0; z-index: 1050; display: none; cursor: pointer; background-color: #ffffff;">
+                    <div class="text-danger px-2 py-1">Delete tag</div>
+                </div>
+            `);
+            popup.on("click", function() {
+                popup.remove();
+                btn.remove();
+                tagsData.tagConfig = tagsData.tagConfig.filter(t => t !== tag);
+                const remaining = tagsData.tagsButtonRow.find(".tag-btn").first();
+                if (remaining.length) remaining.click();
+                _updateTagControlFieldsVisibility(tagsData);
+            });
+            btn.append(popup);
+            popup.find("div").hover(
+                function() { popup.css("background-color", "#e0e0e0"); },
+                function() { popup.css("background-color", "#ffffff"); }
+            );
+            btn.on("contextmenu", function(e) {
+                e.preventDefault();
+                tagsData.tagsButtonRow.find(".popup").hide();
+                popup.show();
+                e.stopPropagation();
+                $(document).one("mousedown", function(e) {
+                    if (!popup.is(e.target) && popup.has(e.target).length === 0) {
+                        popup.hide();
+                    }
+                });
+            });
+            return btn;
+        }
+
+        function _createAddTagButton() {
+            const addBtn = $(`
+                <button type="button" class="btn btn-sm btn-secondary mb-1 add-tag-btn">+</button>
+            `);
+            addBtn.on("click", function() {
+                const newTag = {
+                    name: "",
+                    color: "#346d2e"
+                };
+                const btn = _createTagButton(newTag);
+                btn.insertBefore(addBtn);
+                btn.click();
+                _updateTagControlFieldsVisibility(tagsData);
+            });
+            return addBtn;
+        }
+
+        if (createAddButton) {
+            const addBtn = _createAddTagButton();
+            tagsData.tagsButtonRow.append(addBtn);
+        }
+
+        tagsData.tagsButtonRow.find("button").not(".add-tag-btn").remove();
+        tagsData.tagConfig.forEach(tag => {
+            const btn = _createTagButton(tag);
+            btn.insertBefore(tagsData.tagsButtonRow.find(".add-tag-btn"));
+        });
+        tagsData.tagsButtonRow.find(".tag-btn").first().click();
+        _updateTagControlFieldsVisibility(tagsData);
     }
 
     // Seemingly not in use (not up to date)
@@ -1069,6 +1229,10 @@ const htmlHelper = (function() {
 
         const [nameRow, nameField, nameErrorLabel] = _annotationSetNameRow();
         const [descriptionRow, descriptionField] = _annotationSetDescriptionRow();
+        const [tagsRow, tagsButtonRow] = _annotationSetTagsRow();
+        const [tagControlFieldsWrapper, tagErrorLabel, tagNameField] = _annotationSetTagControlFields(
+            {tagsButtonRow: tagsButtonRow}
+        );
         const classControlsHeader = _annotationSetClassControlsHeader();
         const classConfigButtonRow = _annotationSetClassConfigButtonRow();
         const [classControlFieldsWrapper, classErrorLabel, classNameField] = _annotationSetClassControlFields(
@@ -1080,6 +1244,11 @@ const htmlHelper = (function() {
             classConfigButtonRow: classConfigButtonRow, 
             classControlFieldsWrapper: classControlFieldsWrapper,
             disabledControls: false
+        };
+        const tagsData = {
+            tagConfig: [],
+            tagsButtonRow: tagsButtonRow,
+            tagControlFieldsWrapper: tagControlFieldsWrapper
         };
         const [classConfigRow, classConfigSelect, classConfigInfoLabel] = _annotationSetClassConfigSelectRow(classData);
         const saveButtonWrapper = _annotationSetSaveButton("Add annotation set", () => {
@@ -1099,9 +1268,13 @@ const htmlHelper = (function() {
                 classErrorLabel.text(classConfigErrorMessage).show();
             }
             else classErrorLabel.text("").hide();
+            // Get the current tags, ignoring any that were never given a name
+            tagsData.tagConfig = tagsButtonRow.find(".tag-btn").map(function() {
+                return $(this).data("tag");
+            }).get().filter(tag => tag.name !== "");
             // If no error messages, continue to add the new annotation set
             if (!nameErrorMessage && !classConfigErrorMessage) {
-                annotationSetHandler.addAnnotationSet(name, descriptionField.val(), classData.classConfig, true);
+                annotationSetHandler.addAnnotationSet(name, descriptionField.val(), classData.classConfig, tagsData.tagConfig, true);
                 container.modal("hide");
             }
         });
@@ -1109,6 +1282,8 @@ const htmlHelper = (function() {
         body.append(
             nameRow, 
             descriptionRow, 
+            tagsRow, 
+            tagControlFieldsWrapper, 
             classConfigRow, 
             classControlsHeader, 
             classConfigButtonRow, 
@@ -1118,6 +1293,8 @@ const htmlHelper = (function() {
 
         // Initialize the class config button row
         _createClassConfigButtonRow(classData, true);
+        // Initialize the tags button row
+        _createTagsButtonRow(tagsData, true);
 
         // Make help text pop up when the help button is pressed
         container.find("[name='help_button']").popover({placement: 'bottom', trigger: 'focus'});
@@ -1135,6 +1312,9 @@ const htmlHelper = (function() {
             classData.classConfig = JSON.parse(JSON.stringify(defaultClassConfig));
             classConfigSelect.val("default");
             _createClassConfigButtonRow(classData, false);
+            // Reset the tag tracker and the tags button row
+            tagsData.tagConfig = [];
+            _createTagsButtonRow(tagsData, false);
         });
     }
 
@@ -1149,6 +1329,10 @@ const htmlHelper = (function() {
 
         const [nameRow, nameField, nameErrorLabel] = _annotationSetNameRow();
         const [descriptionRow, descriptionField] = _annotationSetDescriptionRow();
+        const [tagsRow, tagsButtonRow] = _annotationSetTagsRow();
+        const [tagControlFieldsWrapper, tagErrorLabel, tagNameField] = _annotationSetTagControlFields(
+            {tagsButtonRow: tagsButtonRow}
+        );
         const classControlsHeader = _annotationSetClassControlsHeader();
         const classConfigButtonRow = _annotationSetClassConfigButtonRow();
         const [classControlFieldsWrapper, classErrorLabel, classNameField] = _annotationSetClassControlFields(
@@ -1160,6 +1344,11 @@ const htmlHelper = (function() {
             classConfigButtonRow: classConfigButtonRow, 
             classControlFieldsWrapper: classControlFieldsWrapper,
             disabledControls: false
+        };
+        const tagsData = {
+            tagConfig: [],
+            tagsButtonRow: tagsButtonRow,
+            tagControlFieldsWrapper: tagControlFieldsWrapper
         };
         const [classConfigRow, classConfigSelect, classConfigInfoLabel] = _annotationSetClassConfigSelectRow(classData);
         const saveButtonWrapper = _annotationSetSaveButton("Update annotation set", () => {
@@ -1179,11 +1368,15 @@ const htmlHelper = (function() {
                 classErrorLabel.text(classConfigErrorMessage).show();
             }
             else classErrorLabel.text("").hide();
+            // Get the current tags, ignoring any that were never given a name
+            tagsData.tagConfig = tagsButtonRow.find(".tag-btn").map(function() {
+                return $(this).data("tag");
+            }).get().filter(tag => tag.name !== "");
             // If no error messages, continue to add the new annotation set
             if (!nameErrorMessage && !classConfigErrorMessage) {
                 const activeAnnotationSet = annotationSetHandler.getActiveAnnotationSet();
                 const description = descriptionField.val();
-                annotationSetHandler.modifyAnnotationSet(activeAnnotationSet, name, description, classData.classConfig, true);
+                annotationSetHandler.modifyAnnotationSet(activeAnnotationSet, name, description, classData.classConfig, tagsData.tagConfig, true);
                 container.modal("hide");
             }
         });
@@ -1191,6 +1384,8 @@ const htmlHelper = (function() {
         body.append(
             nameRow, 
             descriptionRow, 
+            tagsRow, 
+            tagControlFieldsWrapper, 
             classConfigRow, 
             classControlsHeader, 
             classConfigButtonRow, 
@@ -1200,6 +1395,8 @@ const htmlHelper = (function() {
 
         // Initialize the class config button row
         _createClassConfigButtonRow(classData, true);
+        // Initialize the tags button row
+        _createTagsButtonRow(tagsData, true);
 
         // Make help text pop up when the help button is pressed
         container.find("[name='help_button']").popover({placement: 'bottom', trigger: 'focus'});
@@ -1271,6 +1468,8 @@ const htmlHelper = (function() {
                     classConfigSelect.val("custom");
                 }
                 _createClassConfigButtonRow(classData, false);
+                tagsData.tagConfig = JSON.parse(JSON.stringify(activeAnnotationSet.tags || []));
+                _createTagsButtonRow(tagsData, false);
 
                 // Disable some class config controls if there are annotations in the set. 
                 if (!annotationHandler.isEmptySet(activeAnnotationSet.name)) {
@@ -1328,7 +1527,7 @@ const htmlHelper = (function() {
                     console.warn("Cannot copy a locked annotation set, skipping");
                 } else {
                     if (copyAnnotationsCheckbox.is(":checked")) annotationSetHandler.copyAnnotationSet(name, activeAnnotationSet, true);
-                    else annotationSetHandler.addAnnotationSet(name, activeAnnotationSet.description, activeAnnotationSet.classConfig, true);
+                    else annotationSetHandler.addAnnotationSet(name, activeAnnotationSet.description, activeAnnotationSet.classConfig, activeAnnotationSet.tags, true);
                 }
                 container.modal("hide");
             }
@@ -1420,6 +1619,8 @@ const htmlHelper = (function() {
         buildImageBrowser,
 
         buildFocusSlider,
-        updateFocusSlider
+        updateFocusSlider,
+
+        getTextColorForBackground
     };
 })();

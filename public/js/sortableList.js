@@ -46,8 +46,16 @@ class SortableList {
      * argument. If omitted, nothing happens when a row is double clicked.
      * @param {Function} [anchor] Functions generating href
      * for an anchor <a></a> wrapping each cell in a row.
+     * @param {Object} [expandable] If provided, adds an unlabeled column
+     * with a triangle toggle button at the far right of each row, which
+     * expands/collapses a child row directly below it.
+     * @param {(container: Object, datum: Object) => void} expandable.renderContent
+     * Function called with a DOM element and the row's original raw datum
+     * (as passed to updateData, not the display-adjusted view of just the
+     * configured fields) to populate the child row's content whenever it's
+     * expanded.
      */
-    constructor(table, scroller, idKey, fields, onClick=null, onDoubleClick=null, anchor=null) {
+    constructor(table, scroller, idKey, fields, onClick=null, onDoubleClick=null, anchor=null, expandable=null) {
         this._fields = fields;
         this._data = [];
         this._idKey = idKey;
@@ -56,6 +64,8 @@ class SortableList {
         this._onClick = onClick;
         this._onDoubleClick = onDoubleClick;
         this._anchor = anchor;
+        this._expandable = expandable;
+        this._expandedIds = new Set();
         this._createHeaderRowAndBody();
         this.unsetSorted();
         this._unboldTimeout = 0;
@@ -91,6 +101,12 @@ class SortableList {
                     .attr("data-key", field.key);
             }
         });
+        if (this._expandable) {
+            colGroup.append("col").style("width", "2em");
+            row.append("th")
+                .attr("class", "p-1")
+                .style("vertical-align", "middle");
+        }
         this._table.append("tbody");
     }
 
@@ -179,7 +195,7 @@ class SortableList {
                             }
                         }
                         const td=d3.select(this)
-                            .selectAll("td")
+                            .selectAll("td:not(.expand-toggle-cell)")
                             .data(fields)
                             .join("td")
                             .attr("class", "px-0 py-1")
@@ -211,7 +227,24 @@ class SortableList {
                                 d3.select(this).text(d[f.key]);
                             }
                         });
-                        
+
+                        if (list._expandable) {
+                            let toggleCell = d3.select(this).select("td.expand-toggle-cell");
+                            if (toggleCell.empty()) {
+                                toggleCell = d3.select(this).append("td")
+                                    .attr("class", "expand-toggle-cell px-0 py-1 text-center")
+                                    .style("vertical-align", "middle")
+                                    .style("cursor", "pointer")
+                                    .on("click", function() {
+                                        d3.event.stopPropagation();
+                                        list._toggleExpand(d3.select(this.parentNode).datum());
+                                    });
+                                toggleCell.append("i").attr("class", "expand-toggle-icon fa fa-chevron-right");
+                            }
+                            toggleCell.select(".expand-toggle-icon")
+                                .classed("expanded", list._expandedIds.has(d[list._idKey]));
+                        }
+
                         d.changed=false; //set changed=false when shown
                     })
                     .transition()
@@ -298,7 +331,126 @@ class SortableList {
                 const key = d3.select(this).attr("data-key");
                 return key === sortKey ? sortIcon : '<span class="text-muted">&#x2195;</span>';
             });
+        if (this._expandable) {
+            this._reattachChildRows();
+            this._restripeDataRows();
+        }
         timingLog && console.timeEnd("sortListData");
+    }
+
+    _childRowSelector(id) {
+        return `tr.child-row[data-parent-id="${id}"]`;
+    }
+
+    _reattachChildRows() {
+        this._table.selectAll("tr.data-row").each((d, i, nodes) => {
+            const id = d[this._idKey];
+            if (this._expandedIds.has(id)) {
+                const parentNode = nodes[i];
+                const childNode = this._table.select(this._childRowSelector(id)).node();
+                if (childNode && childNode.previousSibling !== parentNode) {
+                    parentNode.after(childNode);
+                }
+            }
+        });
+    }
+
+    _restripeDataRows() {
+        const list = this;
+        this._table.selectAll("tr.data-row").each(function(d, i) {
+            const isOdd = i % 2 === 1;
+            d3.select(this).classed("stripe-odd", isOdd);
+            const id = d[list._idKey];
+            if (list._expandedIds.has(id)) {
+                const childNode = list._table.select(list._childRowSelector(id)).node();
+                if (childNode) {
+                    childNode.classList.toggle("stripe-odd", isOdd);
+                }
+            }
+        });
+    }
+
+    _cleanupOrphanedChildRows() {
+        const currentIds = new Set(this._data.map(d => d[this._idKey]));
+        Array.from(this._expandedIds).forEach(id => {
+            if (!currentIds.has(id)) {
+                this._expandedIds.delete(id);
+                this._table.select(this._childRowSelector(id)).remove();
+            }
+        });
+    }
+
+    _refreshExpandedContent() {
+        this._expandedIds.forEach(id => {
+            const childRow = this._table.select(this._childRowSelector(id)).node();
+            const datum = this._data.find(d => d[this._idKey] === id);
+            if (!childRow || !datum) {
+                return;
+            }
+            const content = childRow.querySelector(".expand-content");
+            if (content) {
+                this._expandable.renderContent(content, datum.rawRef);
+            }
+        });
+    }
+
+    /**
+     * Toggle the expanded/collapsed state of a row's child row.
+     */
+    _toggleExpand(d) {
+        const id = d[this._idKey];
+        if (this._expandedIds.has(id)) {
+            this._expandedIds.delete(id);
+            const childRow = this._table.select(this._childRowSelector(id)).node();
+            if (childRow) {
+                const inner = childRow.querySelector(".expand-content-inner");
+                if (inner) {
+                    inner.style.height = `${inner.scrollHeight}px`;
+                    inner.getBoundingClientRect(); // force a layout flush
+                    inner.style.height = "0px";
+                    inner.addEventListener("transitionend", () => childRow.remove(), {once: true});
+                }
+                else {
+                    childRow.remove();
+                }
+            }
+        }
+        else {
+            this._expandedIds.add(id);
+            const parentNode = this._table.select(`tr.data-row[data-annotation-id="${id}"]`).node();
+            if (parentNode) {
+                const childRow = document.createElement("tr");
+                childRow.classList.add("child-row");
+                if (parentNode.classList.contains("stripe-odd")) {
+                    childRow.classList.add("stripe-odd");
+                }
+                childRow.setAttribute("data-parent-id", id);
+                const cell = document.createElement("td");
+                cell.colSpan = this._fields.length + 1;
+                cell.className = "px-0 py-0";
+                const inner = document.createElement("div");
+                inner.className = "expand-content-inner";
+                const content = document.createElement("div");
+                content.className = "expand-content";
+                content.style.paddingTop = "0.25rem";
+                content.style.paddingBottom = "0.75rem";
+                inner.appendChild(content);
+                cell.appendChild(inner);
+                childRow.appendChild(cell);
+                parentNode.after(childRow);
+                // Use the original raw datum, not the display-adjusted one, since
+                // renderContent commonly needs fields beyond the visible columns.
+                this._expandable.renderContent(content, d.rawRef);
+                const targetHeight = inner.scrollHeight;
+                inner.getBoundingClientRect(); 
+                inner.style.height = `${targetHeight}px`;
+                inner.addEventListener("transitionend", () => {
+                    inner.style.height = "auto";
+                }, {once: true});
+            }
+        }
+        this._table.select(`tr.data-row[data-annotation-id="${id}"] .expand-toggle-icon`)
+            .classed("expanded", this._expandedIds.has(id));
     }
 
     _progressSort(key) {
@@ -320,6 +472,10 @@ class SortableList {
 
         const changed=this._updateDisplayStyle();
         this._setData(data);
+        if (this._expandable) {
+            this._cleanupOrphanedChildRows();
+            this._refreshExpandedContent();
+        }
         this._displayData(changed); //may be slow if large data, calls inProgress(false) when done
         this._reorderData();
     }
