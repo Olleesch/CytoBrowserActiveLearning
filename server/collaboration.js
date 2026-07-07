@@ -646,10 +646,11 @@ class Collaboration {
         });
     }
     
-    // Find annotations with identical points
+    // Find annotations with identical type and points. 
     findDuplicatePoints(annotation) {
         return this.annotations.find(existingAnnotation => {
-            return this.pointsAreDuplicate(annotation.points, existingAnnotation.points)
+            return existingAnnotation.type === annotation.type
+                && this.pointsAreDuplicate(annotation.points, existingAnnotation.points);
         });
     }
 

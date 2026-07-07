@@ -212,10 +212,11 @@ const annotationHandler = (function (){
         });
     }
 
-    // Find annotations with identical points
+    // Find annotations with identical type and points. 
     function _findDuplicatePoints(annotation) {
         return _getGridAnnotations(annotation).find(existingAnnotation => {
-            return _pointsAreDuplicate(annotation.points, existingAnnotation.points)
+            return existingAnnotation.type === annotation.type
+                && _pointsAreDuplicate(annotation.points, existingAnnotation.points);
         });
     }
 
