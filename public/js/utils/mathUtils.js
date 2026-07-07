@@ -105,6 +105,27 @@
         return {center, rx, ry, rotation};
     }
 
+    /**
+     * Approximate an oval's boundary as a many-point polygon (used for 
+     * legacy "1.1" export format). 
+     * @param {Array<Object>} points The oval's 3 stored points
+     * ([majorP0, majorP1, minorP]).
+     * @param {number} [segmentCount=48] Number of polygon vertices.
+     * @returns {Array<Object>} The approximated boundary points.
+     */
+    function ovalPolygonApproximation(points, segmentCount=48) {
+        const {center, rx, ry, rotation} = ellipseParamsFromAxisPoints(points);
+        const cos = Math.cos(rotation), sin = Math.sin(rotation);
+        return Array.from({length: segmentCount}, (v, i) => {
+            const t = (i / segmentCount) * 2 * Math.PI;
+            const x = rx * Math.cos(t), y = ry * Math.sin(t);
+            return {
+                x: center.x + x * cos - y * sin,
+                y: center.y + x * sin + y * cos
+            };
+        });
+    }
+
     // Type-specific centroid/diameter implementations, one explicit entry
     // per known annotation type. A type without an entry here should throw
     // an error.
@@ -186,6 +207,7 @@
         pathIntersectsSelf,
         rectangleCornersFromDiagonal,
         ellipseParamsFromAxisPoints,
+        ovalPolygonApproximation,
         getAnnotationCentroid,
         getAnnotationDiameter
     };

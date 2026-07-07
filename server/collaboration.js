@@ -495,13 +495,13 @@ class Collaboration {
         }).then(data => {
             data || this.log('WARNING: loadAnnotations returned zero data', console.warn);
             // Name field equal for all data versions
-            if (data.version === "1.0" || data.version === "1.1" || data.version === "1.2" || data.version === "1.3") {
+            if (data.version === "1.0" || data.version === "1.1" || data.version === "1.2" || data.version === "1.3" || data.version === "1.4") {
                 if (data.name) {
                     this.name = data.name;
                 }
             }
-            // Author, createdOn, updatedOn, comments new in data version 1.1, equal in data versions 1.2 and 1.3
-            if (data.version === "1.1" || data.version === "1.2" || data.version === "1.3") {
+            // Author, createdOn, updatedOn, comments new in data version 1.1, equal in data versions 1.2, 1.3, and 1.4
+            if (data.version === "1.1" || data.version === "1.2" || data.version === "1.3" || data.version === "1.4") {
                 this.author = data.author;
                 this.createdOn = data.createdOn;
                 this.updatedOn = data.updatedOn;
@@ -565,7 +565,7 @@ class Collaboration {
                 this.annotationSetConfig = data.annotationSetConfig;
             }
             // AnnotationSetConfig new in data version 1.2, annotation type field new in 1.3
-            if (data.version === "1.2" || data.version === "1.3") {
+            if (data.version === "1.2" || data.version === "1.3" || data.version === "1.4") {
                 if (data.annotationSetConfig === undefined) {
                     data.annotationSetConfig = [];
                 }
@@ -597,7 +597,7 @@ class Collaboration {
                 nAnnotations += annotation.assignments.length;
             })
             const data = { //Format specification (less canonicalized, order is important)
-                version: "1.3",
+                version: "1.4",
                 id: this.id,
                 name: this.name,
                 image: this.image,

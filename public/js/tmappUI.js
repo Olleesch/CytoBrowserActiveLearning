@@ -382,9 +382,9 @@ const tmappUI = (function(){
             const title = "Which annotations would you like to export?";
             const choices = [
                 {
-                    label: "All annotation sets (data version 1.3)",
+                    label: "All annotation sets (data version 1.4)",
                     click: () => {
-                        const annotationData = annotationStorageConversion.getAnnotationStorageData("1.3");
+                        const annotationData = annotationStorageConversion.getAnnotationStorageData("1.4");
                         localStorage.saveJSON(annotationData);
                     }
                 },

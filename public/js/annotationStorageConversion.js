@@ -28,8 +28,8 @@ const annotationStorageConversion = (function() {
      * information.
      */
     function addAnnotationStorageData(data, ignoreMismatch=false) {
-        if (data.version === "1.0" || data.version === "1.1" || data.version === "1.2" || data.version === "1.3") {
-            
+        if (data.version === "1.0" || data.version === "1.1" || data.version === "1.2" || data.version === "1.3" || data.version === "1.4") {
+
             const baseName = "Imported set";
 
             // Help function to find new annotation set name "Imported set [num]" based on existing sets
@@ -65,7 +65,7 @@ const annotationStorageConversion = (function() {
                         }
                     ];
                 }
-                else if (data.version === "1.2" || data.version === "1.3") {
+                else if (data.version === "1.2" || data.version === "1.3" || data.version === "1.4") {
                     data.annotationSetConfig.forEach(annotationSet => {
                         const prevName = annotationSet.name;
                         const newName = getValidNewName(prevName);
@@ -114,7 +114,7 @@ const annotationStorageConversion = (function() {
                         delete a.z;
                     });
                 }
-                else if (data.version === "1.2" || data.version === "1.3") {
+                else if (data.version === "1.2" || data.version === "1.3" || data.version === "1.4") {
                     data.annotations.forEach(a => {
                         a.assignments.forEach(assignment => {
                             assignment.annotationSet = annotationSetNameMap.get(assignment.annotationSet);
@@ -136,7 +136,7 @@ const annotationStorageConversion = (function() {
             const addAnnotations = () => {
                 const newAnnotations = loadAnnotations();
                 annotationHandler.add(newAnnotations, "image", true);
-                if (data.version === "1.1" || data.version === "1.2" || data.version === "1.3") {
+                if (data.version === "1.1" || data.version === "1.2" || data.version === "1.3" || data.version === "1.4") {
                     data.comments.forEach(comment => {
                         globalDataHandler.sendCommentToServer(comment);
                     });
@@ -203,9 +203,11 @@ const annotationStorageConversion = (function() {
                     const assignment = annotation.assignments.find(a => a.annotationSet === activeAnnotationSetName);
                     data.annotations.push({
                         // Version 1.1 predates the annotation.type field, so a 2-point rectangle
-                        // would otherwise be misread as a degenerate line on re-import.
-                        // Expand it to its 4 corners so it survives as a polygon instead.
-                        points: annotation.type === "rectangle" ? mathUtils.rectangleCornersFromDiagonal(annotation.points) : annotation.points,
+                        // or 3-point oval would otherwise be misread as a degenerate line/triangle
+                        // on re-import. Expand each to a many-point polygon instead.
+                        points: annotation.type === "rectangle" ? mathUtils.rectangleCornersFromDiagonal(annotation.points)
+                            : annotation.type === "oval" ? mathUtils.ovalPolygonApproximation(annotation.points)
+                            : annotation.points,
                         z: assignment.z,
                         mclass: assignment.mclass,
                         author: assignment.author,
@@ -216,7 +218,7 @@ const annotationStorageConversion = (function() {
                 }
             });
             data.nAnnotations = data.annotations.length;
-        } else if (version === "1.3") {
+        } else if (version === "1.4") {
             data.annotationSetConfig = annotationSetHandler.getAnnotationSetConfig();
             data.annotations = [];
             annotationHandler.forEachAnnotation(annotation => {
