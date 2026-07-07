@@ -11,6 +11,7 @@ const annotationTool = (function() {
         return {
             click: function(position) {
                 const annotation = {
+                    type: "marker",
                     points: [{
                         x: position.x,
                         y: position.y
@@ -47,6 +48,7 @@ const annotationTool = (function() {
                 {x: _endPoint.x, y: _startPoint.y}
             ];
             const annotation = {
+                type: "rectangle",
                 points: points,
                 assignments: [
                     {
@@ -67,7 +69,8 @@ const annotationTool = (function() {
         function reset() {
             _startPoint = null;
             _endPoint = null;
-            layerHandler.topLayer().name === "region" && layerHandler.topLayer().updatePendingRegion(null);
+            // TODO: switch to layerHandler.getLayer("rectangle") once the rectangle/polygon layers are split
+            layerHandler.getLayer("region")?.updatePendingRegion(null);
             _clicks = 0;
         }
 
@@ -152,6 +155,7 @@ const annotationTool = (function() {
 
         function _getAnnotation(points) {
             return {
+                type: "polygon",
                 points: points,
                 assignments: [
                     {
@@ -171,7 +175,8 @@ const annotationTool = (function() {
         function reset() {
             _points = [];
             _nextPoint = null;
-            layerHandler.topLayer().name === "region" && layerHandler.topLayer().updatePendingRegion(null);
+            // TODO: switch to layerHandler.getLayer("polygon") once the rectangle/polygon layers are split
+            layerHandler.getLayer("region")?.updatePendingRegion(null);
         }
 
         let recentTap=false; // Avoid double-tap creating two vertices

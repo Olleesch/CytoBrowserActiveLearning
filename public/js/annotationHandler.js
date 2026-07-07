@@ -173,6 +173,7 @@ const annotationHandler = (function (){
         // But this explicit clone was over 10 times faster when tested
         // Make sure to remember to update it if fields are changed
         const clone = {
+            type: annotation.type,
             points: annotation.points && annotation.points.map(point => {
                 return {
                     x: point.x,

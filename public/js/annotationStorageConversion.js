@@ -28,7 +28,7 @@ const annotationStorageConversion = (function() {
      * information.
      */
     function addAnnotationStorageData(data, ignoreMismatch=false) {
-        if (data.version === "1.0" || data.version === "1.1" || data.version === "1.2") {
+        if (data.version === "1.0" || data.version === "1.1" || data.version === "1.2" || data.version === "1.3") {
             
             const baseName = "Imported set";
 
@@ -65,7 +65,7 @@ const annotationStorageConversion = (function() {
                         }
                     ];
                 }
-                else if (data.version === "1.2") {
+                else if (data.version === "1.2" || data.version === "1.3") {
                     data.annotationSetConfig.forEach(annotationSet => {
                         const prevName = annotationSet.name;
                         const newName = getValidNewName(prevName);
@@ -114,11 +114,19 @@ const annotationStorageConversion = (function() {
                         delete a.z;
                     });
                 }
-                else if (data.version === "1.2") {
+                else if (data.version === "1.2" || data.version === "1.3") {
                     data.annotations.forEach(a => {
                         a.assignments.forEach(assignment => {
                             assignment.annotationSet = annotationSetNameMap.get(assignment.annotationSet);
                         });
+                    });
+                }
+                // Backward compatability of the type field introduced in version 1.3. 
+                // Regions from previous versions are always added as polygons. Inferring
+                // rectangles would require checking axis-alignment of the 4 points. 
+                if (data.version === "1.0" || data.version === "1.1" || data.version === "1.2") {
+                    data.annotations.forEach(a => {
+                        a.type = a.points.length === 1 ? "marker" : "polygon";
                     });
                 }
                 return data.annotations;
@@ -128,7 +136,7 @@ const annotationStorageConversion = (function() {
             const addAnnotations = () => {
                 const newAnnotations = loadAnnotations();
                 annotationHandler.add(newAnnotations, "image", true);
-                if (data.version === "1.1" || data.version === "1.2") {
+                if (data.version === "1.1" || data.version === "1.2" || data.version === "1.3") {
                     data.comments.forEach(comment => {
                         globalDataHandler.sendCommentToServer(comment);
                     });
@@ -205,7 +213,7 @@ const annotationStorageConversion = (function() {
                 }
             });
             data.nAnnotations = data.annotations.length;
-        } else if (version === "1.2") {
+        } else if (version === "1.3") {
             data.annotationSetConfig = annotationSetHandler.getAnnotationSetConfig();
             data.annotations = [];
             annotationHandler.forEachAnnotation(annotation => {
