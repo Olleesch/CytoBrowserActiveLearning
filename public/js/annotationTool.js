@@ -139,6 +139,128 @@ const annotationTool = (function() {
         };
     })();
 
+    // Tool for adding an oval by clicking the two endpoints of its major axis 
+    // (minor axis width can be adjusted by double-clicking the annotation after creation)
+    const _ovalTool = (function() {
+        const _DEFAULT_AXIS_RATIO = 0.45; // semi-minor = semi-major * ratio, used only at creation
+
+        let _startPoint,
+            _endPoint,
+            _zLevel,
+            _mclass,
+            _clicks = 0,
+            _birthTime;
+
+        // The default minor axis point used once at creation. After creation, 
+        // the 'minor point' is an independent, draggable handle. 
+        function _defaultMinorPoint(start, end) {
+            const cx = (start.x + end.x) / 2, cy = (start.y + end.y) / 2;
+            const ux = end.x - start.x, uy = end.y - start.y;
+            const uLen = Math.hypot(ux, uy);
+            if (uLen === 0) return {x: cx, y: cy};
+            const semiMinor = (uLen / 2) * _DEFAULT_AXIS_RATIO;
+            return {x: cx - uy / uLen * semiMinor, y: cy + ux / uLen * semiMinor};
+        }
+
+        function _getAnnotation() {
+            const points = [_startPoint, _endPoint, _defaultMinorPoint(_startPoint, _endPoint)];
+            const annotation = {
+                type: "oval",
+                points: points,
+                assignments: [
+                    {
+                        annotationSet: annotationSetHandler.getActiveAnnotationSet().name,
+                        z: _zLevel,
+                        mclass: _mclass
+                    }
+                ]
+            };
+            return annotation;
+        }
+
+        function _updatePending() {
+            const annotation = _getAnnotation();
+            layerHandler.topLayer().updatePendingRegion(annotation);
+        }
+
+        function reset() {
+            _startPoint = null;
+            _endPoint = null;
+            layerHandler.getLayer("oval")?.updatePendingRegion(null);
+            _clicks = 0;
+        }
+
+        function addPoint(position) {
+            _clicks++;
+            let coords = coordinateHelper.viewportToImage(
+                {
+                    x: position.x,
+                    y: position.y
+                },
+                true
+            );
+            _zLevel = position.z;
+            _mclass = _activeMclass;
+            _endPoint = coords;
+            if (_startPoint) {
+                if (_startPoint.x === coords.x && _startPoint.y === coords.y) {
+                    console.info("Zero sized oval (double click?), ignoring click.");
+                    return;
+                }
+                complete(position);
+            }
+            else {
+                _startPoint = coords;
+                _birthTime = Date.now();
+                _updatePending();
+            }
+        }
+
+        function complete(position) {
+            _zLevel = position.z;
+            _mclass = _activeMclass;
+            if (_startPoint && _endPoint) {
+                const annotation = _getAnnotation();
+                annotationHandler.add(annotation, "image");
+                reset();
+            }
+            else {
+                console.warn("Complete called with incomplete oval!");
+            }
+        }
+
+        return {
+            click: addPoint,
+            // Prevent starting a new oval by the two separate click events
+            dblClick: function(position) {
+                if (_clicks<2) { // only one click for this oval = new oval created from (half) dblClick-closing
+                    console.info("Double-click close, reset to avoid creating new oval.");
+                    reset();
+                }
+            },
+            complete: addPoint,
+            update: function(position) {
+                if (_startPoint) {
+                    _mclass = _activeMclass;
+                    _endPoint = coordinateHelper.viewportToImage(
+                        {
+                            x: position.x,
+                            y: position.y
+                        },
+                        true
+                    );
+                    _updatePending();
+                }
+            },
+            revert: reset,
+            reset: reset,
+            isEditing: () => _startPoint != null,
+            resetIfYounger: (time) => {
+                if (Date.now()-_birthTime<time) reset();
+            }
+        };
+    })();
+
     // Tool for adding a free-form polygon
     const _polyTool = (function() {
         let _points = [],
@@ -244,7 +366,8 @@ const annotationTool = (function() {
     const _tools = {
         marker: _markerTool,
         rect: _rectTool,
-        poly: _polyTool
+        poly: _polyTool,
+        oval: _ovalTool
     };
 
     let _activeTool,

@@ -87,12 +87,36 @@
         ];
     }
 
+    /**
+     * Derive an ellipse's center, radii, and rotation from its 3 stored
+     * points: 2 major-axis endpoints plus 1 minor-axis endpoint.
+     * @param {Array<Object>} points [majorP0, majorP1, minorP].
+     * @returns {Object} {center, rx, ry, rotation}. rotation is in radians.
+     */
+    function ellipseParamsFromAxisPoints(points) {
+        const [A, B, M] = points;
+        const center = {x: (A.x + B.x) / 2, y: (A.y + B.y) / 2};
+        const ux = B.x - A.x, uy = B.y - A.y;
+        const rx = Math.hypot(ux, uy) / 2;
+        // Perpendicular distance from M to line AB, robust to any slight
+        // off-axis drift in M rather than amplifying it (unlike |M-center|).
+        const ry = rx === 0 ? 0 : Math.abs(ux * (M.y - A.y) - uy * (M.x - A.x)) / (2 * rx);
+        const rotation = Math.atan2(uy, ux);
+        return {center, rx, ry, rotation};
+    }
+
     // Type-specific centroid/diameter implementations, one explicit entry
-    // per known annotation type. A type without an entry here should throw 
-    // an error. 
+    // per known annotation type. A type without an entry here should throw
+    // an error.
     const _centroidByType = {
         marker: points => points[0],
         rectangle: points => ({
+            x: (points[0].x + points[1].x) / 2,
+            y: (points[0].y + points[1].y) / 2
+        }),
+        // Oval's centroid is the midpoint of its 2 major-axis endpoints (the
+        // true ellipse center); points[2] (the minor-axis point) is unused.
+        oval: points => ({
             x: (points[0].x + points[1].x) / 2,
             y: (points[0].y + points[1].y) / 2
         }),
@@ -119,6 +143,9 @@
     const _diameterByType = {
         marker: () => 0,
         rectangle: points => Math.sqrt(_sqrDist(points[0], points[1])),
+        // Major-axis length (distance between the 2 major-axis endpoints);
+        // points[2] (the minor-axis point) is unused.
+        oval: points => Math.sqrt(_sqrDist(points[0], points[1])),
         //Approximate!
         polygon: points => {
             let changed;
@@ -158,6 +185,7 @@
     return {
         pathIntersectsSelf,
         rectangleCornersFromDiagonal,
+        ellipseParamsFromAxisPoints,
         getAnnotationCentroid,
         getAnnotationDiameter
     };

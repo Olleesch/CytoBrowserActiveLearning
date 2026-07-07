@@ -68,8 +68,13 @@ class RegionLayer extends OverlayLayer {
         return 0.5 * this.#scale;
     }
 
-    #getRegionPath(d) {
-        const stops = this._getRenderPoints(d).map(point => {
+    // Default: straight-edge path through the render points. Not a required
+    // abstract hook — PolygonLayer/RectangleLayer inherit this unchanged;
+    // OvalLayer overrides it with elliptical-arc path generation instead.
+    // If more shapes not based on straight edges are added, this should maybe 
+    // be adjusted to a required abstract hook instead. 
+    _getRegionPath(annotation) {
+        const stops = this._getRenderPoints(annotation).map(point => {
             const coords = coordinateHelper.imageToOverlay(point);
             return `${coords.x} ${coords.y}`;
         });
@@ -322,7 +327,7 @@ class RegionLayer extends OverlayLayer {
             .attr("class", "region")
             .call(group =>
                 group.append("path")
-                    .attr("d", d => _this.#getRegionPath(d))
+                    .attr("d", d => _this._getRegionPath(d))
                     .attr("stroke", _this._getAnnotationColor)
                     .attr("stroke-width", _this.#regionStrokeWidth)
                     .attr("fill", _this._getAnnotationColor)
@@ -337,7 +342,7 @@ class RegionLayer extends OverlayLayer {
         const _this = this;
         return update.call(update =>
                 update.select(".region-area")
-                    .attr("d", d => _this.#getRegionPath(d))
+                    .attr("d", d => _this._getRegionPath(d))
                     .transition("changeColor").duration(500)
                     .attr("stroke", _this._getAnnotationColor)
                     .attr("fill", _this._getAnnotationColor)
@@ -451,13 +456,13 @@ class RegionLayer extends OverlayLayer {
             .data(data)
             .join(
                 enter => enter.append("path")
-                    .attr("d", d => this.#getRegionPath(d))
+                    .attr("d", d => this._getRegionPath(d))
                     .attr("stroke", this._getAnnotationColor)
                     .attr("stroke-width", this.#regionStrokeWidth)
                     .attr("stroke-dasharray", this.#regionStrokeWidth)
                     .attr("fill", this._getAnnotationColor)
                     .attr("fill-opacity", 0.05),
-                update => update.attr("d", d => this.#getRegionPath(d))
+                update => update.attr("d", d => this._getRegionPath(d))
                     .attr("stroke", this._getAnnotationColor)
                     .attr("fill", this._getAnnotationColor)
             );

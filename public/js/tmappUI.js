@@ -330,6 +330,10 @@ const tmappUI = (function(){
             layerHandler.setActiveAnnotationOverlay("polygon");
             annotationTool.setTool("poly");
         });
+        $("#tool_oval").click(() => {
+            layerHandler.setActiveAnnotationOverlay("oval");
+            annotationTool.setTool("oval");
+        });
     }
 
     function _initViewerEvents() {
@@ -586,6 +590,9 @@ const tmappUI = (function(){
                     break;
                 case 66: // b
                     $("#tool_poly").click();
+                    break;
+                case 78: // n
+                    $("#tool_oval").click();
                     break;
                 default:
                     caught=false; //Assume we miss the key

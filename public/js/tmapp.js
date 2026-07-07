@@ -606,6 +606,9 @@ const tmapp = (function() {
         const rectangleLayer = new RectangleLayer("rectangle",svgOverlay);
         layerHandler.addLayer(rectangleLayer);
 
+        const ovalLayer = new OvalLayer("oval",svgOverlay);
+        layerHandler.addLayer(ovalLayer);
+
         const markerOverlay = _viewer.pixiOverlay({container:overlayDiv});
         markerOverlay.ready.then(() => {
             const markerLayer = new MarkerLayer("marker", markerOverlay);
