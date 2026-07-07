@@ -11,4 +11,8 @@ class PolygonLayer extends RegionLayer {
     _applyVertexDrag(points, index, newPos) {
         Object.assign(points[index], newPos);
     }
+
+    _getRenderPoints(annotation) {
+        return annotation.points;
+    }
 }

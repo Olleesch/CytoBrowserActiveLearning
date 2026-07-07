@@ -8,19 +8,20 @@ class RectangleLayer extends RegionLayer {
         return annotation.type === "rectangle";
     }
 
-    // Axis-constrained rectangle modification. Dragging a corner keeps the 
-    // shape axis-aligned by leaving the diagonally opposite corner fixed and 
-    // recomputing the other two corners from it and the new position.
+    // Axis-aligned rectangle edits. Rendering/edit handles use 4 derived corners
+    // of the rectangle (see _getRenderPoints), 'index' refers to which corner is 
+    // being dragged (not which point in the stored annotation is being modified). 
     _applyVertexDrag(points, index, newPos) {
-        const fixed = points[(index + 2) % 4];
-        [(index + 1) % 4, (index + 3) % 4].forEach(j => {
-            if (points[j].x === points[index].x) {
-                Object.assign(points[j], {x: newPos.x, y: fixed.y});
-            }
-            else {
-                Object.assign(points[j], {x: fixed.x, y: newPos.y});
-            }
-        });
-        Object.assign(points[index], newPos);
+        const [start, end] = points;
+        switch (index) {
+            case 0: Object.assign(start, newPos); break;
+            case 1: start.x = newPos.x; end.y = newPos.y; break;
+            case 2: Object.assign(end, newPos); break;
+            case 3: end.x = newPos.x; start.y = newPos.y; break;
+        }
+    }
+
+    _getRenderPoints(annotation) {
+        return mathUtils.rectangleCornersFromDiagonal(annotation.points);
     }
 }

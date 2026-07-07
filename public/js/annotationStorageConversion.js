@@ -202,7 +202,10 @@ const annotationStorageConversion = (function() {
                 if (annotation.assignments.some(a => a.annotationSet === activeAnnotationSetName)) {
                     const assignment = annotation.assignments.find(a => a.annotationSet === activeAnnotationSetName);
                     data.annotations.push({
-                        points: annotation.points,
+                        // Version 1.1 predates the annotation.type field, so a 2-point rectangle
+                        // would otherwise be misread as a degenerate line on re-import.
+                        // Expand it to its 4 corners so it survives as a polygon instead.
+                        points: annotation.type === "rectangle" ? mathUtils.rectangleCornersFromDiagonal(annotation.points) : annotation.points,
                         z: assignment.z,
                         mclass: assignment.mclass,
                         author: assignment.author,

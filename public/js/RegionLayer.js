@@ -5,7 +5,7 @@
  **/
 
 class RegionLayer extends OverlayLayer {
-    #requiredFunctions = ["_isMine", "_applyVertexDrag"];
+    #requiredFunctions = ["_isMine", "_applyVertexDrag", "_getRenderPoints"];
 
     #timingLog = false; //Log update times
     #scale = 1;
@@ -69,7 +69,7 @@ class RegionLayer extends OverlayLayer {
     }
 
     #getRegionPath(d) {
-        const stops = d.points.map(point => {
+        const stops = this._getRenderPoints(d).map(point => {
             const coords = coordinateHelper.imageToOverlay(point);
             return `${coords.x} ${coords.y}`;
         });
@@ -114,7 +114,7 @@ class RegionLayer extends OverlayLayer {
                 .append("g")
                 .attr("class", "region-edit-handles")
                 .call(group => {
-                    d.points.forEach((point, i) => {
+                    _this._getRenderPoints(d).forEach((point, i) => {
                         group.append("g")
                             .attr("transform", d => {
                                 const coords = coordinateHelper.imageToOverlay(point);
@@ -144,7 +144,7 @@ class RegionLayer extends OverlayLayer {
                                     pressHandler: (event) => {
                                         tmapp.setCursorStatus({held: true});
                                         mouse_pos = new OpenSeadragon.Point(event.originalEvent.offsetX,event.originalEvent.offsetY);
-                                        const vertex_pos = coordinateHelper.imageToWeb(annotationHandler.getAnnotationById(d.id).points[i]);
+                                        const vertex_pos = coordinateHelper.imageToWeb(_this._getRenderPoints(annotationHandler.getAnnotationById(d.id))[i]);
                                         mouse_offset = mouse_pos.minus(vertex_pos);
                                         this.#currentMouseUpdateFun=updateMousePos;
                                     },
@@ -322,7 +322,7 @@ class RegionLayer extends OverlayLayer {
             .attr("class", "region")
             .call(group =>
                 group.append("path")
-                    .attr("d", _this.#getRegionPath)
+                    .attr("d", d => _this.#getRegionPath(d))
                     .attr("stroke", _this._getAnnotationColor)
                     .attr("stroke-width", _this.#regionStrokeWidth)
                     .attr("fill", _this._getAnnotationColor)
@@ -337,7 +337,7 @@ class RegionLayer extends OverlayLayer {
         const _this = this;
         return update.call(update =>
                 update.select(".region-area")
-                    .attr("d", _this.#getRegionPath)
+                    .attr("d", d => _this.#getRegionPath(d))
                     .transition("changeColor").duration(500)
                     .attr("stroke", _this._getAnnotationColor)
                     .attr("fill", _this._getAnnotationColor)
@@ -345,7 +345,7 @@ class RegionLayer extends OverlayLayer {
             .call(update =>
                 update.selectAll(".region-edit-handles g")
                     .each(function(d, i) {
-                        const point = d.points[i];
+                        const point = _this._getRenderPoints(d)[i];
                         d3.select(this)
                             .attr("transform", RegionLayer.transformFunction(function(d) {
                                 const coords = coordinateHelper.imageToOverlay(point);
@@ -451,13 +451,13 @@ class RegionLayer extends OverlayLayer {
             .data(data)
             .join(
                 enter => enter.append("path")
-                    .attr("d", this.#getRegionPath)
+                    .attr("d", d => this.#getRegionPath(d))
                     .attr("stroke", this._getAnnotationColor)
                     .attr("stroke-width", this.#regionStrokeWidth)
                     .attr("stroke-dasharray", this.#regionStrokeWidth)
                     .attr("fill", this._getAnnotationColor)
                     .attr("fill-opacity", 0.05),
-                update => update.attr("d", this.#getRegionPath)
+                update => update.attr("d", d => this.#getRegionPath(d))
                     .attr("stroke", this._getAnnotationColor)
                     .attr("fill", this._getAnnotationColor)
             );

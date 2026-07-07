@@ -393,11 +393,11 @@ const annotationHandler = (function (){
 
                 // Set the centroid of the annotation
                 if (!addedAnnotation.centroid)
-                    addedAnnotation.centroid = mathUtils.getCentroid(addedAnnotation.points);
+                    addedAnnotation.centroid = mathUtils.getAnnotationCentroid(addedAnnotation);
 
                 // Set the diameter of the annotation
                 if (!addedAnnotation.diameter)
-                    addedAnnotation.diameter = mathUtils.getDiameter(addedAnnotation.points);
+                    addedAnnotation.diameter = mathUtils.getAnnotationDiameter(addedAnnotation);
 
                 // Set the original author of the annotation
                 if (!addedAnnotation.originalAuthor)
@@ -512,10 +512,10 @@ const annotationHandler = (function (){
         const newGridIndex = _getGridIdx(updatedAnnotation);
 
         // Set the centroid of the annotation
-        updatedAnnotation.centroid = mathUtils.getCentroid(updatedAnnotation.points);
+        updatedAnnotation.centroid = mathUtils.getAnnotationCentroid(updatedAnnotation);
 
         // Set the diameter of the annotation
-        updatedAnnotation.diameter = mathUtils.getDiameter(updatedAnnotation.points);
+        updatedAnnotation.diameter = mathUtils.getAnnotationDiameter(updatedAnnotation);
 
         // Store the annotation in data
         if (newGridIndex !== oldGridIndex) {

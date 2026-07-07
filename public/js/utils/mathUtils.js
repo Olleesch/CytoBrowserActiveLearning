@@ -62,12 +62,43 @@
          return !noIntersections;
      }
 
-     function getCentroid(points) {
-        if (points.length === 1)
-            return points[0];
-        else {
-            // Wikipedia says this won't work with self-intersections
-            // https://en.wikipedia.org/wiki/Centroid#Of_a_polygon
+    function _sqrDist(a,b) {
+        const x = a.x - b.x;
+        const y = a.y - b.y;
+        return x*x + y*y;
+    }
+
+    /**
+     * Derive the 4 corners of a rectangle from its 2 diagonal points. 
+     * @param {Array<Object>} points The 2 diagonal points, [start, end].
+     * @returns {Array<Object>} The 4 corners (new objects, not references).
+     */
+    function rectangleCornersFromDiagonal(points) {
+        // Not a supported dual-format, just a safety net for any pre-existing
+        // local dev/test data with old-style 4-point rectangles.
+        if (points.length === 4)
+            return points;
+        const [start, end] = points;
+        return [
+            {x: start.x, y: start.y},
+            {x: start.x, y: end.y},
+            {x: end.x, y: end.y},
+            {x: end.x, y: start.y}
+        ];
+    }
+
+    // Type-specific centroid/diameter implementations, one explicit entry
+    // per known annotation type. A type without an entry here should throw 
+    // an error. 
+    const _centroidByType = {
+        marker: points => points[0],
+        rectangle: points => ({
+            x: (points[0].x + points[1].x) / 2,
+            y: (points[0].y + points[1].y) / 2
+        }),
+        // Wikipedia says this won't work with self-intersections
+        // https://en.wikipedia.org/wiki/Centroid#Of_a_polygon
+        polygon: points => {
             const loop = [...points, points[0]];
             let area = 0;
             let cx = 0;
@@ -84,19 +115,12 @@
             cy /= (6 * area);
             return {x: cx, y: cy};
         }
-    }
-
-    function _sqrDist(a,b) {
-        const x = a.x - b.x;
-        const y = a.y - b.y;  
-        return x*x + y*y;
-    }
-
-    //Approximate!
-    function getDiameter(points) {
-        if (points.length === 1)
-            return 0;
-        else {
+    };
+    const _diameterByType = {
+        marker: () => 0,
+        rectangle: points => Math.sqrt(_sqrDist(points[0], points[1])),
+        //Approximate!
+        polygon: points => {
             let changed;
             let sqrDiam=0;
             let newRef;
@@ -111,11 +135,30 @@
             } while (changed);
             return Math.sqrt(sqrDiam);
         }
+    };
+
+    /**
+     * Compute the centroid of an annotation by its type.
+     * @param {Object} annotation The annotation.
+     * @returns {Object} The centroid.
+     */
+    function getAnnotationCentroid(annotation) {
+        return _centroidByType[annotation.type](annotation.points);
+    }
+
+    /**
+     * Compute the diameter of an annotation by its type.
+     * @param {Object} annotation The annotation.
+     * @returns {number} The diameter.
+     */
+    function getAnnotationDiameter(annotation) {
+        return _diameterByType[annotation.type](annotation.points);
     }
 
     return {
         pathIntersectsSelf,
-        getCentroid,
-        getDiameter
+        rectangleCornersFromDiagonal,
+        getAnnotationCentroid,
+        getAnnotationDiameter
     };
 })();

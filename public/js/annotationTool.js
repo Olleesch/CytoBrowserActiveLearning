@@ -41,12 +41,7 @@ const annotationTool = (function() {
             _birthTime;
 
         function _getAnnotation() {
-            const points = [
-                _startPoint,
-                {x: _startPoint.x, y: _endPoint.y}, //Diagonal corner
-                _endPoint,
-                {x: _endPoint.x, y: _startPoint.y}
-            ];
+            const points = [_startPoint, _endPoint]; // 2 diagonal corners - this fully defines the rectangle
             const annotation = {
                 type: "rectangle",
                 points: points,
