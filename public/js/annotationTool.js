@@ -69,8 +69,7 @@ const annotationTool = (function() {
         function reset() {
             _startPoint = null;
             _endPoint = null;
-            // TODO: switch to layerHandler.getLayer("rectangle") once the rectangle/polygon layers are split
-            layerHandler.getLayer("region")?.updatePendingRegion(null);
+            layerHandler.getLayer("rectangle")?.updatePendingRegion(null);
             _clicks = 0;
         }
 
@@ -175,8 +174,7 @@ const annotationTool = (function() {
         function reset() {
             _points = [];
             _nextPoint = null;
-            // TODO: switch to layerHandler.getLayer("polygon") once the rectangle/polygon layers are split
-            layerHandler.getLayer("region")?.updatePendingRegion(null);
+            layerHandler.getLayer("polygon")?.updatePendingRegion(null);
         }
 
         let recentTap=false; // Avoid double-tap creating two vertices

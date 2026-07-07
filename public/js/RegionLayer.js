@@ -1,9 +1,12 @@
 "use strict";
 /**
- * Class for the region annotation overlay.
+ * Base class for annotation overlays made up of a list of points
+ * rendered as a straight-edge SVG path (e.g. rectangles, polygons). 
  **/
 
 class RegionLayer extends OverlayLayer {
+    #requiredFunctions = ["_isMine", "_applyVertexDrag"];
+
     #timingLog = false; //Log update times
     #scale = 1;
 
@@ -13,11 +16,20 @@ class RegionLayer extends OverlayLayer {
     #currentMouseUpdateFun = null;
 
     /**
-     * @param {string} name - Typically "region"
+     * @param {string} name - e.g. "rectangle" or "polygon"
      * @param {Object} svgOverlay - svgOverlay() of the OSD
      */
     constructor(name, svgOverlay) {
         super(name,svgOverlay._viewer,svgOverlay._svg);
+
+        if (this.constructor === RegionLayer) {
+            throw new Error("Cannot instatiate abstract class!");
+        }
+        this.#requiredFunctions.forEach(fun => {
+            if (typeof this[fun] !== "function") {
+                throw new Error(`Function "${fun}" must be implemented in derived class`);
+            }
+        });
 
         // Counter to check if we're busy rendering; Immediate function returning a function
         this.updateAnnotations.inProgress = (function () { let flag = 0; return (set=null) => { if (set!=null) flag+=set?1:-1; return flag; }} )();
@@ -25,10 +37,10 @@ class RegionLayer extends OverlayLayer {
         // Create SVG nodes for rendering
         this.#regionOverlay = d3.select(svgOverlay.node())
             .append("g")
-            .attr("id", "regions");
+            .attr("id", `${name}-regions`);
         this.#pendingRegionOverlay = d3.select(svgOverlay.node())
             .append("g")
-            .attr("id", "regions")
+            .attr("id", `${name}-regions`)
             .style("pointer-events", "none");
 
         this._viewer.addHandler('update-viewport', () => {
@@ -38,6 +50,13 @@ class RegionLayer extends OverlayLayer {
 
     destroy()
     {
+    }
+
+    setZ(level) {
+        // Do nothing - cross-layer stacking is instead handled by raising 
+        // this layer to the front in focus(), since sharing the SVG overlay 
+        // with sibling region-type layers (and CollabLayer, which does 
+        // nothing in setZ for the same reason). 
     }
 
 
@@ -88,6 +107,7 @@ class RegionLayer extends OverlayLayer {
     
     // Used when editing (path-nodes of) an existing region
     #createRegionEditControls(d, node) {
+        const _this = this;
         const selection = d3.select(node);
         if (!selection.attr("data-being-edited")) {
             selection.attr("data-being-edited", true)
@@ -113,9 +133,8 @@ class RegionLayer extends OverlayLayer {
                                 function updateMousePos() {
                                     // Use a clone of the annotation to make sure the edit is permitted
                                     const dClone = annotationHandler.getAnnotationById(d.id);
-                                    const pointClone = dClone.points[i];
                                     const vertex_new_pos = coordinateHelper.webToImage(mouse_pos.minus(mouse_offset));
-                                    Object.assign(pointClone,vertex_new_pos);
+                                    _this._applyVertexDrag(dClone.points, i, vertex_new_pos);
                                     annotationHandler.update(d.id, dClone, "image");
                                     const viewportCoords = coordinateHelper.webToViewport(mouse_pos);
                                     tmapp.setCursorStatus(viewportCoords);
@@ -195,33 +214,49 @@ class RegionLayer extends OverlayLayer {
             tmapp.setCursorStatus(viewportCoords);
         }
 
+        // Forward a click/dblClick through to the viewport's own handler. Used both 
+        // for the active layer's own shapes (e.g. to place a vertex on top of an 
+        // existing shape) and for an inactive layer's shapes. Without this, the click
+        // can be silently swallowed instead of reaching whatever's beneath it. 
+        function forwardToViewportHandler(event, handlerName) {
+            const rect1 = event.eventSource.element.getBoundingClientRect(); //There must be an easier way
+            const rect2 = tmapp.mouseHandler().element.getBoundingClientRect(); //Possibly OSD 2.5
+            event.position.x+=rect1.left-rect2.left; //https://github.com/openseadragon/openseadragon/issues/1652
+            event.position.y+=rect1.top-rect2.top;
+            tmapp.mouseHandler()[handlerName](event);
+        }
+
         new OpenSeadragon.MouseTracker({
             element: node,
             clickHandler: (event) => {
+                if (layerHandler.topLayer() !== this) {
+                    forwardToViewportHandler(event, "clickHandler");
+                    return;
+                }
+
                 regionEditor.stopEditingRegion();
                 this.#unHighlight(node);
 
                 if (event.originalEvent.ctrlKey) {
                     annotationHandler.remove(d.id, annotationSetHandler.getActiveAnnotationSet().name);
                 }
-                else if (layerHandler.topLayer().name==="region") {
-                    const rect1 = event.eventSource.element.getBoundingClientRect(); //There must be an easier way
-                    const rect2 = tmapp.mouseHandler().element.getBoundingClientRect(); //Possibly OSD 2.5 
-                    event.position.x+=rect1.left-rect2.left; //https://github.com/openseadragon/openseadragon/issues/1652
-                    event.position.y+=rect1.top-rect2.top;
-                    tmapp.mouseHandler().clickHandler( event );
+                else {
+                    forwardToViewportHandler(event, "clickHandler");
                 }
             },
-            dblClickHandler: (event) => { 
+            dblClickHandler: (event) => {
+                if (layerHandler.topLayer() !== this) {
+                    if (annotationTool.isEditing()) {
+                        forwardToViewportHandler(event, "dblClickHandler");
+                    }
+                    return;
+                }
+
                 // If we just created a new object in the 1st click of our dblClick, then kill it
-                annotationTool.resetIfYounger(event.eventSource.dblClickTimeThreshold); 
+                annotationTool.resetIfYounger(event.eventSource.dblClickTimeThreshold);
 
                 if (annotationTool.isEditing()) { //If editing, allow dblClick->complete
-                    const rect1 = event.eventSource.element.getBoundingClientRect();
-                    const rect2 = tmapp.mouseHandler().element.getBoundingClientRect();
-                    event.position.x+=rect1.left-rect2.left;
-                    event.position.y+=rect1.top-rect2.top;
-                    tmapp.mouseHandler().dblClickHandler( event );
+                    forwardToViewportHandler(event, "dblClickHandler");
                 }
                 else if (event.pointerType === 'touch') { // If touch
                     const location = {
@@ -229,12 +264,14 @@ class RegionLayer extends OverlayLayer {
                         y: event.originalEvent.pageY
                     };
                     tmappUI.openAnnotationEditMenu(d.id, location);
-                }   
-                else {                    
+                }
+                else {
                     toggleEditing(d, node);
-                }        
+                }
             },
             pressHandler: (event) => {
+                if (layerHandler.topLayer() !== this) return;
+
                 tmapp.setCursorStatus({held: true});
                 mouse_pos = new OpenSeadragon.Point(event.originalEvent.offsetX,event.originalEvent.offsetY);
                 const object_pos = coordinateHelper.imageToWeb(annotationHandler.getAnnotationById(d.id).centroid);
@@ -242,15 +279,21 @@ class RegionLayer extends OverlayLayer {
                 this.#currentMouseUpdateFun=updateMousePos;
             },
             releaseHandler: (event) => {
+                if (layerHandler.topLayer() !== this) return;
+
                 tmapp.setCursorStatus({held: false});
                 this.#currentMouseUpdateFun=null;
             },
             dragHandler: (event) => {
+                if (layerHandler.topLayer() !== this) return;
+
                 regionEditor.stopEditingRegion();
                 mouse_pos = new OpenSeadragon.Point(event.originalEvent.offsetX,event.originalEvent.offsetY);
                 updateMousePos();
             },
             nonPrimaryReleaseHandler: (event) => {
+                if (layerHandler.topLayer() !== this) return;
+
                 if (event.button === 2) { // If right click
                     const location = {
                         x: event.originalEvent.pageX,
@@ -258,11 +301,15 @@ class RegionLayer extends OverlayLayer {
                     };
                     tmappUI.openAnnotationEditMenu(d.id, location);
                 }
-            },          
+            },
             enterHandler: (event) => {
+                if (layerHandler.topLayer() !== this) return;
+
                 regionEditor.isEditingRegion() || annotationTool.isEditing() || this.#highlight(node);
             },
             leaveHandler: (event) => {
+                if (layerHandler.topLayer() !== this) return;
+
                 regionEditor.isEditingRegion() || annotationTool.isEditing() || this.#unHighlight(node);
             }
         }).setTracking(true);
@@ -349,7 +396,7 @@ class RegionLayer extends OverlayLayer {
         //Draw annotations and update list asynchronously
         this.updateAnnotations.inProgress(true); //No function 'self' existing
         const regions = annotations.filter(annotation =>
-            annotation.points.length > 1
+            this._isMine(annotation)
         );
 
         const doneRegions = new Promise((resolve, reject) => {
@@ -479,6 +526,12 @@ class RegionLayer extends OverlayLayer {
      * Called when layer is raised to top
      */
     focus() {
+        // See comments in setZ() functions. Handle cross-layer events by raising this
+        // layer to the front so its shapes are reachable even where they overlap an 
+        // inactive layer's shapes. 
+        d3.select(this._element).raise();
+        this.#regionOverlay.raise();
+        this.#pendingRegionOverlay.raise();
         this.#regionOverlay.style("pointer-events", "fill")
                     .transition("highlight").duration(500)
                     .style("opacity", 1);

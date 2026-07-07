@@ -619,6 +619,12 @@ class MarkerLayer extends OverlayLayer {
         Ease.ease.add(obj,{alpha:s},{duration:200});
     }
 
+    setZ(level) {
+        // Do nothing — cross-layer stacking is instead handled by raising 
+        // the pixi overlay in focus(). 
+        // (see also RegionLayer.setZ/CollabLayer.setZ)
+    }
+
     /**
      * Called when layer is lowered away from top
      */
@@ -634,6 +640,7 @@ class MarkerLayer extends OverlayLayer {
      * Called when layer is raised to top
      */
     focus() {
+        d3.select(this._element).raise();
         if (this.#markerContainer) {
             this.#alpha(this.#markerContainer,1);
             this.#markerContainer.eventMode='passive';

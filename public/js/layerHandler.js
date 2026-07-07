@@ -140,8 +140,8 @@ const layerHandler = (function (){
 
     /**
      * Set which layer should be able to receive mouse events
-     * @param {string} name The name of the overlay, either "region" or
-     * "marker".
+     * @param {string} name The name of the overlay, e.g. "rectangle",
+     * "polygon", or "marker".
      */
     function setTopLayer(name) {
         if (!_layers.length) return;

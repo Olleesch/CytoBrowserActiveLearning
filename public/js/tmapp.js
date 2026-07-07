@@ -600,8 +600,11 @@ const tmapp = (function() {
         const collabLayer = new CollabLayer("collab",svgOverlay);
         layerHandler.addLayer(collabLayer);
         
-        const regionLayer = new RegionLayer("region",svgOverlay);
-        layerHandler.addLayer(regionLayer);
+        const polygonLayer = new PolygonLayer("polygon",svgOverlay);
+        layerHandler.addLayer(polygonLayer);
+
+        const rectangleLayer = new RectangleLayer("rectangle",svgOverlay);
+        layerHandler.addLayer(rectangleLayer);
 
         const markerOverlay = _viewer.pixiOverlay({container:overlayDiv});
         markerOverlay.ready.then(() => {

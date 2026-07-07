@@ -323,11 +323,11 @@ const tmappUI = (function(){
             annotationTool.setTool("marker");
         });
         $("#tool_rect").click(() => {
-            layerHandler.setActiveAnnotationOverlay("region");
+            layerHandler.setActiveAnnotationOverlay("rectangle");
             annotationTool.setTool("rect");
         });
         $("#tool_poly").click(() => {
-            layerHandler.setActiveAnnotationOverlay("region");
+            layerHandler.setActiveAnnotationOverlay("polygon");
             annotationTool.setTool("poly");
         });
     }
