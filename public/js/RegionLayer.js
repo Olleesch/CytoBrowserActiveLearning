@@ -270,7 +270,10 @@ class RegionLayer extends OverlayLayer {
                 }
             },
             pressHandler: (event) => {
-                if (layerHandler.topLayer() !== this) return;
+                if (layerHandler.topLayer() !== this) {
+                    forwardToViewportHandler(event, "pressHandler");
+                    return;
+                }
 
                 tmapp.setCursorStatus({held: true});
                 mouse_pos = new OpenSeadragon.Point(event.originalEvent.offsetX,event.originalEvent.offsetY);
@@ -279,13 +282,19 @@ class RegionLayer extends OverlayLayer {
                 this.#currentMouseUpdateFun=updateMousePos;
             },
             releaseHandler: (event) => {
-                if (layerHandler.topLayer() !== this) return;
+                if (layerHandler.topLayer() !== this) {
+                    forwardToViewportHandler(event, "releaseHandler");
+                    return;
+                }
 
                 tmapp.setCursorStatus({held: false});
                 this.#currentMouseUpdateFun=null;
             },
             dragHandler: (event) => {
-                if (layerHandler.topLayer() !== this) return;
+                if (layerHandler.topLayer() !== this) {
+                    forwardToViewportHandler(event, "dragHandler");
+                    return;
+                }
 
                 regionEditor.stopEditingRegion();
                 mouse_pos = new OpenSeadragon.Point(event.originalEvent.offsetX,event.originalEvent.offsetY);
