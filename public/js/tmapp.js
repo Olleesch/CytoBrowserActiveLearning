@@ -379,6 +379,16 @@ const tmapp = (function() {
             };
         }
 
+        // Pans the viewport by a raw pixel delta, mirroring OpenSeadragon's own
+        // default canvas-drag-to-pan behavior. Needed so that a drag gesture
+        // starting on top of an inactive layer's annotation shape (whose own
+        // MouseTracker captures the pointer and would otherwise swallow the
+        // whole gesture) can be forwarded here and still pan the image.
+        function dragHandler(event) {
+            const delta = viewer.viewport.deltaPointsFromPixels(event.delta.negate());
+            viewer.viewport.panBy(delta);
+        }
+
         // Only used to access mouse handler functions elsewhere
         _mouseHandler = {
             element: viewer.canvas,
@@ -388,7 +398,8 @@ const tmapp = (function() {
             enterHandler: insideHandler(true),
             leaveHandler: insideHandler(false),
             pressHandler: heldHandler(true),
-            releaseHandler: heldHandler(false)
+            releaseHandler: heldHandler(false),
+            dragHandler: dragHandler
         };
 
         viewer.addHandler('canvas-click', function(event) {
